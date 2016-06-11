@@ -1,0 +1,88 @@
+{
+    "dswVersion": "1.0",
+    "dswRules": {
+        "imageNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["jpg", "gif", "png", "jpeg", "webp"]
+            },
+            "apply": {
+                "fetch": "/images/default-image.jpg"
+            }
+        },
+        "stylesNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["css"]
+            },
+            "apply": {
+                "fetch": "/styles/default.css"
+            }
+        },
+        "pageNotFound": {
+            "match": {
+                "status": [404]
+            },
+            "apply": {
+                "fetch": "/404.html"
+            }
+        },
+        "images": {
+            "match": { "extension": ["jpg", "gif", "png", "jpeg", "webp"] },
+            "apply": {
+                "cache": {
+                    "name": "cachedImages",
+                    "version": "1",
+                    "duration": "20D"
+                }
+            }
+        },
+        "userData": {
+            "match": { "path": "/\/api\/user\/.*/" },
+            "apply": {
+                "sessionStorage": {
+                    "name": "cachedUserData",
+                    "version": "1",
+                    "duration": "20m"
+                }
+            }
+        },
+        "updates": {
+            "match": { "path": "/\/api\/updates/" },
+            "apply": {
+                "browserDB": {
+                    "name": "shownUpdates",
+                    "version": "1"
+                }
+            }
+        },
+        "articles": {
+            "match": { "path": "/\/api\/updates/" },
+            "apply": {
+                "cache": {
+                    "name": "cachedArticles",
+                    "version": "1",
+                    "duration": "10D"
+                }
+            }
+        },
+        "events": {
+            "match": { "path": "/\/api\/events/" },
+            "apply": {
+                "browserDB": {
+                    "name": "eventsList",
+                    "version": "1"
+                }
+            }
+        },
+        "lineup": {
+            "match": { "path": "/\/api\/events\/(.*)/" },
+            "apply": {
+                "browserDB": {
+                    "name": "eventLineup-$1",
+                    "version": "1"
+                }
+            }
+        }
+    }
+}

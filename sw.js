@@ -1,3 +1,5 @@
+console.log('>>>>>', self);
+debugger;
 self.addEventListener('fetch', (event)=>{
     console.log('FETCHING: ', event.request.url);
     

@@ -9,12 +9,10 @@
         
         <link rel="stylesheet" href="styles/default.css">
         
+        <script src="dsw.js"></script>
         <script>
-            if(navigator.serviceWorker){
-                navigator.serviceWorker.register('sw.js');
-            }
-
-            console.log('yep');
+            DSW.setup({});
+            console.log('yep??');
         </script>
     </head>
     <body>
