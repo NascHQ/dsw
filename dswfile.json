@@ -3,20 +3,11 @@
     "dswRules": {
         "imageNotFound": {
             "match": {
-                "status": [404],
+                "status": [404, 500],
                 "extension": ["jpg", "gif", "png", "jpeg", "webp"]
             },
             "apply": {
-                "fetch": "/images/default-image.jpg"
-            }
-        },
-        "stylesNotFound": {
-            "match": {
-                "status": [404],
-                "extension": ["css"]
-            },
-            "apply": {
-                "fetch": "/styles/default.css"
+                "fetch": "/images/public/404.jpg"
             }
         },
         "pageNotFound": {
