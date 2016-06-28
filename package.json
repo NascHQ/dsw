@@ -1,0 +1,36 @@
+{
+  "name": "dsw",
+  "version": "1.0.4",
+  "description": "Dynamic Service Worker",
+  "bin": {
+    "dsw": "./index.js"
+  },
+  "environment": "node",
+  "preferGlobal": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipenmoura/dsw-dynamic-service-worker.git"
+  },
+  "keywords": [
+    "service-worker",
+    "pwa",
+    "progressive",
+    "web app",
+    "worker",
+    "manifest",
+    "service"
+  ],
+  "author": "felipenmoura",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/felipenmoura/dsw-dynamic-service-worker/issues"
+  },
+  "homepage": "https://github.com/felipenmoura/dsw-dynamic-service-worker#readme",
+  "devDependencies": {
+    "minifier": "^0.7.1"
+  }
+}

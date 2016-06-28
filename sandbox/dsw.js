@@ -1,3 +1,94 @@
+const PWASettings = {
+    "dswVersion": "1.2",
+    "applyImmediately": true,
+    "dswRules": {
+        "imageNotFound": {
+            "match": {
+                "status": [404, 500],
+                "extension": ["jpg", "gif", "png", "jpeg", "webp"]
+            },
+            "apply": {
+                "fetch": "/images/public/404.jpg"
+            }
+        },
+        "redirectOlderPage": {
+            "match": {
+                "path": "\/legacy-images\/.*"
+            },
+            "apply": {
+                "fetch": "/images/public/gizmo.jpg"
+            }
+        },
+        "pageNotFound": {
+            "match": {
+                "status": [404]
+            },
+            "apply": {
+                "fetch": "/404.html"
+            }
+        },
+        "images": {
+            "match": { "extension": ["jpg", "gif", "png", "jpeg", "webp"] },
+            "apply": {
+                "cache": {
+                    "name": "cachedImages",
+                    "version": "1",
+                    "duration": "20D"
+                }
+            }
+        },
+        "userData": {
+            "match": { "path": "/\/api\/user\/.*/" },
+            "options": { "credentials": "same-origin"},
+            "apply": {
+                "sessionStorage": {
+                    "name": "cachedUserData",
+                    "version": "1",
+                    "duration": "20m"
+                }
+            }
+        },
+        "updates": {
+            "match": { "path": "/\/api\/updates/" },
+            "keepItHot": true,
+            "apply": {
+                "browserDB": {
+                    "name": "shownUpdates",
+                    "version": "1"
+                }
+            }
+        },
+        "articles": {
+            "match": { "path": "/\/api\/updates/" },
+            "apply": {
+                "cache": {
+                    "name": "cachedArticles",
+                    "version": "1",
+                    "duration": "10D"
+                }
+            }
+        },
+        "events": {
+            "match": { "path": "/\/api\/events/" },
+            "apply": {
+                "browserDB": {
+                    "name": "eventsList",
+                    "version": "1"
+                }
+            }
+        },
+        "lineup": {
+            "match": { "path": "/\/api\/events\/(.*)/" },
+            "apply": {
+                "browserDB": {
+                    "name": "eventLineup-$1",
+                    "version": "1"
+                }
+            }
+        }
+    }
+}
+;
 // TODO: add support to keepItHot: use a strategy with promise.race to always fetch the latest data and update the cache
 // TODO: add support to send the fetch options
 

@@ -1,5 +1,6 @@
 {
-    "dswVersion": "1.0",
+    "dswVersion": "1.2",
+    "applyImmediately": true,
     "dswRules": {
         "imageNotFound": {
             "match": {
@@ -8,6 +9,14 @@
             },
             "apply": {
                 "fetch": "/images/public/404.jpg"
+            }
+        },
+        "redirectOlderPage": {
+            "match": {
+                "path": "\/legacy-images\/.*"
+            },
+            "apply": {
+                "fetch": "/images/public/gizmo.jpg"
             }
         },
         "pageNotFound": {
@@ -30,6 +39,7 @@
         },
         "userData": {
             "match": { "path": "/\/api\/user\/.*/" },
+            "options": { "credentials": "same-origin"},
             "apply": {
                 "sessionStorage": {
                     "name": "cachedUserData",
@@ -40,6 +50,7 @@
         },
         "updates": {
             "match": { "path": "/\/api\/updates/" },
+            "keepItHot": true,
             "apply": {
                 "browserDB": {
                     "name": "shownUpdates",
