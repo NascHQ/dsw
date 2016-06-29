@@ -1,5 +1,5 @@
 {
-    "dswVersion": "1.2",
+    "dswVersion": "1.3",
     "applyImmediately": true,
     "dswRules": {
         "imageNotFound": {

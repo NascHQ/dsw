@@ -1,5 +1,5 @@
 const PWASettings = {
-    "dswVersion": "1.2",
+    "dswVersion": "1.3",
     "applyImmediately": true,
     "dswRules": {
         "imageNotFound": {
@@ -106,8 +106,9 @@ try {
 
 if (isInSWScope) {
     
+    const DEFAULT_CACHE_NAME = 'defaultDSWCached::1';
     const cacheManager = {
-        add: (req, cacheId = 'defaultDSWCached::1') => {
+        add: (req, cacheId = DEFAULT_CACHE_NAME) => {
             return new Promise((resolve, reject)=>{
                 caches.open(cacheId).then(cache => {
                     cache.add(req);
@@ -124,20 +125,54 @@ if (isInSWScope) {
             
             switch (actionType) {
                 // TODO: look for cached data
+                case 'redirect':
+                case 'fetch': {
+                    request = new Request(rule.action.fetch || rule.action.redirect);
+                    url = request.url;
+                    // keep going to be treated with the cache case
+                }
                 case 'cache': {
-                    let cacheId = rule.action.cache.name + '::' + (rule.action.cache.version || 1);
+                    
+                    let cacheId = DEFAULT_CACHE_NAME;
+                    
+                    if(rule.action.cache){
+                        cacheId =   (rule.action.cache.name || DEFAULT_CACHE_NAME) +
+                                    '::' +
+                                    (rule.action.cache.version || 1);
+                    }
+                    
                     event.respondWith(
                         caches.match(request)
                             .then(result=>{
-                                return result || fetch(event.request).then(function(response) {
-                                        // after retrieving it, we cache it
-                                        debugger;
-                                        return caches.open(cacheId).then(function(cache) {
-                                            cache.put(event.request, response.clone());
-                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                            return response;
-                                        });  
+                                if (result.status != 200) {
+                                    debugger;
+                                    DSWManager.rules[result.status].some((cur, idx)=>{
+                                        if (url.match(cur.rx)) {
+                                            if (cur.action.fetch) {
+                                                // not found requisitions should
+                                                // fetch a different resource
+                                                result = fetch(cur.action.fetch, cur.options);
+                                                return true; // stopping the loop
+                                            }
+                                        }
                                     });
+                                    // in case there is no treatment for that
+                                    return result;
+                                }else{
+                                    return result || fetch(event.request, rule.options || {})
+                                            .then(function(response) {
+                                            // after retrieving it, we cache it
+                                            if (response.status == 200) {
+                                                return caches.open(cacheId).then(function(cache) {
+                                                    cache.put(event.request, response.clone());
+                                                    console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                    return response;
+                                                });
+                                            } else {
+                                                debugger;
+                                            }
+                                        });
+                                }
                             }));
                 }
                 default: {
@@ -232,18 +267,9 @@ if (isInSWScope) {
                     let rule = DSWManager.rules['*'][i];
                     if (event.request.url.match(rule.rx)) {
                         // if there is a rule that matches the url
-                        return cacheManager.get(rule, event.request, event)
-                            .then(response=>{
-                                //event.respondWith(response);
-//                                if (response instanceof Promise) {
-//                                    response.then(event.respondWith);
-//                                }else{
-//                                    event.respondWith(response);
-//                                }
-                            });
+                        return cacheManager.get(rule, event.request, event);
                     }
                 }
-                debugger;
                 // if no rule is applied, we simple request it
                 return event.respondWith(fetch(event.request.url, {}));
             });
