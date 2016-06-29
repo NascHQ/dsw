@@ -6,24 +6,48 @@
         <title></title>
         <meta name="viewport" content="width=device-width, initial-scale=1">    
 
-<!--
         <link rel="stylesheet" href="styles/default.css">
--->
+
         <script src="dsw.js"></script>
         <script>
-            DSW.setup({});
+            DSW.setup()
+                .then(function(){
+                    var el = document.getElementById('offline-support-message');
+                    el.classList.add('offline-support');
+                    el.innerHTML = 'Offline enabled';
+                    setTimeout(function(){
+                        el.classList.remove('offline-support');
+                    }, 3000);
+                })
+                .catch(function(){
+                    var el = document.getElementById('offline-support-message');
+                    el.innerHTML = 'Offline is not supported in this browser!';
+                    el.classList.add('no-offline-support');
+                    setTimeout(function(){
+                        el.classList.remove('no-offline-support');
+                    }, 3000);
+                });
         </script>
 
     </head>
     <body>
-        <div><img id="ok-image" width="300" alt=""></div>
-        <div><img id="fail-image" width="300" alt=""></div>
-        <div><img id="older-image" width="300" alt=""></div>
+        <div>
+            <input id="btn-img-1" type="button" value="Image 1" />
+            <input id="btn-img-2" type="button" value="Image 2 (not to be found)" />
+            <input id="btn-img-3" type="button" value="Image 3 (to be redirected)" />
+            <a href="some-not-found-page.html" target="blank">
+                <input type="button" value="Go to a not found page">
+            </a>
+        </div>
+        <div>
+            <img id="ok-image" width="300" alt="">
+            <img id="fail-image" width="300" alt="">
+            <img id="older-image" width="300" alt="">
+        </div>
         
-        <input id="btn-img-1" type="button" value="Image 1" />
-        <input id="btn-img-2" type="button" value="Image 2 (not to be found)" />
-        <input id="btn-img-3" type="button" value="Image 3 (to be redirected)" />
         
+        <div id="offline-support-message"></div>
         <script src="scripts/default.js"></script>
+        
     </body>
 </html>

@@ -16,9 +16,8 @@ let fs = require('fs'),
 
 console.info('2/5 => Loading files');
 try {
-    lib = fs.readFileSync(__dirname + '/dsw.js', 'utf8'),
-    settings = fs.readFileSync(path, 'utf8'),
-    fullContent = "const PWASettings = " + settings + ';\n' + lib;
+    lib = fs.readFileSync(__dirname + '/dsw.js', 'utf8');
+    settings = fs.readFileSync(path, 'utf8');
 }catch(e){
     console.error("Failed reading file!", e.message);
     return;
@@ -28,12 +27,23 @@ try {
 console.info('3/5 => Validating JSON');
 try{
     let jsonData = JSON.parse(settings);
+    let vrs = parseFloat(jsonData.dswVersion || 0);
+    if (vrs%1 !== 0) {
+        vrs+= .1;
+    }else{
+        vrs++;
+    }
+    jsonData.dswVersion = vrs;
+    settings = JSON.stringify(jsonData);
 }catch(e){
     console.error('Invalid JSON data!', e.message, e.line);
     return;
 }
 
 console.info('4/5 => Writing file');
+
+fullContent = "const PWASettings = " + settings + ';\n' + lib;
+
 fs.writeFileSync(path.replace(/dswfile\.json$/, 'dsw.js'),
                  fullContent,
                  'utf8');

@@ -68,12 +68,12 @@ if (isInSWScope) {
                                     // in case there is no treatment for that
                                     return result;
                                 }else{
-                                    return result || fetch(event.request, rule.options || {})
+                                    return result || fetch(request, rule.options || {})
                                             .then(function(response) {
                                             // after retrieving it, we cache it
                                             if (response.status == 200) {
                                                 return caches.open(cacheId).then(function(cache) {
-                                                    cache.put(event.request, response.clone());
+                                                    cache.put(request, response.clone());
                                                     console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
                                                     return response;
                                                 });
@@ -220,15 +220,22 @@ if (isInSWScope) {
     
 }else{
     DSW.setup = config => {
-        // opening on a page scope...let's install the worker
-        if(navigator.serviceWorker && !navigator.serviceWorker.controller){
-            // we will use the same script, already loaded, for our service worker
-            var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-            navigator.serviceWorker
-                .register(src + '?dsw-manager')
-                .then(SW=>{
-                    console.info('[ SW ] :: registered');
-                });
-        }
+        return new Promise((resolve, reject)=>{
+            // opening on a page scope...let's install the worker
+            if(navigator.serviceWorker){
+                if (!navigator.serviceWorker.controller) {
+                    // we will use the same script, already loaded, for our service worker
+                    var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                    navigator.serviceWorker
+                        .register(src + '?dsw-manager')
+                        .then(SW=>{
+                            console.info('[ SW ] :: registered');
+                            resolve(navigator.serviceWorker.ready);
+                        });
+                }
+            }else{
+                reject("Service worker not supported");
+            }
+        });
     };
 }

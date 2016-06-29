@@ -1,5 +1,5 @@
 {
-    "dswVersion": "1.3",
+    "dswVersion": 2.2,
     "applyImmediately": true,
     "dswRules": {
         "imageNotFound": {
@@ -32,8 +32,7 @@
             "apply": {
                 "cache": {
                     "name": "cachedImages",
-                    "version": "1",
-                    "duration": "20D"
+                    "version": "1"
                 }
             }
         },
@@ -43,8 +42,7 @@
             "apply": {
                 "sessionStorage": {
                     "name": "cachedUserData",
-                    "version": "1",
-                    "duration": "20m"
+                    "version": "1"
                 }
             }
         },
@@ -63,8 +61,7 @@
             "apply": {
                 "cache": {
                     "name": "cachedArticles",
-                    "version": "1",
-                    "duration": "10D"
+                    "version": "1"
                 }
             }
         },

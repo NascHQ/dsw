@@ -1,94 +1,4 @@
-const PWASettings = {
-    "dswVersion": "1.3",
-    "applyImmediately": true,
-    "dswRules": {
-        "imageNotFound": {
-            "match": {
-                "status": [404, 500],
-                "extension": ["jpg", "gif", "png", "jpeg", "webp"]
-            },
-            "apply": {
-                "fetch": "/images/public/404.jpg"
-            }
-        },
-        "redirectOlderPage": {
-            "match": {
-                "path": "\/legacy-images\/.*"
-            },
-            "apply": {
-                "fetch": "/images/public/gizmo.jpg"
-            }
-        },
-        "pageNotFound": {
-            "match": {
-                "status": [404]
-            },
-            "apply": {
-                "fetch": "/404.html"
-            }
-        },
-        "images": {
-            "match": { "extension": ["jpg", "gif", "png", "jpeg", "webp"] },
-            "apply": {
-                "cache": {
-                    "name": "cachedImages",
-                    "version": "1",
-                    "duration": "20D"
-                }
-            }
-        },
-        "userData": {
-            "match": { "path": "/\/api\/user\/.*/" },
-            "options": { "credentials": "same-origin"},
-            "apply": {
-                "sessionStorage": {
-                    "name": "cachedUserData",
-                    "version": "1",
-                    "duration": "20m"
-                }
-            }
-        },
-        "updates": {
-            "match": { "path": "/\/api\/updates/" },
-            "keepItHot": true,
-            "apply": {
-                "browserDB": {
-                    "name": "shownUpdates",
-                    "version": "1"
-                }
-            }
-        },
-        "articles": {
-            "match": { "path": "/\/api\/updates/" },
-            "apply": {
-                "cache": {
-                    "name": "cachedArticles",
-                    "version": "1",
-                    "duration": "10D"
-                }
-            }
-        },
-        "events": {
-            "match": { "path": "/\/api\/events/" },
-            "apply": {
-                "browserDB": {
-                    "name": "eventsList",
-                    "version": "1"
-                }
-            }
-        },
-        "lineup": {
-            "match": { "path": "/\/api\/events\/(.*)/" },
-            "apply": {
-                "browserDB": {
-                    "name": "eventLineup-$1",
-                    "version": "1"
-                }
-            }
-        }
-    }
-}
-;
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"userData":{"match":{"path":"//api/user/.*/"},"options":{"credentials":"same-origin"},"apply":{"sessionStorage":{"name":"cachedUserData","version":"1"}}},"updates":{"match":{"path":"//api/updates/"},"keepItHot":true,"apply":{"browserDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"//api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"//api/events/"},"apply":{"browserDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"//api/events/(.*)/"},"apply":{"browserDB":{"name":"eventLineup-$1","version":"1"}}}}};
 // TODO: add support to keepItHot: use a strategy with promise.race to always fetch the latest data and update the cache
 // TODO: add support to send the fetch options
 
@@ -159,12 +69,12 @@ if (isInSWScope) {
                                     // in case there is no treatment for that
                                     return result;
                                 }else{
-                                    return result || fetch(event.request, rule.options || {})
+                                    return result || fetch(request, rule.options || {})
                                             .then(function(response) {
                                             // after retrieving it, we cache it
                                             if (response.status == 200) {
                                                 return caches.open(cacheId).then(function(cache) {
-                                                    cache.put(event.request, response.clone());
+                                                    cache.put(request, response.clone());
                                                     console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
                                                     return response;
                                                 });
@@ -311,15 +221,23 @@ if (isInSWScope) {
     
 }else{
     DSW.setup = config => {
-        // opening on a page scope...let's install the worker
-        if(navigator.serviceWorker && !navigator.serviceWorker.controller){
-            // we will use the same script, already loaded, for our service worker
-            var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-            navigator.serviceWorker
-                .register(src + '?dsw-manager')
-                .then(SW=>{
-                    console.info('[ SW ] :: registered');
-                });
-        }
+        return new Promise((resolve, reject)=>{
+            // opening on a page scope...let's install the worker
+            if(navigator.serviceWorker){
+                if (!navigator.serviceWorker.controller) {
+                    // we will use the same script, already loaded, for our service worker
+                    var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                    navigator.serviceWorker
+                        .register(src + '?dsw-manager')
+                        .then(SW=>{
+                            console.info('[ SW ] :: registered');
+
+                            resolve(navigator.serviceWorker.ready);
+                        });
+                }
+            }else{
+                reject("Service worker not supported");
+            }
+        });
     };
 }
