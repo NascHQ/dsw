@@ -288,4 +288,8 @@ if (isInSWScope) {
             }
         });
     };
+    
+    window.DSW = DSW;
 }
+
+export default DSW;

@@ -10,7 +10,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm build && mocha tests/ --compilers js:babel-core/register",
-    "build:js": "browserify src/main.js -o bundle-dsw.js -t [ babelify --presets [ es2015 ] ]",
+    "build:js": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ]",
     "build": "npm run build:js",
     "watch": "watch 'npm run build' .",
     "try": "node index.js sandbox && http-server ./sandbox -p 8888"
