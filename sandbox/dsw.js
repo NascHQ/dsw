@@ -17,6 +17,7 @@ try {
 if (isInSWScope) {
     
     // TODO: use this to get the best fitting rx, instead of the first that matches
+    // reference from https://gist.github.com/felipenmoura/e02c8d8cfdea101fc6265a94321e02df
     function getBestMatchingRX(str){
         let bestMatchingRX;
         let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
@@ -51,7 +52,7 @@ if (isInSWScope) {
                 url = request.url;
             
             switch (actionType) {
-                // TODO: look for cached data
+                // TODO: look for other kinds of cached data
                 case 'redirect':
                 case 'fetch': {
                     request = new Request(rule.action.fetch || rule.action.redirect);

@@ -12,7 +12,8 @@
     "test": "exit 0",
     "build:js": "browserify src/main.js -o bundle-dsw.js -t [ babelify --presets [ es2015 ] ]",
     "build": "npm run build:js",
-    "watch": "watch 'npm run build' ."
+    "watch": "watch 'npm run build' .",
+    "try": "node index.js sandbox && http-server ./sandbox -p 8888"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,8 @@
     "browserify": "latest",
     "jshint": "~2.9.1-rc1",
     "minifier": "^0.7.1",
-    "watch": "latest"
+    "watch": "latest",
+    "mocha": "latest",
+    "http-server": "latest"
   }
 }
