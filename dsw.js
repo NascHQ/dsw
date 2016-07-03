@@ -72,10 +72,11 @@ if (isInSWScope) {
             return bestMatchingRX;
         };
 
-        var DEFAULT_CACHE_NAME = 'defaultDSWCached::1';
+        var DEFAULT_CACHE_NAME = 'defaultDSWCached';
+        var DEFAULT_CACHE_VERSION = '1';
         var cacheManager = {
             add: function add(req) {
-                var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME : arguments[1];
+                var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
 
                 return new Promise(function (resolve, reject) {
                     caches.open(cacheId).then(function (cache) {
@@ -89,8 +90,13 @@ if (isInSWScope) {
             },
             get: function get(rule, request, event) {
                 var actionType = Object.keys(rule.action)[0],
-                    url = request.url;
+                    url = request.url,
+                    pathName = new URL(location.href).pathname;
 
+                if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
+                    // requisitions to / should
+                    actionType = 'cache';
+                }
                 switch (actionType) {
                     // TODO: look for other kinds of cached data
                     case 'redirect':
@@ -104,18 +110,19 @@ if (isInSWScope) {
                         {
                             (function () {
 
-                                var cacheId = DEFAULT_CACHE_NAME;
+                                var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
                                 if (rule.action.cache) {
-                                    cacheId = (rule.action.cache.name || DEFAULT_CACHE_NAME) + '::' + (rule.action.cache.version || 1);
+                                    cacheId = (rule.action.cache.name || DEFAULT_CACHE_NAME) + '::' + (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                                 }
 
                                 var opts = rule.options || {};
+                                // if the cache options is false, we force it not to be cached
                                 if (rule.action.cache === false) {
                                     opts.headers = opts.headers || new Headers();
                                     opts.headers.append('pragma', 'no-cache');
                                     opts.headers.append('cache-control', 'no-cache');
-                                    url = (request.url.indexOf('?') > 0 ? '&' : '?') + Math.random();
+                                    url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
                                     request = new Request(url);
                                 }
 
@@ -233,6 +240,18 @@ if (isInSWScope) {
                             preCache.push(appl.fetch);
                         }
                     });
+
+                    // adding the dsw itself to cache
+                    _this.addRule("*", {
+                        match: { path: location.href },
+                        "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
+                    }, location.href);
+
+                    var rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
+                    _this.addRule("*", {
+                        match: { path: rootMatchingRX },
+                        "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
+                    }, rootMatchingRX);
 
                     if (preCache.length) {
                         // we fetch them now, and store it in cache

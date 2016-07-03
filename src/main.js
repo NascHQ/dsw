@@ -36,9 +36,10 @@ if (isInSWScope) {
     }
 
     
-    const DEFAULT_CACHE_NAME = 'defaultDSWCached::1';
+    const DEFAULT_CACHE_NAME = 'defaultDSWCached';
+    const DEFAULT_CACHE_VERSION = '1';
     const cacheManager = {
-        add: (req, cacheId = DEFAULT_CACHE_NAME) => {
+        add: (req, cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION) => {
             return new Promise((resolve, reject)=>{
                 caches.open(cacheId).then(cache => {
                     cache.add(req);
@@ -51,8 +52,13 @@ if (isInSWScope) {
         },
         get: (rule, request, event)=>{
             let actionType = Object.keys(rule.action)[0],
-                url = request.url;
+                url = request.url,
+                pathName = new URL(location.href).pathname;
             
+            if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
+                // requisitions to / should 
+                actionType = 'cache';
+            }
             switch (actionType) {
                 // TODO: look for other kinds of cached data
                 case 'redirect':
@@ -63,20 +69,21 @@ if (isInSWScope) {
                 }
                 case 'cache': {
                     
-                    let cacheId = DEFAULT_CACHE_NAME;
+                    let cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
                     
                     if(rule.action.cache){
                         cacheId =   (rule.action.cache.name || DEFAULT_CACHE_NAME) +
                                     '::' +
-                                    (rule.action.cache.version || 1);
+                                    (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                     }
                     
                     let opts = rule.options || {};
+                    // if the cache options is false, we force it not to be cached
                     if(rule.action.cache === false){
                         opts.headers = opts.headers || new Headers();
                         opts.headers.append('pragma', 'no-cache');
                         opts.headers.append('cache-control', 'no-cache');
-                        url = (request.url.indexOf('?') > 0 ? '&' : '?') + Math.random();
+                        url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
                         request = new Request(url);
                     }
                     
@@ -193,6 +200,18 @@ if (isInSWScope) {
                         preCache.push(appl.fetch);
                     }
                 });
+                
+                // adding the dsw itself to cache
+                this.addRule("*", {
+                    match: { path: location.href },
+                    "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
+                }, location.href);
+                
+                let rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
+                this.addRule("*", {
+                    match: { path: rootMatchingRX },
+                    "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
+                }, rootMatchingRX);
                 
                 if(preCache.length){
                     // we fetch them now, and store it in cache

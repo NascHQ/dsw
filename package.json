@@ -12,7 +12,7 @@
     "test": "npm build && mocha tests/ --compilers js:babel-core/register",
     "build:js": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ]",
     "build": "npm run build:js",
-    "watch": "watch 'npm run build' .",
+    "watch": "watch 'npm run build && echo Done' src",
     "try": "node index.js sandbox && http-server ./sandbox -p 8888"
   },
   "repository": {
