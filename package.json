@@ -9,7 +9,10 @@
   "preferGlobal": true,
   "main": "index.js",
   "scripts": {
-    "test": "exit 0"
+    "test": "exit 0",
+    "build:js": "browserify src/main.js -o bundle-dsw.js -t [ babelify --presets [ es2015 ] ]",
+    "build": "npm run build:js",
+    "watch": "watch 'npm run build' ."
   },
   "repository": {
     "type": "git",
@@ -31,6 +34,12 @@
   },
   "homepage": "https://github.com/felipenmoura/dsw-dynamic-service-worker#readme",
   "devDependencies": {
-    "minifier": "^0.7.1"
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.10.3",
+    "babel-preset-es2015": "latest",
+    "babelify": "latest",
+    "browserify": "latest",
+    "jshint": "~2.9.1-rc1",
+    "minifier": "^0.7.1",
+    "watch": "latest"
   }
 }
