@@ -22,6 +22,7 @@ function getBestMatchingRX(str) {
 exports.default = getBestMatchingRX;
 
 },{}],2:[function(require,module,exports){
+(function (global){
 'use strict';
 
 var _bestMatchingRx = require('./best-matching-rx.js');
@@ -34,6 +35,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 // TODO: add support to send the fetch options
 
 var isInSWScope = false;
+var isInTest = typeof global.it === 'function';
 
 var DSW = {};
 
@@ -316,4 +318,5 @@ if (isInSWScope) {
     };
 }
 
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./best-matching-rx.js":1}]},{},[2]);

@@ -2,6 +2,7 @@
 // TODO: add support to send the fetch options
 
 var isInSWScope = false;
+var isInTest = typeof global.it === 'function';
 
 import getBestMatchingRX from "./best-matching-rx.js";
 

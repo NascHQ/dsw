@@ -9,7 +9,7 @@
   "preferGlobal": true,
   "main": "index.js",
   "scripts": {
-    "test": "exit 0",
+    "test": "npm build && mocha tests/ --compilers js:babel-core/register",
     "build:js": "browserify src/main.js -o bundle-dsw.js -t [ babelify --presets [ es2015 ] ]",
     "build": "npm run build:js",
     "watch": "watch 'npm run build' .",
@@ -35,14 +35,18 @@
   },
   "homepage": "https://github.com/felipenmoura/dsw-dynamic-service-worker#readme",
   "devDependencies": {
+    "babel-core": "latest",
+    "babel-loader": "latest",
     "babel-plugin-transform-es2015-modules-commonjs": "^6.10.3",
+    "babel-polyfill": "^6.9.1",
     "babel-preset-es2015": "latest",
     "babelify": "latest",
     "browserify": "latest",
+    "chai": "^3.5.0",
+    "http-server": "latest",
     "jshint": "~2.9.1-rc1",
     "minifier": "^0.7.1",
-    "watch": "latest",
     "mocha": "latest",
-    "http-server": "latest"
+    "watch": "latest"
   }
 }
