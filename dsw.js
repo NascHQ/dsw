@@ -15,6 +15,24 @@ try {
 
 if (isInSWScope) {
     
+    // TODO: use this to get the best fitting rx, instead of the first that matches
+    // reference from https://gist.github.com/felipenmoura/e02c8d8cfdea101fc6265a94321e02df
+    function getBestMatchingRX(str){
+        let bestMatchingRX;
+        let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
+        rx.forEach(function(currentRX){
+            const regex = new RegExp(currentRX);
+            const groups = regex.exec(str);
+            if (groups && groups.length < bestMatchingGroup){
+                bestMatchingRX = currentRX;
+                bestMatchingGroup = groups.length;
+            }
+            console.log(groups);
+        });
+        return bestMatchingRX;
+    }
+
+    
     const DEFAULT_CACHE_NAME = 'defaultDSWCached::1';
     const cacheManager = {
         add: (req, cacheId = DEFAULT_CACHE_NAME) => {
@@ -33,7 +51,7 @@ if (isInSWScope) {
                 url = request.url;
             
             switch (actionType) {
-                // TODO: look for cached data
+                // TODO: look for other kinds of cached data
                 case 'redirect':
                 case 'fetch': {
                     request = new Request(rule.action.fetch || rule.action.redirect);
@@ -50,37 +68,65 @@ if (isInSWScope) {
                                     (rule.action.cache.version || 1);
                     }
                     
+                    let opts = rule.options || {};
+                    if(rule.action.cache === false){
+                        opts.headers = opts.headers || new Headers();
+                        opts.headers.append('pragma', 'no-cache');
+                        opts.headers.append('cache-control', 'no-cache');
+                        url = (request.url.indexOf('?') > 0 ? '&' : '?') + Math.random();
+                        request = new Request(url);
+                    }
+                    
                     event.respondWith(
                         caches.match(request)
                             .then(result=>{
-                                if (result.status != 200) {
+                                
+                                if (result && result.status != 200) {
                                     debugger;
                                     DSWManager.rules[result.status].some((cur, idx)=>{
                                         if (url.match(cur.rx)) {
                                             if (cur.action.fetch) {
                                                 // not found requisitions should
                                                 // fetch a different resource
-                                                result = fetch(cur.action.fetch, cur.options);
+                                                result = fetch(cur.action.fetch);
                                                 return true; // stopping the loop
                                             }
                                         }
                                     });
-                                    // in case there is no treatment for that
                                     return result;
                                 }else{
-                                    return result || fetch(request, rule.options || {})
+                                    return result || fetch(request, opts)
                                             .then(function(response) {
-                                            // after retrieving it, we cache it
-                                            if (response.status == 200) {
-                                                return caches.open(cacheId).then(function(cache) {
-                                                    cache.put(request, response.clone());
-                                                    console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                    return response;
-                                                });
-                                            } else {
-                                                debugger;
-                                            }
-                                        });
+                                                // after retrieving it, we cache it
+                                                // if it was ok
+                                                if (response.status == 200) {
+                                                    // if cache is false, it will NOT be added to cache
+                                                    debugger;
+                                                    
+                                                    if (rule.action.cache !== false) {
+                                                        return caches.open(cacheId).then(function(cache) {
+                                                            cache.put(request, response.clone());
+                                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                            return response;
+                                                        });
+                                                    }else{
+                                                        return response;
+                                                    }
+                                                } else {
+                                                    // otherwise...
+                                                    DSWManager.rules[response.status].some((cur, idx)=>{
+                                                        if (url.match(cur.rx)) {
+                                                            if (cur.action.fetch) {
+                                                                // not found requisitions should
+                                                                // fetch a different resource
+                                                                result = fetch(cur.action.fetch, cur.options);
+                                                                return true; // stopping the loop
+                                                            }
+                                                        }
+                                                    });
+                                                    return result || response;
+                                                }
+                                            });
                                 }
                             }));
                 }
@@ -125,11 +171,12 @@ if (isInSWScope) {
                     status = Array.isArray(status)? status : [status || '*'];
 
                     // and the path
-                    let path = '.+' + (heuristic.match.path || '' ) + '.+';
+                    let path = '((.+)?)' + (heuristic.match.path || '' ) + '([.+]?)';
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + "\\.(("+ extensions +")[\\?.*]?)", 'i');
-
+                    let rx = new RegExp(path + "(\\.)?(("+ extensions +")[\\?.*]?)", 'i');
+                    //       /images\/((.+)?)(\.)?([\.(.+)[\?.*]?]?)/i
+                    
                     // storing the new, shorter, optimized structure for the rules
                     status.forEach(sts=>{
                         if (sts == 200) {

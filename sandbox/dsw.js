@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"userData":{"match":{"path":"//api/user/.*/"},"options":{"credentials":"same-origin"},"apply":{"sessionStorage":{"name":"cachedUserData","version":"1"}}},"updates":{"match":{"path":"//api/updates/"},"keepItHot":true,"apply":{"browserDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"//api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"//api/events/"},"apply":{"browserDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"//api/events/(.*)/"},"apply":{"browserDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"userData":{"match":{"path":"//api/user/.*/"},"options":{"credentials":"same-origin"},"apply":{"sessionStorage":{"name":"cachedUserData","version":"1"}}},"updates":{"match":{"path":"//api/updates/"},"keepItHot":true,"apply":{"browserDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"//api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"//api/events/"},"apply":{"browserDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"//api/events/(.*)/"},"apply":{"browserDB":{"name":"eventLineup-$1","version":"1"}}}}};
 // TODO: add support to keepItHot: use a strategy with promise.race to always fetch the latest data and update the cache
 // TODO: add support to send the fetch options
 
@@ -15,6 +15,23 @@ try {
 }catch(e){ /* nothing...just had to find out the scope */ }
 
 if (isInSWScope) {
+    
+    // TODO: use this to get the best fitting rx, instead of the first that matches
+    function getBestMatchingRX(str){
+        let bestMatchingRX;
+        let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
+        rx.forEach(function(currentRX){
+            const regex = new RegExp(currentRX);
+            const groups = regex.exec(str);
+            if (groups && groups.length < bestMatchingGroup){
+                bestMatchingRX = currentRX;
+                bestMatchingGroup = groups.length;
+            }
+            console.log(groups);
+        });
+        return bestMatchingRX;
+    }
+
     
     const DEFAULT_CACHE_NAME = 'defaultDSWCached::1';
     const cacheManager = {
@@ -51,37 +68,65 @@ if (isInSWScope) {
                                     (rule.action.cache.version || 1);
                     }
                     
+                    let opts = rule.options || {};
+                    if(rule.action.cache === false){
+                        opts.headers = opts.headers || new Headers();
+                        opts.headers.append('pragma', 'no-cache');
+                        opts.headers.append('cache-control', 'no-cache');
+                        url = (request.url.indexOf('?') > 0 ? '&' : '?') + Math.random();
+                        request = new Request(url);
+                    }
+                    
                     event.respondWith(
                         caches.match(request)
                             .then(result=>{
-                                if (result.status != 200) {
+                                
+                                if (result && result.status != 200) {
                                     debugger;
                                     DSWManager.rules[result.status].some((cur, idx)=>{
                                         if (url.match(cur.rx)) {
                                             if (cur.action.fetch) {
                                                 // not found requisitions should
                                                 // fetch a different resource
-                                                result = fetch(cur.action.fetch, cur.options);
+                                                result = fetch(cur.action.fetch);
                                                 return true; // stopping the loop
                                             }
                                         }
                                     });
-                                    // in case there is no treatment for that
                                     return result;
                                 }else{
-                                    return result || fetch(request, rule.options || {})
+                                    return result || fetch(request, opts)
                                             .then(function(response) {
-                                            // after retrieving it, we cache it
-                                            if (response.status == 200) {
-                                                return caches.open(cacheId).then(function(cache) {
-                                                    cache.put(request, response.clone());
-                                                    console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                    return response;
-                                                });
-                                            } else {
-                                                debugger;
-                                            }
-                                        });
+                                                // after retrieving it, we cache it
+                                                // if it was ok
+                                                if (response.status == 200) {
+                                                    // if cache is false, it will NOT be added to cache
+                                                    debugger;
+                                                    
+                                                    if (rule.action.cache !== false) {
+                                                        return caches.open(cacheId).then(function(cache) {
+                                                            cache.put(request, response.clone());
+                                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                            return response;
+                                                        });
+                                                    }else{
+                                                        return response;
+                                                    }
+                                                } else {
+                                                    // otherwise...
+                                                    DSWManager.rules[response.status].some((cur, idx)=>{
+                                                        if (url.match(cur.rx)) {
+                                                            if (cur.action.fetch) {
+                                                                // not found requisitions should
+                                                                // fetch a different resource
+                                                                result = fetch(cur.action.fetch, cur.options);
+                                                                return true; // stopping the loop
+                                                            }
+                                                        }
+                                                    });
+                                                    return result || response;
+                                                }
+                                            });
                                 }
                             }));
                 }
@@ -126,11 +171,12 @@ if (isInSWScope) {
                     status = Array.isArray(status)? status : [status || '*'];
 
                     // and the path
-                    let path = '.+' + (heuristic.match.path || '' ) + '.+';
+                    let path = '((.+)?)' + (heuristic.match.path || '' ) + '([.+]?)';
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + "\\.(("+ extensions +")[\\?.*]?)", 'i');
-
+                    let rx = new RegExp(path + "(\\.)?(("+ extensions +")[\\?.*]?)", 'i');
+                    //       /images\/((.+)?)(\.)?([\.(.+)[\?.*]?]?)/i
+                    
                     // storing the new, shorter, optimized structure for the rules
                     status.forEach(sts=>{
                         if (sts == 200) {
@@ -231,7 +277,6 @@ if (isInSWScope) {
                         .register(src + '?dsw-manager')
                         .then(SW=>{
                             console.info('[ SW ] :: registered');
-
                             resolve(navigator.serviceWorker.ready);
                         });
                 }

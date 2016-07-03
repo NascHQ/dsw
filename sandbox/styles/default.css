@@ -7,6 +7,10 @@ img {
     float: left;
 }
 
+a {
+    text-decoration: none;
+}
+
 #offline-support-message {
     position: fixed;
     bottom: -100px;
@@ -32,4 +36,9 @@ img {
     background: rgba(255, 100, 100, .7);
     bottom: 0;
     opacity: 1;
+}
+
+#fetch-result {
+    background: #eef;
+    white-space: pre;
 }

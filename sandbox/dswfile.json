@@ -27,6 +27,12 @@
                 "fetch": "/404.html"
             }
         },
+        "imageNotCached": {
+            "match": { "path": "\/images\/not-cached" },
+            "apply": {
+                "cache": false
+            }
+        },
         "images": {
             "match": { "extension": ["jpg", "gif", "png", "jpeg", "webp"] },
             "apply": {
