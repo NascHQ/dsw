@@ -52,7 +52,7 @@
             }
         },
         "userData": {
-            "match": { "path": "/\/api\/user\/.*/" },
+            "match": { "path": "api\/user\/.*" },
             "options": { "credentials": "same-origin"},
             "apply": {
                 "sessionStorage": {
@@ -62,17 +62,17 @@
             }
         },
         "updates": {
-            "match": { "path": "/\/api\/updates/" },
+            "match": { "path": "api\/updates/" },
             "keepItHot": true,
             "apply": {
-                "browserDB": {
+                "indexedDB": {
                     "name": "shownUpdates",
                     "version": "1"
                 }
             }
         },
         "articles": {
-            "match": { "path": "/\/api\/updates/" },
+            "match": { "path": "api\/updates/" },
             "apply": {
                 "cache": {
                     "name": "cachedArticles",
@@ -81,18 +81,18 @@
             }
         },
         "events": {
-            "match": { "path": "/\/api\/events/" },
+            "match": { "path": "api\/events/" },
             "apply": {
-                "browserDB": {
+                "indexedDB": {
                     "name": "eventsList",
                     "version": "1"
                 }
             }
         },
         "lineup": {
-            "match": { "path": "/\/api\/events\/(.*)/" },
+            "match": { "path": "api\/events\/(.*)/" },
             "apply": {
-                "browserDB": {
+                "indexedDB": {
                     "name": "eventLineup-$1",
                     "version": "1"
                 }

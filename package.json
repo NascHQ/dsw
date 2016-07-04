@@ -9,7 +9,7 @@
   "preferGlobal": true,
   "main": "index.js",
   "scripts": {
-    "test": "npm build && mocha tests/ --compilers js:babel-core/register",
+    "test": "mocha tests/ --compilers js:babel-core/register",
     "build:js": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ]",
     "build": "npm run build:js",
     "watch": "watch 'npm run build && echo Done' src",

@@ -37,7 +37,9 @@ if (isInSWScope) {
 
     
     const DEFAULT_CACHE_NAME = 'defaultDSWCached';
-    const DEFAULT_CACHE_VERSION = '1';
+    const DEFAULT_DB_NAME = 'defaultDSWDB';
+    const DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+    
     const cacheManager = {
         add: (req, cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION) => {
             return new Promise((resolve, reject)=>{
@@ -59,8 +61,23 @@ if (isInSWScope) {
                 // requisitions to / should 
                 actionType = 'cache';
             }
+            
+            let opts = rule.options || {};
+            opts.headers = opts.headers || new Headers();
+
             switch (actionType) {
                 // TODO: look for other kinds of cached data
+                case 'idb':
+                case 'IDB':
+                case 'indexedDB': {
+                    return new Promise((resolve, reject)=>{
+                        // aqui
+                    });
+                    break;
+                }
+                case 'sessionStorage': {
+                    //break; // TODO: see if there is support, somehow!
+                }
                 case 'redirect':
                 case 'fetch': {
                     request = new Request(rule.action.fetch || rule.action.redirect);
@@ -76,11 +93,8 @@ if (isInSWScope) {
                                     '::' +
                                     (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                     }
-                    
-                    let opts = rule.options || {};
                     // if the cache options is false, we force it not to be cached
                     if(rule.action.cache === false){
-                        opts.headers = opts.headers || new Headers();
                         opts.headers.append('pragma', 'no-cache');
                         opts.headers.append('cache-control', 'no-cache');
                         url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
@@ -90,14 +104,15 @@ if (isInSWScope) {
                     return caches.match(request)
                         .then(result=>{
 
+                            // if it does not exist (cache could not be verified)
                             if (result && result.status != 200) {
-                                debugger;
                                 DSWManager.rules[result.status].some((cur, idx)=>{
                                     if (url.match(cur.rx)) {
                                         if (cur.action.fetch) {
                                             // not found requisitions should
                                             // fetch a different resource
-                                            result = fetch(cur.action.fetch);
+                                            result = fetch(cur.action.fetch,
+                                                          cur.action.options);
                                             return true; // stopping the loop
                                         }
                                     }
@@ -111,26 +126,32 @@ if (isInSWScope) {
                                     // after retrieving it, we cache it
                                     // if it was ok
                                     if (response.status == 200) {
-                                        // if cache is false, it will NOT be added to cache
-                                        debugger;
-
+                                        // if cache is not false, it will be added to cache
                                         if (rule.action.cache !== false) {
                                             return caches.open(cacheId).then(function(cache) {
                                                 cache.put(request, response.clone());
                                                 console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                
+                                                // if the rule told us to redirect it
+                                                // we say that using the header status
+                                                if (actionType == 'redirect') {
+                                                    response.statusText = 'Redirected';
+                                                    response.status = 302;
+                                                }
+                                                
                                                 return response;
                                             });
                                         }else{
                                             return response;
                                         }
                                     } else {
-                                        // otherwise...
+                                        // otherwise...let's see if there is a fallback
+                                        // for the 404 requisition
                                         DSWManager.rules[response.status].some((cur, idx)=>{
                                             if (url.match(cur.rx)) {
                                                 if (cur.action.fetch) {
                                                     // not found requisitions should
                                                     // fetch a different resource
-                                                    //result = fetch(cur.action.fetch, cur.options);
                                                     result = cacheManager.get(cur, event.request, event);
                                                     return true; // stopping the loop
                                                 }
@@ -140,6 +161,10 @@ if (isInSWScope) {
                                     }
                                 };
 
+                                // we will return the result, if successful, or
+                                // fetch an anternative resource(or redirect)
+                                // and treat both success and failure with the
+                                // same "callback"
                                 return result || fetch(request, opts)
                                         .then(treatFetch)
                                         .catch(treatFetch);
@@ -159,6 +184,7 @@ if (isInSWScope) {
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];
             this.rules[sts].push({
+                name: rule.name,
                 rx,
                 action: rule['apply']
             });
@@ -170,7 +196,9 @@ if (isInSWScope) {
                 // easier to deal with, latelly on each requisition
                 let preCache = [];
                 Object.keys(dswConfig.dswRules).forEach(heuristic=>{
+                    let ruleName = heuristic;
                     heuristic = dswConfig.dswRules[heuristic];
+                    heuristic.name = ruleName;
 
                     let appl = heuristic['apply'],
                         extensions = heuristic.match.extension,
@@ -178,47 +206,69 @@ if (isInSWScope) {
 
                     // preparing extentions to be added to the regexp
                     if(Array.isArray(extensions)){
-                        extensions = extensions.join('|');
+                        let ending = "([\/\&\?]|$)";
+                        extensions = '(' + extensions.join(ending+'|') + ending + ')';
                     }else{
                         extensions = ".+"
                     }
-
-                    // also preparing status to be added to the regexp
-                    status = Array.isArray(status)? status : [status || '*'];
-
+                    
                     // and the path
                     let path = '((.+)?)' + (heuristic.match.path || '' ) + '([.+]?)';
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + "(\\.)?(("+ extensions +")[\\?.*]?)", 'i');
+                    let rx = new RegExp(path + "(\\.)?(("+ extensions +")([\\?\&\/].+)?)", 'i');
                     //       /images\/((.+)?)(\.)?([\.(.+)[\?.*]?]?)/i
                     
-                    // storing the new, shorter, optimized structure for the rules
+                    // if it fetches something, and this something is not dynamic
+                    // also, if it will redirect to some static url
+                    if( (appl.fetch && !appl.fetch.match(/\$\{.+\}/))
+                        ||
+                        (appl.redirect && !appl.redirect.match(/\$\{.+\}/))){
+                        preCache.push(appl.fetch || appl.redirect);
+                    }
+                    
+                    // in case the rule uses an indexedDB
+//                    let request = indexedDB.open(DEFAULT_DB_NAME || rule.action.indexedDB.name,
+//                                    rule.action.indexedDB.version || undefined);
+//                    request.onerror = function(event) {
+//                        reject(); // TODO: pass something on, here
+//                    };
+//                    request.onupgradeneeded = function(event) {
+//                        let db = event.target.result;
+//                        objectStore = db.createObjectStore("customers", { keyPath: "ssn" });
+//                    };
+                    //heuristic.db = db;
+                    
+                    
+                    // preparing status to store the heuristic
+                    status = Array.isArray(status)? status : [status || '*'];
+                    
+                    // storing the new, shorter, optimized structure  of the
+                    // rules for all the status that it should be applied to
                     status.forEach(sts=>{
                         if (sts == 200) {
                             sts = '*';
                         }
                         this.addRule(sts, heuristic, rx);
                     });
-
-                    // if it fetches something, and this something is not dynamic
-                    if(appl.fetch && !appl.fetch.match(/\$\{.+\}/)){
-                        preCache.push(appl.fetch);
-                    }
                 });
                 
                 // adding the dsw itself to cache
                 this.addRule("*", {
+                    name: 'serviceWorker',
                     match: { path: location.href },
                     "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
                 }, location.href);
                 
+                // addinf the root path to be also cached by default
                 let rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
                 this.addRule("*", {
+                    name: 'rootDir',
                     match: { path: rootMatchingRX },
                     "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
                 }, rootMatchingRX);
                 
+                // if we've got urls to pre-store, let's cache them!
                 if(preCache.length){
                     // we fetch them now, and store it in cache
                     return Promise.all(
