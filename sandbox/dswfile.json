@@ -42,6 +42,15 @@
                 }
             }
         },
+        "statics": {
+            "match": { "extension": ["js", "css"] },
+            "apply": {
+                "cache": {
+                    "name": "static-files",
+                    "version": "1"
+                }
+            }
+        },
         "userData": {
             "match": { "path": "/\/api\/user\/.*/" },
             "options": { "credentials": "same-origin"},

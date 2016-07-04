@@ -29,6 +29,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 var _bestMatchingRx = require('./best-matching-rx.js');
 
 var _bestMatchingRx2 = _interopRequireDefault(_bestMatchingRx);
@@ -108,7 +110,7 @@ if (isInSWScope) {
                         }
                     case 'cache':
                         {
-                            (function () {
+                            var _ret2 = function () {
 
                                 var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
@@ -126,56 +128,66 @@ if (isInSWScope) {
                                     request = new Request(url);
                                 }
 
-                                event.respondWith(caches.match(request).then(function (result) {
+                                return {
+                                    v: caches.match(request).then(function (result) {
 
-                                    if (result && result.status != 200) {
-                                        debugger;
-                                        DSWManager.rules[result.status].some(function (cur, idx) {
-                                            if (url.match(cur.rx)) {
-                                                if (cur.action.fetch) {
-                                                    // not found requisitions should
-                                                    // fetch a different resource
-                                                    result = fetch(cur.action.fetch);
-                                                    return true; // stopping the loop
-                                                }
-                                            }
-                                        });
-                                        return result;
-                                    } else {
-                                        return result || fetch(request, opts).then(function (response) {
-                                            // after retrieving it, we cache it
-                                            // if it was ok
-                                            if (response.status == 200) {
-                                                // if cache is false, it will NOT be added to cache
-                                                debugger;
-
-                                                if (rule.action.cache !== false) {
-                                                    return caches.open(cacheId).then(function (cache) {
-                                                        cache.put(request, response.clone());
-                                                        console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                        return response;
-                                                    });
-                                                } else {
-                                                    return response;
-                                                }
-                                            } else {
-                                                // otherwise...
-                                                DSWManager.rules[response.status].some(function (cur, idx) {
-                                                    if (url.match(cur.rx)) {
-                                                        if (cur.action.fetch) {
-                                                            // not found requisitions should
-                                                            // fetch a different resource
-                                                            result = fetch(cur.action.fetch, cur.options);
-                                                            return true; // stopping the loop
-                                                        }
+                                        if (result && result.status != 200) {
+                                            debugger;
+                                            DSWManager.rules[result.status].some(function (cur, idx) {
+                                                if (url.match(cur.rx)) {
+                                                    if (cur.action.fetch) {
+                                                        // not found requisitions should
+                                                        // fetch a different resource
+                                                        result = fetch(cur.action.fetch);
+                                                        return true; // stopping the loop
                                                     }
-                                                });
-                                                return result || response;
-                                            }
-                                        });
-                                    }
-                                }));
-                            })();
+                                                }
+                                            });
+                                            return result;
+                                        } else {
+                                            var treatFetch = function treatFetch(response) {
+                                                if (!response.status) {
+                                                    response.status = 404;
+                                                }
+                                                // after retrieving it, we cache it
+                                                // if it was ok
+                                                if (response.status == 200) {
+                                                    // if cache is false, it will NOT be added to cache
+                                                    debugger;
+
+                                                    if (rule.action.cache !== false) {
+                                                        return caches.open(cacheId).then(function (cache) {
+                                                            cache.put(request, response.clone());
+                                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                            return response;
+                                                        });
+                                                    } else {
+                                                        return response;
+                                                    }
+                                                } else {
+                                                    // otherwise...
+                                                    DSWManager.rules[response.status].some(function (cur, idx) {
+                                                        if (url.match(cur.rx)) {
+                                                            if (cur.action.fetch) {
+                                                                // not found requisitions should
+                                                                // fetch a different resource
+                                                                //result = fetch(cur.action.fetch, cur.options);
+                                                                result = cacheManager.get(cur, event.request, event);
+                                                                return true; // stopping the loop
+                                                            }
+                                                        }
+                                                    });
+                                                    return result || response;
+                                                }
+                                            };
+
+                                            return result || fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                        }
+                                    })
+                                };
+                            }();
+
+                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
                         }
                     default:
                         {
@@ -281,7 +293,7 @@ if (isInSWScope) {
                         var rule = DSWManager.rules['*'][i];
                         if (event.request.url.match(rule.rx)) {
                             // if there is a rule that matches the url
-                            return cacheManager.get(rule, event.request, event);
+                            return event.respondWith(cacheManager.get(rule, event.request, event));
                         }
                     }
                     // if no rule is applied, we simple request it

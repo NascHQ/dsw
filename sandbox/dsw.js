@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"userData":{"match":{"path":"//api/user/.*/"},"options":{"credentials":"same-origin"},"apply":{"sessionStorage":{"name":"cachedUserData","version":"1"}}},"updates":{"match":{"path":"//api/updates/"},"keepItHot":true,"apply":{"browserDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"//api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"//api/events/"},"apply":{"browserDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"//api/events/(.*)/"},"apply":{"browserDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"userData":{"match":{"path":"//api/user/.*/"},"options":{"credentials":"same-origin"},"apply":{"sessionStorage":{"name":"cachedUserData","version":"1"}}},"updates":{"match":{"path":"//api/updates/"},"keepItHot":true,"apply":{"browserDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"//api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"//api/events/"},"apply":{"browserDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"//api/events/(.*)/"},"apply":{"browserDB":{"name":"eventLineup-$1","version":"1"}}}}};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -29,6 +29,8 @@ exports.default = getBestMatchingRX;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
 var _bestMatchingRx = require('./best-matching-rx.js');
 
@@ -109,7 +111,7 @@ if (isInSWScope) {
                         }
                     case 'cache':
                         {
-                            (function () {
+                            var _ret2 = function () {
 
                                 var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
@@ -127,56 +129,66 @@ if (isInSWScope) {
                                     request = new Request(url);
                                 }
 
-                                event.respondWith(caches.match(request).then(function (result) {
+                                return {
+                                    v: caches.match(request).then(function (result) {
 
-                                    if (result && result.status != 200) {
-                                        debugger;
-                                        DSWManager.rules[result.status].some(function (cur, idx) {
-                                            if (url.match(cur.rx)) {
-                                                if (cur.action.fetch) {
-                                                    // not found requisitions should
-                                                    // fetch a different resource
-                                                    result = fetch(cur.action.fetch);
-                                                    return true; // stopping the loop
-                                                }
-                                            }
-                                        });
-                                        return result;
-                                    } else {
-                                        return result || fetch(request, opts).then(function (response) {
-                                            // after retrieving it, we cache it
-                                            // if it was ok
-                                            if (response.status == 200) {
-                                                // if cache is false, it will NOT be added to cache
-                                                debugger;
-
-                                                if (rule.action.cache !== false) {
-                                                    return caches.open(cacheId).then(function (cache) {
-                                                        cache.put(request, response.clone());
-                                                        console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                        return response;
-                                                    });
-                                                } else {
-                                                    return response;
-                                                }
-                                            } else {
-                                                // otherwise...
-                                                DSWManager.rules[response.status].some(function (cur, idx) {
-                                                    if (url.match(cur.rx)) {
-                                                        if (cur.action.fetch) {
-                                                            // not found requisitions should
-                                                            // fetch a different resource
-                                                            result = fetch(cur.action.fetch, cur.options);
-                                                            return true; // stopping the loop
-                                                        }
+                                        if (result && result.status != 200) {
+                                            debugger;
+                                            DSWManager.rules[result.status].some(function (cur, idx) {
+                                                if (url.match(cur.rx)) {
+                                                    if (cur.action.fetch) {
+                                                        // not found requisitions should
+                                                        // fetch a different resource
+                                                        result = fetch(cur.action.fetch);
+                                                        return true; // stopping the loop
                                                     }
-                                                });
-                                                return result || response;
-                                            }
-                                        });
-                                    }
-                                }));
-                            })();
+                                                }
+                                            });
+                                            return result;
+                                        } else {
+                                            var treatFetch = function treatFetch(response) {
+                                                if (!response.status) {
+                                                    response.status = 404;
+                                                }
+                                                // after retrieving it, we cache it
+                                                // if it was ok
+                                                if (response.status == 200) {
+                                                    // if cache is false, it will NOT be added to cache
+                                                    debugger;
+
+                                                    if (rule.action.cache !== false) {
+                                                        return caches.open(cacheId).then(function (cache) {
+                                                            cache.put(request, response.clone());
+                                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                                            return response;
+                                                        });
+                                                    } else {
+                                                        return response;
+                                                    }
+                                                } else {
+                                                    // otherwise...
+                                                    DSWManager.rules[response.status].some(function (cur, idx) {
+                                                        if (url.match(cur.rx)) {
+                                                            if (cur.action.fetch) {
+                                                                // not found requisitions should
+                                                                // fetch a different resource
+                                                                //result = fetch(cur.action.fetch, cur.options);
+                                                                result = cacheManager.get(cur, event.request, event);
+                                                                return true; // stopping the loop
+                                                            }
+                                                        }
+                                                    });
+                                                    return result || response;
+                                                }
+                                            };
+
+                                            return result || fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                        }
+                                    })
+                                };
+                            }();
+
+                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
                         }
                     default:
                         {
@@ -282,7 +294,7 @@ if (isInSWScope) {
                         var rule = DSWManager.rules['*'][i];
                         if (event.request.url.match(rule.rx)) {
                             // if there is a rule that matches the url
-                            return cacheManager.get(rule, event.request, event);
+                            return event.respondWith(cacheManager.get(rule, event.request, event));
                         }
                     }
                     // if no rule is applied, we simple request it
