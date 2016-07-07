@@ -26,9 +26,9 @@ You will use your prefered editor to make changes to this file later.
 
 And now, you will add this to your `index.html` file, like so:
 
-```
-< script src="dsw.js"></script>
-< script>
+```html
+<script src="dsw.js"></script>
+<script>
     DSW.setup()
         .then(function(){
             // inform the user your page works offline, now!
@@ -64,7 +64,7 @@ When you change something in your `dswfile.json`, you shall re-execute the comma
 
 Open the `dswfile.json` in the root of your project and let's add some content like this:
 
-```
+```js
 {
     "dswVersion": 2.2,
     "applyImmediately": true,
@@ -119,7 +119,7 @@ Don't forget to re-run `dsw path-to-project` whenever you made a change to your 
 
 Add this to your `dswfile.js`:
 
-```
+```js
 {
     "dswVersion": 2.2,
     "dswRules": {
@@ -144,7 +144,7 @@ Now, access in your browser, first, the `index.html` file(so the service worker 
 
 Let's see an example of requests being cached:
 
-```
+```js
 {
     "dswVersion": 2.2,
     "dswRules": {
@@ -167,7 +167,7 @@ Let's see an example of requests being cached:
 
 Let's see an example of requests being cached for *all images* except one specific image:
 
-```
+```js
 {
     "dswVersion": 2.2,
     "dswRules": {
@@ -198,7 +198,7 @@ Let's see an example of requests being cached for *all images* except one specif
 
 You may want to redirect requests some times, like so:
 
-```
+```js
 {
     "dswVersion": 2.2,
     "dswRules": {
@@ -222,7 +222,56 @@ Here is how...and yep, as Service workers are still a little too new, it is a li
 
 1 - Clone the project
 
-```git clone 
+```git clone https://github.com/NascHQ/dsw```
+
+2 - Enter the project directory
+
+```cd dsw```
+
+3 - Start watching it
+
+```npm run watch```
+
+4 - Use the sandbox to test it (run this command in another terminal window or tab, so the watch command can continue running)
+
+```npm run try```
+
+5 - Access in the browser, the address in the right port, as provided by the previous command, something like:
+
+```http://localhost:8888/```
+
+### Testing your changes
+
+Whenever you change any files inside the `src` directory, the _watch_ will re-build it for you (wait until you see the **"DONE"** output).
+
+This is automatic, but you stillneed to reload the _try_ command in the other tab:
+
+```
+^C # ctrl+C to stop the previous try, and then...
+npm run try
+```
+
+### Tips
+
+In the browser, though, you may face some boring situations, so, to make sure you will not fall into a trap debugging unchanged things, here goes some tips:
+
+- Go to the settings of your browser console and enable the "disable cache(when console is open)". This way, you will not be tricked by some unwanted caches.
+
+- Go to the _"Application"_ tab in your console (in chrome, it is in canary by now) and:
+
+1 - Click in _"Service workers"_
+
+2 - Mark the box _"Show All"_ (and when there is more than one, you may click in "Unregister")
+
+3 - You can also check the box "Update on reload" to keep the latest service worker in command.
+
+4 - When you want to test how things are working offline, simply check the "Offline" box.
+
+5 - You can use the "Cache Storage" in the left panel to verify everything that has been cached.
+
+6 - You can use the Lighthouse to validate the service worker situation:
+
+[Lighthoust](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
 
 

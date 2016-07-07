@@ -1,7 +1,7 @@
 {
   "name": "dsw",
   "version": "1.0.4",
-  "description": "Dynamic Service Worker",
+  "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
     "dsw": "./index.js"
   },
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/felipenmoura/dsw-dynamic-service-worker.git"
+    "url": "git+https://github.com/NascHQ/dsw.git"
   },
   "keywords": [
     "service-worker",
@@ -31,9 +31,9 @@
   "author": "felipenmoura",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/felipenmoura/dsw-dynamic-service-worker/issues"
+    "url": "https://github.com/NascHQ/dsw/issues"
   },
-  "homepage": "https://github.com/felipenmoura/dsw-dynamic-service-worker#readme",
+  "homepage": "https://github.com/NascHQ/dsw",
   "devDependencies": {
     "babel-core": "latest",
     "babel-loader": "latest",
