@@ -22,8 +22,106 @@ function getBestMatchingRX(str) {
 exports.default = getBestMatchingRX;
 
 },{}],2:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var DEFAULT_DB_NAME = 'defaultDSWDB';
+var dbs = {};
+
+function getObjectStore(dbName) {
+    var mode = arguments.length <= 1 || arguments[1] === undefined ? "readwrite" : arguments[1];
+
+    var db = dbs[dbName];
+    var tx = db.transaction(dbName, mode);
+    return tx.objectStore(dbName);
+}
+
+var indexedDBManager = {
+    create: function create(config) {
+        return new Promise(function (resolve, reject) {
+
+            var request = indexedDB.open(config.name || DEFAULT_DB_NAME, parseInt(config.version, 10) || undefined);
+
+            function dataBaseReady(db, dbName, resolve) {
+                db.onversionchange = function (event) {
+                    db.close();
+                    console.log("There is a new version of the database(IndexedDB) for " + config.name);
+                };
+
+                if (!dbs[dbName]) {
+                    dbs[dbName] = db;
+                }
+
+                resolve(config);
+            }
+
+            request.onerror = function (event) {
+                reject('Could not open the database (indexedDB) for ' + config.name);
+            };
+
+            request.onupgradeneeded = function (event) {
+                var db = event.target.result;
+                var baseData = {};
+
+                if (config.key) {
+                    baseData.keyPath = config.key;
+                }
+                if (!config.key || config.autoIncrement) {
+                    baseData.autoIncrement = true;
+                }
+
+                // now we create the structure
+                var store = db.createObjectStore(config.name, baseData);
+
+                dataBaseReady(db, config.name, resolve);
+            };
+
+            request.onsuccess = function (event) {
+                var db = event.target.result;
+                dataBaseReady(db, config.name, resolve);
+            };
+        });
+    },
+    get: function get(dbName, request) {
+        return new Promise(function (resolve, reject) {
+            //let store = getObjectStore(dbName);
+            resolve();
+        });
+    },
+    save: function save(dbName, data) {
+        return new Promise(function (resolve, reject) {
+
+            data.json().then(function (obj) {
+
+                var store = getObjectStore(dbName),
+                    req = void 0;
+
+                req = store.add(obj);
+
+                req.onsuccess = function () {
+                    resolve();
+                };
+                req.onerror = function (event) {
+                    reject('Failed saving to the indexedDB!', this.error);
+                };
+            }).catch(function (err) {
+                console.error('Failed saving into indexedDB!\n', err.message, err);
+                reject('Failed saving into indexedDB!');
+            });
+
+            console.log(dbName, data);
+        });
+    }
+};
+
+exports.default = indexedDBManager;
+
+},{}],3:[function(require,module,exports){
 (function (global){
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -31,9 +129,13 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var _bestMatchingRx = require('./best-matching-rx.js');
+var _bestMatchingRx = require("./best-matching-rx.js");
 
 var _bestMatchingRx2 = _interopRequireDefault(_bestMatchingRx);
+
+var _indexeddbManager = require("./indexeddb-Manager.js");
+
+var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -56,26 +158,7 @@ try {
 if (isInSWScope) {
     (function () {
 
-        // TODO: use this to get the best fitting rx, instead of the first that matches
-        // reference from https://gist.github.com/felipenmoura/e02c8d8cfdea101fc6265a94321e02df
-
-        var getBestMatchingRX = function getBestMatchingRX(str) {
-            var bestMatchingRX = void 0;
-            var bestMatchingGroup = Number.MAX_SAFE_INTEGER;
-            rx.forEach(function (currentRX) {
-                var regex = new RegExp(currentRX);
-                var groups = regex.exec(str);
-                if (groups && groups.length < bestMatchingGroup) {
-                    bestMatchingRX = currentRX;
-                    bestMatchingGroup = groups.length;
-                }
-                console.log(groups);
-            });
-            return bestMatchingRX;
-        };
-
         var DEFAULT_CACHE_NAME = 'defaultDSWCached';
-        var DEFAULT_DB_NAME = 'defaultDSWDB';
         var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
 
         var cacheManager = {
@@ -95,7 +178,7 @@ if (isInSWScope) {
             get: function get(rule, request, event) {
                 var actionType = Object.keys(rule.action)[0],
                     url = request.url,
-                    pathName = new URL(location.href).pathname;
+                    pathName = new URL(url).pathname;
 
                 if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
                     // requisitions to / should
@@ -105,6 +188,15 @@ if (isInSWScope) {
                 var opts = rule.options || {};
                 opts.headers = opts.headers || new Headers();
 
+                // if the cache options is false, we force it not to be cached
+                if (rule.action.cache === false) {
+                    opts.headers.append('pragma', 'no-cache');
+                    opts.headers.append('cache-control', 'no-cache');
+                    url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
+                    pathName = new URL(url).pathname;
+                    request = new Request(url);
+                }
+
                 switch (actionType) {
                     // TODO: look for other kinds of cached data
                     case 'idb':
@@ -113,6 +205,35 @@ if (isInSWScope) {
                         {
                             return new Promise(function (resolve, reject) {
                                 // aqui
+                                _indexeddbManager2.default.get(rule.name, request).then(function (result) {
+                                    // if we did have it in the indexedDB
+                                    if (result) {
+                                        // we use it
+                                        debugger;
+                                        // TODO: use it
+                                    } else {
+                                        // if it was not stored, let's fetch it
+
+                                        var treatFetch = function treatFetch(response) {
+                                            if (response && response.status == 200) {
+                                                var done = function done(_) {
+                                                    resolve(response);
+                                                };
+
+                                                // store it in the indexedDB
+                                                _indexeddbManager2.default.save(rule.name, response.clone()).then(done).catch(done); // if failed saving, we still have the reponse to deliver
+                                            } else {
+                                                    // TODO: treat the not found requests
+                                                }
+                                        };
+
+                                        // fetching
+
+
+                                        result = fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                    }
+                                });
+                                //indexedDBManager.save(rule.name, request);
                             });
                             break;
                         }
@@ -125,6 +246,7 @@ if (isInSWScope) {
                         {
                             request = new Request(rule.action.fetch || rule.action.redirect);
                             url = request.url;
+                            pathName = new URL(url).pathname;
                             // keep going to be treated with the cache case
                         }
                     case 'cache':
@@ -136,13 +258,6 @@ if (isInSWScope) {
                                 if (rule.action.cache) {
                                     cacheId = (rule.action.cache.name || DEFAULT_CACHE_NAME) + '::' + (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                                 }
-                                // if the cache options is false, we force it not to be cached
-                                if (rule.action.cache === false) {
-                                    opts.headers.append('pragma', 'no-cache');
-                                    opts.headers.append('cache-control', 'no-cache');
-                                    url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
-                                    request = new Request(url);
-                                }
 
                                 return {
                                     v: caches.match(request).then(function (result) {
@@ -150,7 +265,7 @@ if (isInSWScope) {
                                         // if it does not exist (cache could not be verified)
                                         if (result && result.status != 200) {
                                             DSWManager.rules[result.status].some(function (cur, idx) {
-                                                if (url.match(cur.rx)) {
+                                                if (pathName.match(cur.rx)) {
                                                     if (cur.action.fetch) {
                                                         // not found requisitions should
                                                         // fetch a different resource
@@ -190,7 +305,7 @@ if (isInSWScope) {
                                                     // otherwise...let's see if there is a fallback
                                                     // for the 404 requisition
                                                     DSWManager.rules[response.status].some(function (cur, idx) {
-                                                        if (url.match(cur.rx)) {
+                                                        if (pathName.match(cur.rx)) {
                                                             if (cur.action.fetch) {
                                                                 // not found requisitions should
                                                                 // fetch a different resource
@@ -213,7 +328,7 @@ if (isInSWScope) {
                                 };
                             }();
 
-                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+                            if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
                         }
                     default:
                         {
@@ -241,7 +356,9 @@ if (isInSWScope) {
                 return new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
-                    var preCache = [];
+                    var preCache = [],
+                        dbs = [];
+
                     Object.keys(dswConfig.dswRules).forEach(function (heuristic) {
                         var ruleName = heuristic;
                         heuristic = dswConfig.dswRules[heuristic];
@@ -260,11 +377,10 @@ if (isInSWScope) {
                         }
 
                         // and the path
-                        var path = '((.+)?)' + (heuristic.match.path || '') + '([.+]?)';
+                        var path = /* '((.+)?)' + */(heuristic.match.path || '') + '([.+]?)';
 
                         // and now we "build" the regular expression itself!
                         var rx = new RegExp(path + "(\\.)?((" + extensions + ")([\\?\&\/].+)?)", 'i');
-                        //       /images\/((.+)?)(\.)?([\.(.+)[\?.*]?]?)/i
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
@@ -273,16 +389,10 @@ if (isInSWScope) {
                         }
 
                         // in case the rule uses an indexedDB
-                        //                    let request = indexedDB.open(DEFAULT_DB_NAME || rule.action.indexedDB.name,
-                        //                                    rule.action.indexedDB.version || undefined);
-                        //                    request.onerror = function(event) {
-                        //                        reject(); // TODO: pass something on, here
-                        //                    };
-                        //                    request.onupgradeneeded = function(event) {
-                        //                        let db = event.target.result;
-                        //                        objectStore = db.createObjectStore("customers", { keyPath: "ssn" });
-                        //                    };
-                        //heuristic.db = db;
+                        appl.indexedDB = appl.indexedDB || appl.idb || appl.IDB || undefined;
+                        if (appl.indexedDB) {
+                            dbs.push(appl.indexedDB);
+                        }
 
                         // preparing status to store the heuristic
                         status = Array.isArray(status) ? status : [status || '*'];
@@ -313,11 +423,14 @@ if (isInSWScope) {
                     }, rootMatchingRX);
 
                     // if we've got urls to pre-store, let's cache them!
-                    if (preCache.length) {
+                    // also, if there is any database to be created, this is the time
+                    if (preCache.length || dbs.length) {
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
                             return cacheManager.add(cur);
-                        })).then(resolve);
+                        }).concat(dbs.map(function (cur) {
+                            return _indexeddbManager2.default.create(cur);
+                        }))).then(resolve);
                     } else {
                         resolve();
                     }
@@ -333,13 +446,14 @@ if (isInSWScope) {
                     debugger;
 
                     var url = new URL(event.request.url);
+                    var pathName = new URL(url).pathname;
 
                     var i = 0,
                         l = (DSWManager.rules['*'] || []).length;
 
                     for (; i < l; i++) {
                         var rule = DSWManager.rules['*'][i];
-                        if (event.request.url.match(rule.rx)) {
+                        if (pathName.match(rule.rx)) {
                             // if there is a rule that matches the url
                             return event.respondWith(cacheManager.get(rule, event.request, event));
                         }
@@ -357,6 +471,7 @@ if (isInSWScope) {
                 event.waitUntil(self.clients.claim());
             }
         });
+
         self.addEventListener('install', function (event) {
             debugger;
 
@@ -370,10 +485,12 @@ if (isInSWScope) {
                 event.waitUntil(DSWManager.setup(PWASettings));
             }
         });
+
         self.addEventListener('message', function (event) {
             // TODO: add support to message event
             debugger;
         });
+
         self.addEventListener('sync', function (event) {
             // TODO: add support to sync event
             debugger;
@@ -406,4 +523,4 @@ if (isInSWScope) {
 exports.default = DSW;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./best-matching-rx.js":1}]},{},[2]);
+},{"./best-matching-rx.js":1,"./indexeddb-Manager.js":2}]},{},[3]);

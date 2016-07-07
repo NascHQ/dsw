@@ -5,6 +5,7 @@ var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
 import getBestMatchingRX from "./best-matching-rx.js";
+import indexedDBManager from "./indexeddb-Manager.js";
 
 const DSW = {};
 
@@ -18,26 +19,7 @@ try {
 
 if (isInSWScope) {
     
-    // TODO: use this to get the best fitting rx, instead of the first that matches
-    // reference from https://gist.github.com/felipenmoura/e02c8d8cfdea101fc6265a94321e02df
-    function getBestMatchingRX(str){
-        let bestMatchingRX;
-        let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
-        rx.forEach(function(currentRX){
-            const regex = new RegExp(currentRX);
-            const groups = regex.exec(str);
-            if (groups && groups.length < bestMatchingGroup){
-                bestMatchingRX = currentRX;
-                bestMatchingGroup = groups.length;
-            }
-            console.log(groups);
-        });
-        return bestMatchingRX;
-    }
-
-    
     const DEFAULT_CACHE_NAME = 'defaultDSWCached';
-    const DEFAULT_DB_NAME = 'defaultDSWDB';
     const DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
     
     const cacheManager = {
@@ -55,7 +37,7 @@ if (isInSWScope) {
         get: (rule, request, event)=>{
             let actionType = Object.keys(rule.action)[0],
                 url = request.url,
-                pathName = new URL(location.href).pathname;
+                pathName = new URL(url).pathname;
             
             if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
                 // requisitions to / should 
@@ -64,6 +46,15 @@ if (isInSWScope) {
             
             let opts = rule.options || {};
             opts.headers = opts.headers || new Headers();
+            
+            // if the cache options is false, we force it not to be cached
+            if(rule.action.cache === false){
+                opts.headers.append('pragma', 'no-cache');
+                opts.headers.append('cache-control', 'no-cache');
+                url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
+                pathName = new URL(url).pathname;
+                request = new Request(url);
+            }
 
             switch (actionType) {
                 // TODO: look for other kinds of cached data
@@ -72,6 +63,38 @@ if (isInSWScope) {
                 case 'indexedDB': {
                     return new Promise((resolve, reject)=>{
                         // aqui
+                        indexedDBManager.get(rule.name, request)
+                            .then(result=>{
+                                // if we did have it in the indexedDB
+                                if (result) {
+                                    // we use it
+                                    debugger;
+                                    // TODO: use it
+                                }else{
+                                    // if it was not stored, let's fetch it
+                                    function treatFetch (response) {
+                                        if (response && response.status == 200) {
+                                            let done = _=>{
+                                                resolve(response);
+                                            };
+                                            
+                                            // store it in the indexedDB
+                                            indexedDBManager.save(rule.name, response.clone())
+                                                .then(done)
+                                                .catch(done); // if failed saving, we still have the reponse to deliver
+                                        }else{
+                                            // TODO: treat the not found requests
+                                        }
+                                    }
+                                    
+                                    // fetching
+                                    result = fetch(request,
+                                                   opts)
+                                                .then(treatFetch)
+                                                .catch(treatFetch);
+                                }
+                            });
+                        //indexedDBManager.save(rule.name, request);
                     });
                     break;
                 }
@@ -82,6 +105,7 @@ if (isInSWScope) {
                 case 'fetch': {
                     request = new Request(rule.action.fetch || rule.action.redirect);
                     url = request.url;
+                    pathName = new URL(url).pathname;
                     // keep going to be treated with the cache case
                 }
                 case 'cache': {
@@ -93,13 +117,6 @@ if (isInSWScope) {
                                     '::' +
                                     (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                     }
-                    // if the cache options is false, we force it not to be cached
-                    if(rule.action.cache === false){
-                        opts.headers.append('pragma', 'no-cache');
-                        opts.headers.append('cache-control', 'no-cache');
-                        url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
-                        request = new Request(url);
-                    }
                     
                     return caches.match(request)
                         .then(result=>{
@@ -107,7 +124,7 @@ if (isInSWScope) {
                             // if it does not exist (cache could not be verified)
                             if (result && result.status != 200) {
                                 DSWManager.rules[result.status].some((cur, idx)=>{
-                                    if (url.match(cur.rx)) {
+                                    if (pathName.match(cur.rx)) {
                                         if (cur.action.fetch) {
                                             // not found requisitions should
                                             // fetch a different resource
@@ -148,7 +165,7 @@ if (isInSWScope) {
                                         // otherwise...let's see if there is a fallback
                                         // for the 404 requisition
                                         DSWManager.rules[response.status].some((cur, idx)=>{
-                                            if (url.match(cur.rx)) {
+                                            if (pathName.match(cur.rx)) {
                                                 if (cur.action.fetch) {
                                                     // not found requisitions should
                                                     // fetch a different resource
@@ -194,7 +211,9 @@ if (isInSWScope) {
             return new Promise((resolve, reject)=>{
                 // we will prepare and store the rules here, so it becomes
                 // easier to deal with, latelly on each requisition
-                let preCache = [];
+                let preCache = [],
+                    dbs = [];
+                
                 Object.keys(dswConfig.dswRules).forEach(heuristic=>{
                     let ruleName = heuristic;
                     heuristic = dswConfig.dswRules[heuristic];
@@ -213,32 +232,24 @@ if (isInSWScope) {
                     }
                     
                     // and the path
-                    let path = '((.+)?)' + (heuristic.match.path || '' ) + '([.+]?)';
+                    let path = /* '((.+)?)' + */ (heuristic.match.path || '' ) + '([.+]?)';
 
                     // and now we "build" the regular expression itself!
                     let rx = new RegExp(path + "(\\.)?(("+ extensions +")([\\?\&\/].+)?)", 'i');
-                    //       /images\/((.+)?)(\.)?([\.(.+)[\?.*]?]?)/i
                     
                     // if it fetches something, and this something is not dynamic
                     // also, if it will redirect to some static url
-                    if( (appl.fetch && !appl.fetch.match(/\$\{.+\}/))
+                    if ( (appl.fetch && !appl.fetch.match(/\$\{.+\}/))
                         ||
-                        (appl.redirect && !appl.redirect.match(/\$\{.+\}/))){
+                        (appl.redirect && !appl.redirect.match(/\$\{.+\}/))) {
                         preCache.push(appl.fetch || appl.redirect);
                     }
                     
                     // in case the rule uses an indexedDB
-//                    let request = indexedDB.open(DEFAULT_DB_NAME || rule.action.indexedDB.name,
-//                                    rule.action.indexedDB.version || undefined);
-//                    request.onerror = function(event) {
-//                        reject(); // TODO: pass something on, here
-//                    };
-//                    request.onupgradeneeded = function(event) {
-//                        let db = event.target.result;
-//                        objectStore = db.createObjectStore("customers", { keyPath: "ssn" });
-//                    };
-                    //heuristic.db = db;
-                    
+                    appl.indexedDB = appl.indexedDB || appl.idb || appl.IDB || undefined;
+                    if (appl.indexedDB) {
+                        dbs.push(appl.indexedDB);
+                    }
                     
                     // preparing status to store the heuristic
                     status = Array.isArray(status)? status : [status || '*'];
@@ -269,13 +280,17 @@ if (isInSWScope) {
                 }, rootMatchingRX);
                 
                 // if we've got urls to pre-store, let's cache them!
-                if(preCache.length){
+                // also, if there is any database to be created, this is the time
+                if(preCache.length || dbs.length){
                     // we fetch them now, and store it in cache
                     return Promise.all(
                         preCache.map(function(cur) {
                             return cacheManager
                                     .add(cur);
-                        })
+                        }).concat(dbs.map(function(cur) {
+                                return indexedDBManager.create(cur);
+                            })
+                        )
                     ).then(resolve);
                 }else{
                     resolve();
@@ -293,13 +308,14 @@ if (isInSWScope) {
                 debugger;
                 
                 const url = new URL(event.request.url);
+                const pathName = new URL(url).pathname
                 
                 let i = 0,
                     l = (DSWManager.rules['*'] || []).length;
                 
                 for (; i<l; i++) {
                     let rule = DSWManager.rules['*'][i];
-                    if (event.request.url.match(rule.rx)) {
+                    if (pathName.match(rule.rx)) {
                         // if there is a rule that matches the url
                         return event.respondWith(cacheManager.get(rule, event.request, event));
                     }
@@ -309,8 +325,6 @@ if (isInSWScope) {
             });
         }
     };
-    
-    
 
     self.addEventListener('activate', function(event) {
         debugger;
@@ -319,6 +333,7 @@ if (isInSWScope) {
             event.waitUntil(self.clients.claim());
         }
     });
+    
     self.addEventListener('install', function(event) {
         debugger;
         
@@ -332,10 +347,12 @@ if (isInSWScope) {
             event.waitUntil(DSWManager.setup(PWASettings));
         }
     });
+    
     self.addEventListener('message', function(event) {
         // TODO: add support to message event
         debugger;
     });
+    
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event
         debugger;

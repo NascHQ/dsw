@@ -52,17 +52,18 @@
             }
         },
         "userData": {
-            "match": { "path": "api\/user\/.*" },
+            "match": { "path": "\/api\/user\/.*" },
             "options": { "credentials": "same-origin"},
             "apply": {
-                "sessionStorage": {
-                    "name": "cachedUserData",
-                    "version": "1"
+                "indexedDB": {
+                    "name": "userData",
+                    "version": "1",
+                    "indexes": ["name"]
                 }
             }
         },
         "updates": {
-            "match": { "path": "api\/updates/" },
+            "match": { "path": "\/api\/updates/" },
             "keepItHot": true,
             "apply": {
                 "indexedDB": {
@@ -72,7 +73,7 @@
             }
         },
         "articles": {
-            "match": { "path": "api\/updates/" },
+            "match": { "path": "\/api\/updates/" },
             "apply": {
                 "cache": {
                     "name": "cachedArticles",
@@ -81,7 +82,7 @@
             }
         },
         "events": {
-            "match": { "path": "api\/events/" },
+            "match": { "path": "\/api\/events/" },
             "apply": {
                 "indexedDB": {
                     "name": "eventsList",
@@ -90,7 +91,7 @@
             }
         },
         "lineup": {
-            "match": { "path": "api\/events\/(.*)/" },
+            "match": { "path": "\/api\/events\/(.*)/" },
             "apply": {
                 "indexedDB": {
                     "name": "eventLineup-$1",

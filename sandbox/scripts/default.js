@@ -19,7 +19,15 @@ window.addEventListener('load', function(){
     });
     
     document.getElementById('btn-img-5').addEventListener('click', function(){
-        fetch('/api/user/data.json').then(function(response){
+        fetch('/api/user/1.json').then(function(response){
+            response.text().then(function(text){
+                document.getElementById('fetch-result').innerHTML = text;
+            });
+        });
+    });
+    
+    document.getElementById('btn-img-6').addEventListener('click', function(){
+        fetch('/api/user/2.json').then(function(response){
             response.text().then(function(text){
                 document.getElementById('fetch-result').innerHTML = text;
             });

@@ -48,7 +48,7 @@ fs.writeFileSync(path.replace(/dswfile\.json$/, 'dsw.js'),
                  fullContent,
                  'utf8');
 
-console.info(' 5 ... your are good to go, sir!\n\n    (ᵔᴥᵔ)\n\nStart your HTTP server at ' + dswPath + '\n');
+console.info(' 5 ... your are good to go, sir!\n\n    ()_()\n    (ᵔᴥᵔ)\n\nStart your HTTP server at ' + dswPath + '\n');
 
 // write a temporary file with the combination of both settings and lib files
 //console.info('1) Writing temporary file');
