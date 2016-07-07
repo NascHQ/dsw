@@ -214,6 +214,53 @@ You may want to redirect requests some times, like so:
 }
 ```
 
+#### Caching EVERYTHING
+
+Maybe you want to cache everything. Every single request (that is successful) will be cached as soon as it is loaded the first time:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "secretPath": {
+            "match": {
+                "path": "\/.*"
+            },
+            "apply": {
+            	"cache": {
+            	    "name": "cached-files"
+            	    "version": 1
+            	}
+            }
+        }
+    }
+}
+```
+
+
+#### Caching your static files
+
+Most of times you will want to cache all your static files, like _javascript_ files or _css_:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "secretPath": {
+            "match": {
+                "extension": ["js", "css"]
+            },
+            "apply": {
+            	"cache": {
+            	    "name": "page-static-files"
+            	    "version": 1
+            	}
+            }
+        }
+    }
+}
+```
+
 # Contributing
 
 So, you want to contribute? Cool! We need it! :)
