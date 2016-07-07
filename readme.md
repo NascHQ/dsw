@@ -285,7 +285,7 @@ Here is how...and yep, as Service workers are still a little too new, it is a li
 
 5 - Access in the browser, the address in the right port, as provided by the previous command, something like:
 
-```http://localhost:8888/```
+`http://localhost:8888/`
 
 ### Testing your changes
 
