@@ -12,7 +12,7 @@
     "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
     "lint": "echo ':: Linting the source files:' && eslint src/*",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js",
-    "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && docs",
+    "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && npm run docs",
     "prepublish": "npm run lint",
     "watch": "watch 'npm run build && echo Done' src",
     "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888"
