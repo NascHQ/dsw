@@ -214,6 +214,53 @@ You may want to redirect requests some times, like so:
 }
 ```
 
+#### Caching EVERYTHING
+
+Maybe you want to cache everything. Every single request (that is successful) will be cached as soon as it is loaded the first time:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "secretPath": {
+            "match": {
+                "path": "\/.*"
+            },
+            "apply": {
+            	"cache": {
+            	    "name": "cached-files"
+            	    "version": 1
+            	}
+            }
+        }
+    }
+}
+```
+
+
+#### Caching your static files
+
+Most of times you will want to cache all your static files, like _javascript_ files or _css_:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "secretPath": {
+            "match": {
+                "extension": ["js", "css"]
+            },
+            "apply": {
+            	"cache": {
+            	    "name": "page-static-files"
+            	    "version": 1
+            	}
+            }
+        }
+    }
+}
+```
+
 # Contributing
 
 So, you want to contribute? Cool! We need it! :)
@@ -238,7 +285,7 @@ Here is how...and yep, as Service workers are still a little too new, it is a li
 
 5 - Access in the browser, the address in the right port, as provided by the previous command, something like:
 
-```http://localhost:8888/```
+`http://localhost:8888/`
 
 Please notice we use `eslint` to validate the code styles. You can see the rules in the `.eslintrc.js` file.
 
