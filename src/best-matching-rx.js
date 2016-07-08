@@ -1,6 +1,7 @@
 function getBestMatchingRX(str){
     let bestMatchingRX;
     let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
+    let rx = []; // list of regular expressions
     rx.forEach(function(currentRX){
         const regex = new RegExp(currentRX);
         const groups = regex.exec(str);

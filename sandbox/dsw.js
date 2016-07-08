@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", {
 function getBestMatchingRX(str) {
     var bestMatchingRX = void 0;
     var bestMatchingGroup = Number.MAX_SAFE_INTEGER;
+    var rx = []; // list of regular expressions
     rx.forEach(function (currentRX) {
         var regex = new RegExp(currentRX);
         var groups = regex.exec(str);
@@ -23,7 +24,7 @@ function getBestMatchingRX(str) {
 exports.default = getBestMatchingRX;
 
 },{}],2:[function(require,module,exports){
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -33,10 +34,10 @@ var DEFAULT_DB_NAME = 'defaultDSWDB';
 var dbs = {};
 
 function getObjectStore(dbName) {
-    var mode = arguments.length <= 1 || arguments[1] === undefined ? "readwrite" : arguments[1];
+    var mode = arguments.length <= 1 || arguments[1] === undefined ? 'readwrite' : arguments[1];
 
-    var db = dbs[dbName];
-    var tx = db.transaction(dbName, mode);
+    var db = dbs[dbName],
+        tx = db.transaction(dbName, mode);
     return tx.objectStore(dbName);
 }
 
@@ -49,7 +50,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    console.log("There is a new version of the database(IndexedDB) for " + config.name);
+                    console.log('There is a new version of the database(IndexedDB) for ' + config.name);
                 };
 
                 if (!dbs[dbName]) {
@@ -122,7 +123,7 @@ exports.default = indexedDBManager;
 
 },{}],3:[function(require,module,exports){
 (function (global){
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -130,11 +131,11 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
-var _bestMatchingRx = require("./best-matching-rx.js");
+var _bestMatchingRx = require('./best-matching-rx.js');
 
 var _bestMatchingRx2 = _interopRequireDefault(_bestMatchingRx);
 
-var _indexeddbManager = require("./indexeddb-Manager.js");
+var _indexeddbManager = require('./indexeddb-Manager.js');
 
 var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 
@@ -205,38 +206,35 @@ if (isInSWScope) {
                     case 'indexedDB':
                         {
                             return new Promise(function (resolve, reject) {
-                                // aqui
+
+                                // function to be used after fetching
+                                function treatFetch(response) {
+                                    if (response && response.status == 200) {
+                                        var done = function done(_) {
+                                            resolve(response);
+                                        };
+
+                                        // store it in the indexedDB
+                                        _indexeddbManager2.default.save(rule.name, response.clone()).then(done).catch(done); // if failed saving, we still have the reponse to deliver
+                                    } else {
+                                            // TODO: treat the not found requests
+                                        }
+                                }
+
                                 _indexeddbManager2.default.get(rule.name, request).then(function (result) {
                                     // if we did have it in the indexedDB
                                     if (result) {
                                         // we use it
-                                        debugger;
+                                        console.log('found something');
                                         // TODO: use it
                                     } else {
                                         // if it was not stored, let's fetch it
-
-                                        var treatFetch = function treatFetch(response) {
-                                            if (response && response.status == 200) {
-                                                var done = function done(_) {
-                                                    resolve(response);
-                                                };
-
-                                                // store it in the indexedDB
-                                                _indexeddbManager2.default.save(rule.name, response.clone()).then(done).catch(done); // if failed saving, we still have the reponse to deliver
-                                            } else {
-                                                    // TODO: treat the not found requests
-                                                }
-                                        };
-
                                         // fetching
-
-
                                         result = fetch(request, opts).then(treatFetch).catch(treatFetch);
                                     }
                                 });
                                 //indexedDBManager.save(rule.name, request);
                             });
-                            break;
                         }
                     case 'sessionStorage':
                         {
@@ -329,7 +327,7 @@ if (isInSWScope) {
                                 };
                             }();
 
-                            if ((typeof _ret2 === "undefined" ? "undefined" : _typeof(_ret2)) === "object") return _ret2.v;
+                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
                         }
                     default:
                         {
@@ -371,17 +369,17 @@ if (isInSWScope) {
 
                         // preparing extentions to be added to the regexp
                         if (Array.isArray(extensions)) {
-                            var ending = "([\/\&\?]|$)";
+                            var ending = '([\/\&\?]|$)';
                             extensions = '(' + extensions.join(ending + '|') + ending + ')';
                         } else {
-                            extensions = ".+";
+                            extensions = '.+';
                         }
 
                         // and the path
                         var path = /* '((.+)?)' + */(heuristic.match.path || '') + '([.+]?)';
 
                         // and now we "build" the regular expression itself!
-                        var rx = new RegExp(path + "(\\.)?((" + extensions + ")([\\?\&\/].+)?)", 'i');
+                        var rx = new RegExp(path + '(\\.)?((' + extensions + ')([\\?\&\/].+)?)', 'i');
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
@@ -409,18 +407,18 @@ if (isInSWScope) {
                     });
 
                     // adding the dsw itself to cache
-                    _this.addRule("*", {
+                    _this.addRule('*', {
                         name: 'serviceWorker',
                         match: { path: location.href },
-                        "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
+                        'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, location.href);
 
                     // addinf the root path to be also cached by default
                     var rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
-                    _this.addRule("*", {
+                    _this.addRule('*', {
                         name: 'rootDir',
                         match: { path: rootMatchingRX },
-                        "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
+                        'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, rootMatchingRX);
 
                     // if we've got urls to pre-store, let's cache them!
@@ -444,7 +442,6 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-                    debugger;
 
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
@@ -466,18 +463,13 @@ if (isInSWScope) {
         };
 
         self.addEventListener('activate', function (event) {
-            debugger;
-
             if (PWASettings.applyImmediately) {
                 event.waitUntil(self.clients.claim());
             }
         });
 
         self.addEventListener('install', function (event) {
-            debugger;
-
             // TODO: maybe remove older cache, here?
-
             if (PWASettings.applyImmediately) {
                 event.waitUntil(self.skipWaiting().then(function (_) {
                     return DSWManager.setup(PWASettings);
@@ -489,12 +481,10 @@ if (isInSWScope) {
 
         self.addEventListener('message', function (event) {
             // TODO: add support to message event
-            debugger;
         });
 
         self.addEventListener('sync', function (event) {
             // TODO: add support to sync event
-            debugger;
         });
 
         DSWManager.startListening();
@@ -513,7 +503,7 @@ if (isInSWScope) {
                     });
                 }
             } else {
-                reject("Service worker not supported");
+                reject('Service worker not supported');
             }
         });
     };

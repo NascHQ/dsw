@@ -9,11 +9,13 @@
   "preferGlobal": true,
   "main": "index.js",
   "scripts": {
-    "test": "mocha tests/ --compilers js:babel-core/register",
-    "build:js": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ]",
-    "build": "npm run build:js",
+    "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
+    "lint": "echo ':: Linting the source files:' && eslint src/*",
+    "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js",
+    "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && docs",
+    "prepublish": "npm run lint",
     "watch": "watch 'npm run build && echo Done' src",
-    "try": "node index.js sandbox && http-server ./sandbox -p 8888"
+    "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888"
   },
   "repository": {
     "type": "git",
@@ -43,10 +45,13 @@
     "babelify": "latest",
     "browserify": "latest",
     "chai": "^3.5.0",
-    "http-server": "latest",
-    "jshint": "~2.9.1-rc1",
+    "docco": "^0.7.0",
+    "eslint": "^3.0.1",
     "minifier": "^0.7.1",
     "mocha": "latest",
     "watch": "latest"
+  },
+  "dependencies": {
+    "http-server": "latest"
   }
 }

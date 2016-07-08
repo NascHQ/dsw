@@ -64,7 +64,7 @@
         },
         "updates": {
             "match": { "path": "\/api\/updates/" },
-            "keepItHot": true,
+            "keepItWarm": true,
             "apply": {
                 "indexedDB": {
                     "name": "shownUpdates",

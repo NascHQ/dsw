@@ -4,8 +4,8 @@
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-import getBestMatchingRX from "./best-matching-rx.js";
-import indexedDBManager from "./indexeddb-Manager.js";
+import getBestMatchingRX from './best-matching-rx.js';
+import indexedDBManager from './indexeddb-Manager.js';
 
 const DSW = {};
 
@@ -58,140 +58,140 @@ if (isInSWScope) {
 
             switch (actionType) {
                 // TODO: look for other kinds of cached data
-                case 'idb':
-                case 'IDB':
-                case 'indexedDB': {
-                    return new Promise((resolve, reject)=>{
-                        // aqui
-                        indexedDBManager.get(rule.name, request)
-                            .then(result=>{
-                                // if we did have it in the indexedDB
-                                if (result) {
-                                    // we use it
-                                    debugger;
-                                    // TODO: use it
-                                }else{
-                                    // if it was not stored, let's fetch it
-                                    function treatFetch (response) {
-                                        if (response && response.status == 200) {
-                                            let done = _=>{
-                                                resolve(response);
-                                            };
-                                            
-                                            // store it in the indexedDB
-                                            indexedDBManager.save(rule.name, response.clone())
-                                                .then(done)
-                                                .catch(done); // if failed saving, we still have the reponse to deliver
-                                        }else{
-                                            // TODO: treat the not found requests
-                                        }
-                                    }
-                                    
-                                    // fetching
-                                    result = fetch(request,
-                                                   opts)
-                                                .then(treatFetch)
-                                                .catch(treatFetch);
-                                }
-                            });
-                        //indexedDBManager.save(rule.name, request);
-                    });
-                    break;
-                }
-                case 'sessionStorage': {
-                    //break; // TODO: see if there is support, somehow!
-                }
-                case 'redirect':
-                case 'fetch': {
-                    request = new Request(rule.action.fetch || rule.action.redirect);
-                    url = request.url;
-                    pathName = new URL(url).pathname;
-                    // keep going to be treated with the cache case
-                }
-                case 'cache': {
+            case 'idb':
+            case 'IDB':
+            case 'indexedDB': {
+                return new Promise((resolve, reject)=>{
                     
-                    let cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
-                    
-                    if(rule.action.cache){
-                        cacheId =   (rule.action.cache.name || DEFAULT_CACHE_NAME) +
-                                    '::' +
-                                    (rule.action.cache.version || DEFAULT_CACHE_VERSION);
+                    // function to be used after fetching
+                    function treatFetch (response) {
+                        if (response && response.status == 200) {
+                            let done = _=>{
+                                resolve(response);
+                            };
+
+                            // store it in the indexedDB
+                            indexedDBManager.save(rule.name, response.clone())
+                                .then(done)
+                                .catch(done); // if failed saving, we still have the reponse to deliver
+                        }else{
+                            // TODO: treat the not found requests
+                        }
                     }
                     
-                    return caches.match(request)
+                    indexedDBManager.get(rule.name, request)
                         .then(result=>{
-
-                            // if it does not exist (cache could not be verified)
-                            if (result && result.status != 200) {
-                                DSWManager.rules[result.status].some((cur, idx)=>{
-                                    if (pathName.match(cur.rx)) {
-                                        if (cur.action.fetch) {
-                                            // not found requisitions should
-                                            // fetch a different resource
-                                            result = fetch(cur.action.fetch,
-                                                          cur.action.options);
-                                            return true; // stopping the loop
-                                        }
-                                    }
-                                });
-                                return result;
+                            // if we did have it in the indexedDB
+                            if (result) {
+                                // we use it
+                                console.log('found something');
+                                // TODO: use it
                             }else{
-                                let treatFetch = function (response) {
-                                    if(!response.status){
-                                        response.status = 404;
-                                    }
-                                    // after retrieving it, we cache it
-                                    // if it was ok
-                                    if (response.status == 200) {
-                                        // if cache is not false, it will be added to cache
-                                        if (rule.action.cache !== false) {
-                                            return caches.open(cacheId).then(function(cache) {
-                                                cache.put(request, response.clone());
-                                                console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                
-                                                // if the rule told us to redirect it
-                                                // we say that using the header status
-                                                if (actionType == 'redirect') {
-                                                    response.statusText = 'Redirected';
-                                                    response.status = 302;
-                                                }
-                                                
-                                                return response;
-                                            });
-                                        }else{
-                                            return response;
-                                        }
-                                    } else {
-                                        // otherwise...let's see if there is a fallback
-                                        // for the 404 requisition
-                                        DSWManager.rules[response.status].some((cur, idx)=>{
-                                            if (pathName.match(cur.rx)) {
-                                                if (cur.action.fetch) {
-                                                    // not found requisitions should
-                                                    // fetch a different resource
-                                                    result = cacheManager.get(cur, event.request, event);
-                                                    return true; // stopping the loop
-                                                }
-                                            }
-                                        });
-                                        return result || response;
-                                    }
-                                };
-
-                                // we will return the result, if successful, or
-                                // fetch an anternative resource(or redirect)
-                                // and treat both success and failure with the
-                                // same "callback"
-                                return result || fetch(request, opts)
-                                        .then(treatFetch)
-                                        .catch(treatFetch);
+                                // if it was not stored, let's fetch it
+                                // fetching
+                                result = fetch(request,
+                                               opts)
+                                            .then(treatFetch)
+                                            .catch(treatFetch);
                             }
                         });
+                    //indexedDBManager.save(rule.name, request);
+                });
+            }
+            case 'sessionStorage': {
+                //break; // TODO: see if there is support, somehow!
+            }
+            case 'redirect':
+            case 'fetch': {
+                request = new Request(rule.action.fetch || rule.action.redirect);
+                url = request.url;
+                pathName = new URL(url).pathname;
+                // keep going to be treated with the cache case
+            }
+            case 'cache': {
+
+                let cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
+
+                if(rule.action.cache){
+                    cacheId =   (rule.action.cache.name || DEFAULT_CACHE_NAME) +
+                                '::' +
+                                (rule.action.cache.version || DEFAULT_CACHE_VERSION);
                 }
-                default: {
-                    // also used in fetch actions
-                    return fetch(url);
-                }
+
+                return caches.match(request)
+                    .then(result=>{
+
+                        // if it does not exist (cache could not be verified)
+                        if (result && result.status != 200) {
+                            DSWManager.rules[result.status].some((cur, idx)=>{
+                                if (pathName.match(cur.rx)) {
+                                    if (cur.action.fetch) {
+                                        // not found requisitions should
+                                        // fetch a different resource
+                                        result = fetch(cur.action.fetch,
+                                                      cur.action.options);
+                                        return true; // stopping the loop
+                                    }
+                                }
+                            });
+                            return result;
+                        }else{
+                            let treatFetch = function (response) {
+                                if(!response.status){
+                                    response.status = 404;
+                                }
+                                // after retrieving it, we cache it
+                                // if it was ok
+                                if (response.status == 200) {
+                                    // if cache is not false, it will be added to cache
+                                    if (rule.action.cache !== false) {
+                                        return caches.open(cacheId).then(function(cache) {
+                                            cache.put(request, response.clone());
+                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+
+                                            // if the rule told us to redirect it
+                                            // we say that using the header status
+                                            if (actionType == 'redirect') {
+                                                response.statusText = 'Redirected';
+                                                response.status = 302;
+                                            }
+
+                                            return response;
+                                        });
+                                    }else{
+                                        return response;
+                                    }
+                                } else {
+                                    // otherwise...let's see if there is a fallback
+                                    // for the 404 requisition
+                                    DSWManager.rules[response.status].some((cur, idx)=>{
+                                        if (pathName.match(cur.rx)) {
+                                            if (cur.action.fetch) {
+                                                // not found requisitions should
+                                                // fetch a different resource
+                                                result = cacheManager.get(cur, event.request, event);
+                                                return true; // stopping the loop
+                                            }
+                                        }
+                                    });
+                                    return result || response;
+                                }
+                            };
+
+                            // we will return the result, if successful, or
+                            // fetch an anternative resource(or redirect)
+                            // and treat both success and failure with the
+                            // same "callback"
+                            return result || fetch(request, opts)
+                                    .then(treatFetch)
+                                    .catch(treatFetch);
+                        }
+                    });
+            }
+            default: {
+                // also used in fetch actions
+                return fetch(url);
+            }
             }
         }
     };
@@ -225,17 +225,17 @@ if (isInSWScope) {
 
                     // preparing extentions to be added to the regexp
                     if(Array.isArray(extensions)){
-                        let ending = "([\/\&\?]|$)";
+                        let ending = '([\/\&\?]|$)';
                         extensions = '(' + extensions.join(ending+'|') + ending + ')';
                     }else{
-                        extensions = ".+"
+                        extensions = '.+';
                     }
                     
                     // and the path
                     let path = /* '((.+)?)' + */ (heuristic.match.path || '' ) + '([.+]?)';
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + "(\\.)?(("+ extensions +")([\\?\&\/].+)?)", 'i');
+                    let rx = new RegExp(path + '(\\.)?(('+ extensions +')([\\?\&\/].+)?)', 'i');
                     
                     // if it fetches something, and this something is not dynamic
                     // also, if it will redirect to some static url
@@ -265,18 +265,18 @@ if (isInSWScope) {
                 });
                 
                 // adding the dsw itself to cache
-                this.addRule("*", {
+                this.addRule('*', {
                     name: 'serviceWorker',
                     match: { path: location.href },
-                    "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
+                    'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
                 }, location.href);
                 
                 // addinf the root path to be also cached by default
                 let rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
-                this.addRule("*", {
+                this.addRule('*', {
                     name: 'rootDir',
                     match: { path: rootMatchingRX },
-                    "apply": { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
+                    'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION} }
                 }, rootMatchingRX);
                 
                 // if we've got urls to pre-store, let's cache them!
@@ -288,10 +288,9 @@ if (isInSWScope) {
                             return cacheManager
                                     .add(cur);
                         }).concat(dbs.map(function(cur) {
-                                return indexedDBManager.create(cur);
-                            })
-                        )
-                    ).then(resolve);
+                            return indexedDBManager.create(cur);
+                        })
+                    )).then(resolve);
                 }else{
                     resolve();
                 }
@@ -305,10 +304,9 @@ if (isInSWScope) {
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
-                debugger;
                 
                 const url = new URL(event.request.url);
-                const pathName = new URL(url).pathname
+                const pathName = new URL(url).pathname;
                 
                 let i = 0,
                     l = (DSWManager.rules['*'] || []).length;
@@ -327,18 +325,13 @@ if (isInSWScope) {
     };
 
     self.addEventListener('activate', function(event) {
-        debugger;
-        
         if (PWASettings.applyImmediately) {
             event.waitUntil(self.clients.claim());
         }
     });
     
     self.addEventListener('install', function(event) {
-        debugger;
-        
         // TODO: maybe remove older cache, here?
-        
         if (PWASettings.applyImmediately) {
             event.waitUntil(self.skipWaiting().then(_=>{
                 return DSWManager.setup(PWASettings);
@@ -350,12 +343,10 @@ if (isInSWScope) {
     
     self.addEventListener('message', function(event) {
         // TODO: add support to message event
-        debugger;
     });
     
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event
-        debugger;
     });
     
     DSWManager.startListening();
@@ -376,7 +367,7 @@ if (isInSWScope) {
                         });
                 }
             }else{
-                reject("Service worker not supported");
+                reject('Service worker not supported');
             }
         });
     };

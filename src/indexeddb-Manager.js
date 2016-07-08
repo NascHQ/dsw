@@ -2,9 +2,9 @@
 const DEFAULT_DB_NAME = 'defaultDSWDB';
 const dbs = {};
 
-function getObjectStore(dbName, mode="readwrite") {
-    let db = dbs[dbName]
-    var tx = db.transaction(dbName, mode);
+function getObjectStore(dbName, mode='readwrite') {
+    let db = dbs[dbName],
+        tx = db.transaction(dbName, mode);
     return tx.objectStore(dbName);
 }
 
@@ -18,7 +18,7 @@ const indexedDBManager = {
             function dataBaseReady (db, dbName, resolve) {
                 db.onversionchange = function(event) {
                     db.close();
-                    console.log("There is a new version of the database(IndexedDB) for "+
+                    console.log('There is a new version of the database(IndexedDB) for '+
                                 config.name);
                 };
                 

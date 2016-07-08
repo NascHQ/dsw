@@ -240,6 +240,8 @@ Here is how...and yep, as Service workers are still a little too new, it is a li
 
 ```http://localhost:8888/```
 
+Please notice we use `eslint` to validate the code styles. You can see the rules in the `.eslintrc.js` file.
+
 ### Testing your changes
 
 Whenever you change any files inside the `src` directory, the _watch_ will re-build it for you (wait until you see the **"DONE"** output).
@@ -272,7 +274,6 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 6 - You can use the Lighthouse to validate the service worker situation:
 
 [Lighthoust](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
-
 
 
 
