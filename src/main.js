@@ -103,7 +103,9 @@ if (isInSWScope) {
             }
             case 'redirect':
             case 'fetch': {
-                request = new Request(rule.action.fetch || rule.action.redirect);
+                let tmpUrl = rule.action.fetch || rule.action.redirect;
+                //tmpUrl = AQUI
+                request = new Request();
                 url = request.url;
                 pathName = new URL(url).pathname;
                 // keep going to be treated with the cache case
@@ -239,9 +241,10 @@ if (isInSWScope) {
                     
                     // if it fetches something, and this something is not dynamic
                     // also, if it will redirect to some static url
-                    if ( (appl.fetch && !appl.fetch.match(/\$\{.+\}/))
+                    let noVars = /\$[0-9]+/;
+                    if ( (appl.fetch && !appl.fetch.match(noVars))
                         ||
-                        (appl.redirect && !appl.redirect.match(/\$\{.+\}/))) {
+                        (appl.redirect && !appl.redirect.match(noVars))) {
                         preCache.push(appl.fetch || appl.redirect);
                     }
                     

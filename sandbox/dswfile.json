@@ -51,6 +51,12 @@
                 }
             }
         },
+        "moved-pages": {
+            "match": { "path": "\/old-site\/(.*)" },
+            "apply": {
+                "redirect": "/redirected.html?$1"
+            }
+        },
         "userData": {
             "match": { "path": "\/api\/user\/.*" },
             "options": { "credentials": "same-origin"},

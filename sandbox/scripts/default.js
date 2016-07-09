@@ -33,5 +33,16 @@ window.addEventListener('load', function(){
             });
         });
     });
+    document.getElementById('btn-7').addEventListener('click', function(){
+        let listOfOlderPages = [
+            'index.html',
+            'page-1.html',
+            'about.html',
+            'articles.html',
+            'contact.html'
+        ];
+        document.getElementById('redirectionFrame').src = '/old-site/' +
+            listOfOlderPages[Math.ceil(Math.random() * 5) -1];
+    });
     
 });
