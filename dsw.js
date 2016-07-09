@@ -235,10 +235,6 @@ if (isInSWScope) {
                                 //indexedDBManager.save(rule.name, request);
                             });
                         }
-                    case 'sessionStorage':
-                        {
-                            //break; // TODO: see if there is support, somehow!
-                        }
                     case 'redirect':
                     case 'fetch':
                         {
@@ -298,15 +294,6 @@ if (isInSWScope) {
                                                         return caches.open(cacheId).then(function (cache) {
                                                             cache.put(request, response.clone());
                                                             console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-
-                                                            // if the rule told us to redirect it
-                                                            // we say that using the header status
-                                                            //                                            if (actionType == 'redirect') {
-                                                            //                                                response.statusText = 'Redirected';
-                                                            //                                                response.setHeader('statusText', 'Redirected');
-                                                            //                                                response.status(302);
-                                                            //                                            }
-
                                                             return response;
                                                         });
                                                     } else {
@@ -334,7 +321,15 @@ if (isInSWScope) {
                                             // fetch an anternative resource(or redirect)
                                             // and treat both success and failure with the
                                             // same "callback"
-                                            return result || fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                            // In case it is a redirect, we also set the header to 302
+                                            // and really change the url of the response.
+                                            if (result) {
+                                                return result;
+                                            } else if (actionType == 'redirect') {
+                                                return Response.redirect(request.url, 302);
+                                            } else {
+                                                return fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                            }
                                         }
                                     })
                                 };
