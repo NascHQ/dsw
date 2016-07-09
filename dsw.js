@@ -176,9 +176,9 @@ if (isInSWScope) {
                     });
                 });
             },
-            get: function get(rule, request, event) {
+            get: function get(rule, request, event, matching) {
                 var actionType = Object.keys(rule.action)[0],
-                    url = request.url,
+                    url = request.url || request,
                     pathName = new URL(url).pathname;
 
                 if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
@@ -242,16 +242,26 @@ if (isInSWScope) {
                     case 'redirect':
                     case 'fetch':
                         {
-                            var tmpUrl = rule.action.fetch || rule.action.redirect;
-                            //tmpUrl = AQUI
-                            request = new Request();
-                            url = request.url;
-                            pathName = new URL(url).pathname;
-                            // keep going to be treated with the cache case
+                            (function () {
+                                var tmpUrl = rule.action.fetch || rule.action.redirect;
+
+                                if (matching.length > 2) {
+                                    // applying variables
+                                    matching.forEach(function (cur, idx) {
+                                        tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
+                                    });
+                                }
+
+                                request = new Request(tmpUrl);
+                                debugger;
+                                url = request.url;
+                                pathName = new URL(url).pathname;
+                                // keep going to be treated with the cache case
+                            })();
                         }
                     case 'cache':
                         {
-                            var _ret2 = function () {
+                            var _ret3 = function () {
 
                                 var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
@@ -291,10 +301,11 @@ if (isInSWScope) {
 
                                                             // if the rule told us to redirect it
                                                             // we say that using the header status
-                                                            if (actionType == 'redirect') {
-                                                                response.statusText = 'Redirected';
-                                                                response.status = 302;
-                                                            }
+                                                            //                                            if (actionType == 'redirect') {
+                                                            //                                                response.statusText = 'Redirected';
+                                                            //                                                response.setHeader('statusText', 'Redirected');
+                                                            //                                                response.status(302);
+                                                            //                                            }
 
                                                             return response;
                                                         });
@@ -305,11 +316,12 @@ if (isInSWScope) {
                                                     // otherwise...let's see if there is a fallback
                                                     // for the 404 requisition
                                                     DSWManager.rules[response.status].some(function (cur, idx) {
-                                                        if (pathName.match(cur.rx)) {
+                                                        var matching = pathName.match(cur.rx);
+                                                        if (matching) {
                                                             if (cur.action.fetch) {
                                                                 // not found requisitions should
                                                                 // fetch a different resource
-                                                                result = cacheManager.get(cur, event.request, event);
+                                                                result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
                                                                 return true; // stopping the loop
                                                             }
                                                         }
@@ -328,7 +340,7 @@ if (isInSWScope) {
                                 };
                             }();
 
-                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+                            if ((typeof _ret3 === 'undefined' ? 'undefined' : _typeof(_ret3)) === "object") return _ret3.v;
                         }
                     default:
                         {
@@ -444,7 +456,7 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-
+                    debugger;
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
 
@@ -453,9 +465,10 @@ if (isInSWScope) {
 
                     for (; i < l; i++) {
                         var rule = DSWManager.rules['*'][i];
-                        if (pathName.match(rule.rx)) {
+                        var matching = pathName.match(rule.rx);
+                        if (matching) {
                             // if there is a rule that matches the url
-                            return event.respondWith(cacheManager.get(rule, event.request, event));
+                            return event.respondWith(cacheManager.get(rule, event.request, event, matching));
                         }
                     }
                     // if no rule is applied, we simple request it

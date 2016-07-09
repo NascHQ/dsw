@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html#$1"}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -177,9 +177,9 @@ if (isInSWScope) {
                     });
                 });
             },
-            get: function get(rule, request, event) {
+            get: function get(rule, request, event, matching) {
                 var actionType = Object.keys(rule.action)[0],
-                    url = request.url,
+                    url = request.url || request,
                     pathName = new URL(url).pathname;
 
                 if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
@@ -243,14 +243,26 @@ if (isInSWScope) {
                     case 'redirect':
                     case 'fetch':
                         {
-                            request = new Request(rule.action.fetch || rule.action.redirect);
-                            url = request.url;
-                            pathName = new URL(url).pathname;
-                            // keep going to be treated with the cache case
+                            (function () {
+                                var tmpUrl = rule.action.fetch || rule.action.redirect;
+
+                                if (matching.length > 2) {
+                                    // applying variables
+                                    matching.forEach(function (cur, idx) {
+                                        tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
+                                    });
+                                }
+
+                                request = new Request(tmpUrl);
+                                debugger;
+                                url = request.url;
+                                pathName = new URL(url).pathname;
+                                // keep going to be treated with the cache case
+                            })();
                         }
                     case 'cache':
                         {
-                            var _ret2 = function () {
+                            var _ret3 = function () {
 
                                 var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
@@ -290,10 +302,11 @@ if (isInSWScope) {
 
                                                             // if the rule told us to redirect it
                                                             // we say that using the header status
-                                                            if (actionType == 'redirect') {
-                                                                response.statusText = 'Redirected';
-                                                                response.status = 302;
-                                                            }
+                                                            //                                            if (actionType == 'redirect') {
+                                                            //                                                response.statusText = 'Redirected';
+                                                            //                                                response.setHeader('statusText', 'Redirected');
+                                                            //                                                response.status(302);
+                                                            //                                            }
 
                                                             return response;
                                                         });
@@ -304,11 +317,12 @@ if (isInSWScope) {
                                                     // otherwise...let's see if there is a fallback
                                                     // for the 404 requisition
                                                     DSWManager.rules[response.status].some(function (cur, idx) {
-                                                        if (pathName.match(cur.rx)) {
+                                                        var matching = pathName.match(cur.rx);
+                                                        if (matching) {
                                                             if (cur.action.fetch) {
                                                                 // not found requisitions should
                                                                 // fetch a different resource
-                                                                result = cacheManager.get(cur, event.request, event);
+                                                                result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
                                                                 return true; // stopping the loop
                                                             }
                                                         }
@@ -327,7 +341,7 @@ if (isInSWScope) {
                                 };
                             }();
 
-                            if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+                            if ((typeof _ret3 === 'undefined' ? 'undefined' : _typeof(_ret3)) === "object") return _ret3.v;
                         }
                     default:
                         {
@@ -383,7 +397,8 @@ if (isInSWScope) {
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
-                        if (appl.fetch && !appl.fetch.match(/\$\{.+\}/) || appl.redirect && !appl.redirect.match(/\$\{.+\}/)) {
+                        var noVars = /\$[0-9]+/;
+                        if (appl.fetch && !appl.fetch.match(noVars) || appl.redirect && !appl.redirect.match(noVars)) {
                             preCache.push(appl.fetch || appl.redirect);
                         }
 
@@ -442,7 +457,7 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-
+                    debugger;
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
 
@@ -451,9 +466,10 @@ if (isInSWScope) {
 
                     for (; i < l; i++) {
                         var rule = DSWManager.rules['*'][i];
-                        if (pathName.match(rule.rx)) {
+                        var matching = pathName.match(rule.rx);
+                        if (matching) {
                             // if there is a rule that matches the url
-                            return event.respondWith(cacheManager.get(rule, event.request, event));
+                            return event.respondWith(cacheManager.get(rule, event.request, event, matching));
                         }
                     }
                     // if no rule is applied, we simple request it

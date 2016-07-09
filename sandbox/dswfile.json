@@ -2,6 +2,12 @@
     "dswVersion": 2.2,
     "applyImmediately": true,
     "dswRules": {
+        "moved-pages": {
+            "match": { "path": "\/old-site\/(.*)" },
+            "apply": {
+                "redirect": "/redirected.html?$1"
+            }
+        },
         "imageNotFound": {
             "match": {
                 "status": [404, 500],
@@ -49,12 +55,6 @@
                     "name": "static-files",
                     "version": "1"
                 }
-            }
-        },
-        "moved-pages": {
-            "match": { "path": "\/old-site\/(.*)" },
-            "apply": {
-                "redirect": "/redirected.html?$1"
             }
         },
         "userData": {

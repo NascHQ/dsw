@@ -34,10 +34,10 @@ if (isInSWScope) {
                 });
             });
         },
-        get: (rule, request, event)=>{
+        get: (rule, request, event, matching)=>{
             let actionType = Object.keys(rule.action)[0],
-                url = request.url,
-                pathName = new URL(url).pathname;
+                url = request.url || request,
+                pathName = (new URL(url)).pathname;
             
             if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
                 // requisitions to / should 
@@ -52,7 +52,7 @@ if (isInSWScope) {
                 opts.headers.append('pragma', 'no-cache');
                 opts.headers.append('cache-control', 'no-cache');
                 url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
-                pathName = new URL(url).pathname;
+                pathName = (new URL(url)).pathname;
                 request = new Request(url);
             }
 
@@ -104,8 +104,16 @@ if (isInSWScope) {
             case 'redirect':
             case 'fetch': {
                 let tmpUrl = rule.action.fetch || rule.action.redirect;
-                //tmpUrl = AQUI
-                request = new Request();
+                
+                if (matching.length > 2) {
+                    // applying variables
+                    matching.forEach(function(cur, idx){
+                        tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
+                    });
+                }
+                
+                request = new Request(tmpUrl);
+                debugger;
                 url = request.url;
                 pathName = new URL(url).pathname;
                 // keep going to be treated with the cache case
@@ -153,10 +161,11 @@ if (isInSWScope) {
 
                                             // if the rule told us to redirect it
                                             // we say that using the header status
-                                            if (actionType == 'redirect') {
-                                                response.statusText = 'Redirected';
-                                                response.status = 302;
-                                            }
+//                                            if (actionType == 'redirect') {
+//                                                response.statusText = 'Redirected';
+//                                                response.setHeader('statusText', 'Redirected');
+//                                                response.status(302);
+//                                            }
 
                                             return response;
                                         });
@@ -167,11 +176,15 @@ if (isInSWScope) {
                                     // otherwise...let's see if there is a fallback
                                     // for the 404 requisition
                                     DSWManager.rules[response.status].some((cur, idx)=>{
-                                        if (pathName.match(cur.rx)) {
+                                        let matching = pathName.match(cur.rx);
+                                        if (matching) {
                                             if (cur.action.fetch) {
                                                 // not found requisitions should
                                                 // fetch a different resource
-                                                result = cacheManager.get(cur, event.request, event);
+                                                result = cacheManager.get(cur,
+                                                                          new Request(cur.action.fetch),
+                                                                          event,
+                                                                          matching);
                                                 return true; // stopping the loop
                                             }
                                         }
@@ -307,18 +320,22 @@ if (isInSWScope) {
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
-                
+                debugger;
                 const url = new URL(event.request.url);
-                const pathName = new URL(url).pathname;
+                const pathName = (new URL(url)).pathname;
                 
                 let i = 0,
                     l = (DSWManager.rules['*'] || []).length;
                 
                 for (; i<l; i++) {
                     let rule = DSWManager.rules['*'][i];
-                    if (pathName.match(rule.rx)) {
+                    let matching = pathName.match(rule.rx);
+                    if (matching) {
                         // if there is a rule that matches the url
-                        return event.respondWith(cacheManager.get(rule, event.request, event));
+                        return event.respondWith(cacheManager.get(rule,
+                                                                  event.request,
+                                                                  event,
+                                                                  matching));
                     }
                 }
                 // if no rule is applied, we simple request it
