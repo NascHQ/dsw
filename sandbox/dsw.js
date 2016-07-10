@@ -418,21 +418,24 @@ if (isInSWScope) {
                     // adding the dsw itself to cache
                     _this.addRule('*', {
                         name: 'serviceWorker',
-                        match: { path: location.href },
+                        match: { path: /^\/dsw.js(\?=dsw-manager)?$/ },
                         'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, location.href);
 
                     // addinf the root path to be also cached by default
-                    var rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
+                    var rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                     _this.addRule('*', {
                         name: 'rootDir',
                         match: { path: rootMatchingRX },
                         'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, rootMatchingRX);
 
+                    preCache.unshift('/');
+
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
                     if (preCache.length || dbs.length) {
+                        debugger;
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
                             return cacheManager.add(cur);
@@ -451,6 +454,7 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
+
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
 

@@ -140,8 +140,9 @@ var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// TODO: add support to keepItHot: use a strategy with promise.race to always fetch the latest data and update the cache
-// TODO: add support to send the fetch options
+// TODO: requests redirected due to 404, should not cache the 404 result for itself
+// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
+// TODO: add support to keepItWarm: use a strategy with promise.race() to always fetch the latest data and update the cache
 
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
@@ -199,7 +200,6 @@ if (isInSWScope) {
                 }
 
                 switch (actionType) {
-                    // TODO: look for other kinds of cached data
                     case 'idb':
                     case 'IDB':
                     case 'indexedDB':
@@ -362,7 +362,7 @@ if (isInSWScope) {
                 return new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
-                    var preCache = [],
+                    var preCache = PWASettings.appShell || [],
                         dbs = [];
 
                     Object.keys(dswConfig.dswRules).forEach(function (heuristic) {
@@ -417,21 +417,24 @@ if (isInSWScope) {
                     // adding the dsw itself to cache
                     _this.addRule('*', {
                         name: 'serviceWorker',
-                        match: { path: location.href },
+                        match: { path: /^\/dsw.js(\?=dsw-manager)?$/ },
                         'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, location.href);
 
                     // addinf the root path to be also cached by default
-                    var rootMatchingRX = /http(s)?\:\/\/[^\/]+\/([^\/]+)?$/i;
+                    var rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                     _this.addRule('*', {
                         name: 'rootDir',
                         match: { path: rootMatchingRX },
                         'apply': { cache: { name: DEFAULT_CACHE_NAME, version: DEFAULT_CACHE_VERSION } }
                     }, rootMatchingRX);
 
+                    preCache.unshift('/');
+
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
                     if (preCache.length || dbs.length) {
+                        debugger;
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
                             return cacheManager.add(cur);
@@ -450,6 +453,7 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
+
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
 
