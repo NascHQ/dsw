@@ -161,7 +161,7 @@ if (isInSWScope) {
     (function () {
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
-            DSWManager.rules[response.status].some(function (cur, idx) {
+            DSWManager.rules[response.status || 404].some(function (cur, idx) {
                 var matching = pathName.match(cur.rx);
                 if (matching) {
                     if (cur.action.fetch) {

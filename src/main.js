@@ -25,7 +25,7 @@ if (isInSWScope) {
     
     function treatBadPage (response, pathName, event) {
         let result;
-        DSWManager.rules[response.status].some((cur, idx)=>{
+        DSWManager.rules[response.status || 404].some((cur, idx)=>{
             let matching = pathName.match(cur.rx);
             if (matching) {
                 if (cur.action.fetch) {
