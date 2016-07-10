@@ -1,8 +1,8 @@
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt)
-[![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
-[![npm version](https://badge.fury.io/js/dsw.svg)](https://badge.fury.io/js/dsw)
-[![Build Status](https://travis-ci.org/NascHQ/dsw.svg?branch=variables)](https://travis-ci.org/NascHQ/dsw)
-
+[![Version](https://badge.fury.io/js/dsw.svg)](https://badge.fury.io/js/dsw) 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
+[![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
+[![Build Status](https://travis-ci.org/NascHQ/dsw.svg?branch=variables)](https://travis-ci.org/NascHQ/dsw) 
 
 # Dynamic Service Worker
 
