@@ -27,7 +27,7 @@ try {
 console.info('3/5 => Validating JSON');
 try{
     let jsonData = JSON.parse(settings);
-    let vrs = parseFloat(jsonData.dswVersion || 0);
+    let vrs = parseFloat(jsonData.dswVersion || 0).toFixed(1);
     if (vrs%1 !== 0) {
         vrs+= .1;
     }else{

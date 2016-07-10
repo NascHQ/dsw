@@ -1,4 +1,3 @@
-// TODO: requests redirected due to 404, should not cache the 404 result for itself
 // TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
 // TODO: add support to keepItWarm: use a strategy with promise.race() to always fetch the latest data and update the cache
 
@@ -128,7 +127,14 @@ if (isInSWScope) {
                     });
                 }
                 
-                request = new Request(tmpUrl);
+                request = new Request(tmpUrl, {
+                    method: opts.method || request.method,
+                    headers: opts || request.headers,
+                    mode: 'same-origin', // need to set this properly
+                    credentials: request.credentials,
+                    redirect: 'manual'   // let browser handle redirects
+                });
+                
                 url = request.url;
                 pathName = new URL(url).pathname;
                 // keep going to be treated with the cache case
@@ -192,17 +198,28 @@ if (isInSWScope) {
                             // In case it is a redirect, we also set the header to 302
                             // and really change the url of the response.
                             if (result) {
-                                return result;
+                                // TODO: here, when it is from a redirect, it should let the browser know about it!
+                                if (request.url == event.request.url) {
+                                    return result;
+                                } else {
+                                    // coming from a redirect
+                                    return Response.redirect(request.url, 302);
+//                                    let req = new Request(request.url, {
+//                                        method: opts.method || request.method,
+//                                        headers: opts || request.headers,
+//                                        mode: 'same-origin', // need to set this properly
+//                                        credentials: request.credentials,
+//                                        redirect: 'manual'   // let browser handle redirects
+//                                    });
+//                                    return fetch(req, opts)
+//                                            .then(treatFetch)
+//                                            .catch(treatFetch);
+                                }
+                                
                             } else if (actionType == 'redirect') {
                                 return Response.redirect(request.url, 302);
-                                //debugger;
-                                return result;
-                                        // AQUI
-                                        //.then(treatFetch)
-                                        //.catch(treatFetch);
                             } else {
-                                let req = new Request(request.url,
-                                                {
+                                let req = new Request(request.url, {
                                         method: opts.method || request.method,
                                         headers: opts || request.headers,
                                         mode: 'same-origin', // need to set this properly
