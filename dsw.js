@@ -329,9 +329,22 @@ if (isInSWScope) {
                                             if (result) {
                                                 return result;
                                             } else if (actionType == 'redirect') {
-                                                return Response.redirect(request.url, 302).then(treatFetch).catch(treatFetch);
+                                                return Response.redirect(request.url, 302);
+                                                //debugger;
+                                                return result;
+                                                // AQUI
+                                                //.then(treatFetch)
+                                                //.catch(treatFetch);
                                             } else {
-                                                return fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                                var req = new Request(request.url, {
+                                                    method: opts.method || request.method,
+                                                    headers: opts || request.headers,
+                                                    mode: 'same-origin', // need to set this properly
+                                                    credentials: request.credentials,
+                                                    redirect: 'manual' // let browser handle redirects
+                                                });
+
+                                                return fetch(req, opts).then(treatFetch).catch(treatFetch);
                                             }
                                         }
                                     })

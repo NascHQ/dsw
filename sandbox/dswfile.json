@@ -58,6 +58,15 @@
                 }
             }
         },
+        "static-html": {
+            "match": { "extension": ["html"] },
+            "apply": {
+                "cache": {
+                    "name": "static-html-files",
+                    "version": "1"
+                }
+            }
+        },
         "userData": {
             "match": { "path": "\/api\/user\/.*" },
             "options": { "credentials": "same-origin"},

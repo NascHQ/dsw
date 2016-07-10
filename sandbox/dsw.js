@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"appShell":[],"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"appShell":[],"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"static-html":{"match":{"extension":["html"]},"apply":{"cache":{"name":"static-html-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -162,7 +162,7 @@ if (isInSWScope) {
     (function () {
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
-            DSWManager.rules[response.status].some(function (cur, idx) {
+            DSWManager.rules[response.status || 404].some(function (cur, idx) {
                 var matching = pathName.match(cur.rx);
                 if (matching) {
                     if (cur.action.fetch) {
@@ -330,9 +330,22 @@ if (isInSWScope) {
                                             if (result) {
                                                 return result;
                                             } else if (actionType == 'redirect') {
-                                                return Response.redirect(request.url, 302).then(treatFetch).catch(treatFetch);
+                                                return Response.redirect(request.url, 302);
+                                                //debugger;
+                                                return result;
+                                                // AQUI
+                                                //.then(treatFetch)
+                                                //.catch(treatFetch);
                                             } else {
-                                                return fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                                var req = new Request(request.url, {
+                                                    method: opts.method || request.method,
+                                                    headers: opts || request.headers,
+                                                    mode: 'same-origin', // need to set this properly
+                                                    credentials: request.credentials,
+                                                    redirect: 'manual' // let browser handle redirects
+                                                });
+
+                                                return fetch(req, opts).then(treatFetch).catch(treatFetch);
                                             }
                                         }
                                     })
