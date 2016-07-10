@@ -249,7 +249,6 @@ if (isInSWScope) {
                                 }
 
                                 request = new Request(tmpUrl);
-                                debugger;
                                 url = request.url;
                                 pathName = new URL(url).pathname;
                                 // keep going to be treated with the cache case
@@ -317,7 +316,7 @@ if (isInSWScope) {
                                                 }
                                             };
 
-                                            // we will return the result, if successful, or
+                                            // We will return the result, if successful, or
                                             // fetch an anternative resource(or redirect)
                                             // and treat both success and failure with the
                                             // same "callback"
@@ -451,7 +450,6 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-                    debugger;
                     var url = new URL(event.request.url);
                     var pathName = new URL(url).pathname;
 

@@ -31,7 +31,53 @@
 
     </head>
     <body>
-        <div>
+        
+        <div class="wrapper">
+            <div class="card right orange">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">01</div>
+                        <div class="title">Something here</div>
+                        <div class="test-content"></div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Load image</h3>
+                            <div>This example will successfuly load an image from cache.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card left blue">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">01</div>
+                        <div class="title">Something here</div>
+                        <div class="test-content"></div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Load image</h3>
+                            <div>This example will successfuly load an image from cache.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            
+            
+        </div>
+       
+       
+       
+        <div class="buttons-container">
             <input id="btn-img-1" type="button" value="Image" />
             <input id="btn-img-2" type="button" value="Image not to be found" />
             <input id="btn-img-3" type="button" value="Image redirected" />
@@ -43,14 +89,11 @@
             <input id="btn-img-6" type="button" value="Get user 2 information" />
             <input id="btn-7" type="button" value="Redirected page" />
         </div>
-        
-        <div id="fetch-result"></div>
-        
-        <div>
+        <div class="test-output">
             <img id="test-image" width="300" alt="">
+            <div id="fetch-result"></div>
             <iframe src="" id="redirectionFrame" name="redirectionFrame" frameborder="0"></iframe>
         </div>
-        
         
         <div id="offline-support-message"></div>
         <script src="scripts/default.js"></script>

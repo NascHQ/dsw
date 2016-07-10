@@ -110,7 +110,6 @@ if (isInSWScope) {
                 }
                 
                 request = new Request(tmpUrl);
-                debugger;
                 url = request.url;
                 pathName = new URL(url).pathname;
                 // keep going to be treated with the cache case
@@ -181,7 +180,7 @@ if (isInSWScope) {
                                 }
                             };
 
-                            // we will return the result, if successful, or
+                            // We will return the result, if successful, or
                             // fetch an anternative resource(or redirect)
                             // and treat both success and failure with the
                             // same "callback"
@@ -316,7 +315,6 @@ if (isInSWScope) {
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
-                debugger;
                 const url = new URL(event.request.url);
                 const pathName = (new URL(url)).pathname;
                 
@@ -328,10 +326,12 @@ if (isInSWScope) {
                     let matching = pathName.match(rule.rx);
                     if (matching) {
                         // if there is a rule that matches the url
-                        return event.respondWith(cacheManager.get(rule,
-                                                                  event.request,
-                                                                  event,
-                                                                  matching));
+                        return event.respondWith(
+                                cacheManager.get(rule,
+                                                 event.request,
+                                                 event,
+                                                 matching)
+                        );
                     }
                 }
                 // if no rule is applied, we simple request it
