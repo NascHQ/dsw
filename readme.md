@@ -1,5 +1,10 @@
-# Dynamic Service Worker
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt)
+[![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
+[![npm version](https://badge.fury.io/js/dsw.svg)](https://badge.fury.io/js/dsw)
+[![Build Status](https://travis-ci.org/NascHQ/dsw.svg?branch=variables)](https://travis-ci.org/NascHQ/dsw)
 
+
+# Dynamic Service Worker
 
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.
 
