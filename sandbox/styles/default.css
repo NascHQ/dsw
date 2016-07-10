@@ -59,6 +59,10 @@ a {
     border-top: solid 2px #fff;
 }
 
+#offline-support-message sub {
+    font-size: 16px;
+}
+
 #offline-support-message.offline-support {
     background: #728631;
     background: -moz-linear-gradient(-45deg,  #728631 0%, #bdbe32 40%, #b7b031 100%);

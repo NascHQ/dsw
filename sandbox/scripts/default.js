@@ -37,8 +37,10 @@ window.addEventListener('load', function(){
             'articles.html',
             'contact.html'
         ];
+        let idx = Math.ceil(Math.random() * 4) -1;
+        console.log(idx);
         set(document.getElementById('test-7-iframe'), 'src', '/old-site/' +
-            listOfOlderPages[Math.ceil(Math.random() * 5) -1]);
+            listOfOlderPages[idx]);
     });
     /*
     document.getElementById('btn-img-6').addEventListener('click', function(){

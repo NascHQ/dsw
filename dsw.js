@@ -159,6 +159,21 @@ try {
 
 if (isInSWScope) {
     (function () {
+        var treatBadPage = function treatBadPage(response, pathName, event) {
+            var result = void 0;
+            DSWManager.rules[response.status].some(function (cur, idx) {
+                var matching = pathName.match(cur.rx);
+                if (matching) {
+                    if (cur.action.fetch) {
+                        // not found requisitions should
+                        // fetch a different resource
+                        result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
+                        return true; // stopping the loop
+                    }
+                }
+            });
+            return result || response;
+        };
 
         var DEFAULT_CACHE_NAME = 'defaultDSWCached';
         var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
@@ -182,7 +197,7 @@ if (isInSWScope) {
                     url = request.url || request,
                     pathName = new URL(url).pathname;
 
-                if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
+                if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i)) {
                     // requisitions to / should
                     actionType = 'cache';
                 }
@@ -301,18 +316,7 @@ if (isInSWScope) {
                                                 } else {
                                                     // otherwise...let's see if there is a fallback
                                                     // for the 404 requisition
-                                                    DSWManager.rules[response.status].some(function (cur, idx) {
-                                                        var matching = pathName.match(cur.rx);
-                                                        if (matching) {
-                                                            if (cur.action.fetch) {
-                                                                // not found requisitions should
-                                                                // fetch a different resource
-                                                                result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
-                                                                return true; // stopping the loop
-                                                            }
-                                                        }
-                                                    });
-                                                    return result || response;
+                                                    return treatBadPage(response, pathName, event);
                                                 }
                                             };
 
@@ -325,7 +329,7 @@ if (isInSWScope) {
                                             if (result) {
                                                 return result;
                                             } else if (actionType == 'redirect') {
-                                                return Response.redirect(request.url, 302);
+                                                return Response.redirect(request.url, 302).then(treatFetch).catch(treatFetch);
                                             } else {
                                                 return fetch(request, opts).then(treatFetch).catch(treatFetch);
                                             }
@@ -434,7 +438,6 @@ if (isInSWScope) {
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
                     if (preCache.length || dbs.length) {
-                        debugger;
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
                             return cacheManager.add(cur);
@@ -469,7 +472,16 @@ if (isInSWScope) {
                         }
                     }
                     // if no rule is applied, we simple request it
-                    return event.respondWith(fetch(event.request.url, {}));
+                    var defaultTreatment = function defaultTreatment(response) {
+                        if (response && response.status == 200) {
+                            return response;
+                        } else {
+                            return treatBadPage(response, pathName, event);
+                        }
+                    };
+                    return event.respondWith(fetch(event.request.url, {})
+                    // but we will still treat the error pages
+                    .then(defaultTreatment).catch(defaultTreatment));
                 });
             }
         };

@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":2.3000000000000003,"applyImmediately":true,"appShell":[],"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -141,8 +141,9 @@ var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// TODO: add support to keepItHot: use a strategy with promise.race to always fetch the latest data and update the cache
-// TODO: add support to send the fetch options
+// TODO: requests redirected due to 404, should not cache the 404 result for itself
+// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
+// TODO: add support to keepItWarm: use a strategy with promise.race() to always fetch the latest data and update the cache
 
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
@@ -159,6 +160,21 @@ try {
 
 if (isInSWScope) {
     (function () {
+        var treatBadPage = function treatBadPage(response, pathName, event) {
+            var result = void 0;
+            DSWManager.rules[response.status].some(function (cur, idx) {
+                var matching = pathName.match(cur.rx);
+                if (matching) {
+                    if (cur.action.fetch) {
+                        // not found requisitions should
+                        // fetch a different resource
+                        result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
+                        return true; // stopping the loop
+                    }
+                }
+            });
+            return result || response;
+        };
 
         var DEFAULT_CACHE_NAME = 'defaultDSWCached';
         var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
@@ -182,7 +198,7 @@ if (isInSWScope) {
                     url = request.url || request,
                     pathName = new URL(url).pathname;
 
-                if (pathName == '/' || pathName.match(/\/index\.([a-z0-9]+)/i)) {
+                if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i)) {
                     // requisitions to / should
                     actionType = 'cache';
                 }
@@ -200,7 +216,6 @@ if (isInSWScope) {
                 }
 
                 switch (actionType) {
-                    // TODO: look for other kinds of cached data
                     case 'idb':
                     case 'IDB':
                     case 'indexedDB':
@@ -302,18 +317,7 @@ if (isInSWScope) {
                                                 } else {
                                                     // otherwise...let's see if there is a fallback
                                                     // for the 404 requisition
-                                                    DSWManager.rules[response.status].some(function (cur, idx) {
-                                                        var matching = pathName.match(cur.rx);
-                                                        if (matching) {
-                                                            if (cur.action.fetch) {
-                                                                // not found requisitions should
-                                                                // fetch a different resource
-                                                                result = cacheManager.get(cur, new Request(cur.action.fetch), event, matching);
-                                                                return true; // stopping the loop
-                                                            }
-                                                        }
-                                                    });
-                                                    return result || response;
+                                                    return treatBadPage(response, pathName, event);
                                                 }
                                             };
 
@@ -326,7 +330,7 @@ if (isInSWScope) {
                                             if (result) {
                                                 return result;
                                             } else if (actionType == 'redirect') {
-                                                return Response.redirect(request.url, 302);
+                                                return Response.redirect(request.url, 302).then(treatFetch).catch(treatFetch);
                                             } else {
                                                 return fetch(request, opts).then(treatFetch).catch(treatFetch);
                                             }
@@ -363,7 +367,7 @@ if (isInSWScope) {
                 return new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
-                    var preCache = [],
+                    var preCache = PWASettings.appShell || [],
                         dbs = [];
 
                     Object.keys(dswConfig.dswRules).forEach(function (heuristic) {
@@ -435,7 +439,6 @@ if (isInSWScope) {
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
                     if (preCache.length || dbs.length) {
-                        debugger;
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
                             return cacheManager.add(cur);
@@ -470,7 +473,16 @@ if (isInSWScope) {
                         }
                     }
                     // if no rule is applied, we simple request it
-                    return event.respondWith(fetch(event.request.url, {}));
+                    var defaultTreatment = function defaultTreatment(response) {
+                        if (response && response.status == 200) {
+                            return response;
+                        } else {
+                            return treatBadPage(response, pathName, event);
+                        }
+                    };
+                    return event.respondWith(fetch(event.request.url, {})
+                    // but we will still treat the error pages
+                    .then(defaultTreatment).catch(defaultTreatment));
                 });
             }
         };

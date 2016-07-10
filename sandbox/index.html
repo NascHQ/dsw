@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         
-        <title></title>
+        <title>DSW Try-out page</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">    
 
         <link rel="stylesheet" href="styles/default.css">
@@ -14,10 +14,10 @@
                 .then(function(){
                     var el = document.getElementById('offline-support-message');
                     el.classList.add('offline-support');
-                    el.innerHTML = 'Offline enabled';
+                    el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
                     setTimeout(function(){
-                        el.classList.remove('offline-support');
-                    }, 3000);
+                        history.go(0);
+                    }, 6000);
                 })
                 .catch(function(){
                     var el = document.getElementById('offline-support-message');
@@ -25,7 +25,7 @@
                     el.classList.add('no-offline-support');
                     setTimeout(function(){
                         el.classList.remove('no-offline-support');
-                    }, 3000);
+                    }, 6000);
                 });
         </script>
 
@@ -33,6 +33,8 @@
     <body>
         
         <div class="wrapper">
+            <h1>DSW Try it Yourself page</h1>
+            <span>Use this page to test and see it working.<br/>Open your browser's console and check the cached content, and the network requests as you test the features.</span>
            
             <div class="card right orange">
                 <div class="test-container">
@@ -127,7 +129,7 @@
                             <h3>Uncacheable image</h3>
                             <div class="test-long-description">
                                 This image will never be cached.<br/>
-                                Try checking the "offline" box in the Application panel and try to load it again.
+                                Try checking the "offline" box in the Application panel, reload the page and try this again.
                             </div>
                         </div>
                     </div>
