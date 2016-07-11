@@ -10,7 +10,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
-    "lint": "echo ':: Linting the source files:' && eslint src/* && echo 'Done linting'",
+    "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js",
     "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && npm run docs && echo 'Done building'",
     "prepublish": "npm run lint",
