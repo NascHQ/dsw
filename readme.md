@@ -6,7 +6,8 @@
 
 # Dynamic Service Worker
 
-DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.
+DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
+You will simply have to create setup in a JSON file how your service worker is supposed to deal with requests. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
 ## Installing it
 
