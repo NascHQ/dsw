@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+        <title>DSW Try-out page</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">    
+
+        <!-- WEB APP META DATA -->
+        <link rel="manifest" href="/webapp-manifest.json">
+        <meta name="theme-color" content="#438948">
+        <!-- /WEB APP META DATA -->
+       
+        <link rel="stylesheet" href="styles/default.css">
+
+        <script src="dsw.js"></script>
+        <script>
+            DSW.setup()
+                .then(function(){
+                    var el = document.getElementById('offline-support-message');
+                    el.classList.add('offline-support');
+                    el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
+                    setTimeout(function(){
+                        history.go(0);
+                    }, 6000);
+                })
+                .catch(function(){
+                    var el = document.getElementById('offline-support-message');
+                    el.innerHTML = 'Offline is not supported in this browser!';
+                    el.classList.add('no-offline-support');
+                    setTimeout(function(){
+                        el.classList.remove('no-offline-support');
+                    }, 6000);
+                });
+        </script>
+
+    </head>
+    <body>
+        
+        <div class="wrapper">
+            <h1>DSW Try it Yourself page</h1>
+            <span>Use this page to test and see it working.<br/>Open your browser's console and check the cached content, and the network requests as you test the features.</span>
+           
+            <div class="card right orange">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">01</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <img id="test-1-image" src="" alt="" />
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Load image</h3>
+                            <div class="test-long-description">
+                                This example will successfuly load an image from cache.<br/>
+                                This image loads dynamically and will be cached only after the first time it loaded successfuly.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-img-1">➤ Run test</div>
+            </div>
+            
+            <div class="card left blue">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">02</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <img id="test-2-image" src="" alt="" />
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Image not found</h3>
+                            <div class="test-long-description">
+                                This tries to load an image that does not exist.<br/>
+                                It loads then, a default 404 image.<br/>
+                                The 404 image was cached during the Service Worker installation.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-img-2">➤ Run test</div>
+            </div>
+            
+            <div class="card right red">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">03</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <img id="test-3-image" src="" alt="" />
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Redirected Image</h3>
+                            <div class="test-long-description">
+                                When trying to load one image, another one is loaded.<br/>
+                                The image has been cached as soon as the service worker got installed.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-img-3">➤ Run test</div>
+            </div>
+            
+            <div class="card left green">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">04</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <img id="test-4-image" src="" alt="" />
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Uncacheable image</h3>
+                            <div class="test-long-description">
+                                This image will never be cached.<br/>
+                                Try checking the "offline" box in the Application panel, reload the page and try this again.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-img-4">➤ Run test</div>
+            </div>
+            <div class="card right orange">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">05</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <iframe id="test-5-iframe"></iframe>
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>404 Page</h3>
+                            <div class="test-long-description">
+                                Accesing a non existing page.<br/>
+                                You may also try typing anyhting in the URL and hitting enter.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-5-page">➤ Run test</div>
+            </div>
+            
+            <!--div class="card left blue">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">06</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <iframe id="test-6-iframe"></iframe>
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Load json</h3>
+                            <div class="test-long-description">
+                                Loading JSON data from an address.<br/>
+                                You could load a REST API for example.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-6-data">➤ Run test</div>
+            </div-->
+            
+            <div class="card right red">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">07</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <iframe id="test-7-iframe"></iframe>
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Redirected Page</h3>
+                            <div class="test-long-description">
+                                Redirecting pages under a given directory.<br/>
+                                Run the test more times to see random pages being redirected.<br/>
+                                These pages will be cached only after the first time they got loaded.<br/>
+                                After that, you can get offline and seen each one of them working from cache, too.<br/>
+                                Also, the redirected page is receiving a variable with the information.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-7-page">➤ Run test</div>
+            </div>
+        </div>
+       
+       
+       
+        <div class="test-output">
+            <img id="test-image" width="300" alt="">
+            <div id="fetch-result"></div>
+            <iframe src="" id="redirectionFrame" name="redirectionFrame" frameborder="0"></iframe>
+        </div>
+        
+        <div id="offline-support-message"></div>
+        <script src="scripts/default.js"></script>
+        
+    </body>
+</html>
