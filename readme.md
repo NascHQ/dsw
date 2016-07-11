@@ -19,6 +19,11 @@ Or locally:
 
 ```npm install dsw --save-dev```
 
+## TL;DL
+
+Want simply to see it working as fast as possible?<br/>
+Clone the project, go to its directory, install it and run `npm run try`
+
 ## Using it
 
 DSW will look for a file called `dswfile.json`. So:
@@ -324,9 +329,7 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 5 - You can use the "Cache Storage" in the left panel to verify everything that has been cached.
 
-6 - You can use the Lighthouse to validate the service worker situation:
-
-[Lighthoust](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
+6 - You can use the Lighthouse to validate the service worker situation: [Lighthouse](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
 
 
