@@ -8,6 +8,10 @@
     // otherwise, your new service worker configuration will only take place when
     // the current service worker experes (the next reload, or about a day)
     "applyImmediately": true,
+    // Add here, a list of files that should be cached during the installation of the webservice.
+    "appShell": [],
+    // If this is set to true, every request for http:// will be redirected to https://
+    "enforceSSL": false,
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
     "dswRules": {
@@ -94,13 +98,14 @@
             // You can pass any options accepted by fetch, here
             "options": { "credentials": "same-origin"},
             "apply": {
+                // indexedDB support is still under development...
                 "indexedDB": {
                     "name": "userData",
                     "version": "1",
                     "indexes": ["name"]
                 }
             }
-        },
+        }/*,
         "updates": {
             "match": { "path": "\/api\/updates/" },
             "keepItWarm": true,
@@ -137,6 +142,6 @@
                     "version": "1"
                 }
             }
-        }
+        }*/
     }
 }

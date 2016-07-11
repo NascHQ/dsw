@@ -15,7 +15,8 @@
     "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && npm run docs && echo 'Done building'",
     "prepublish": "npm run lint",
     "watch": "watch 'npm run build' src",
-    "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888"
+    "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888",
+    "deploy": "gh-pages -d docs"
   },
   "repository": {
     "type": "git",
@@ -47,6 +48,7 @@
     "chai": "^3.5.0",
     "docco": "^0.7.0",
     "eslint": "^3.0.1",
+    "gh-pages": "^0.11.0",
     "minifier": "^0.7.1",
     "mocha": "latest",
     "watch": "latest"
