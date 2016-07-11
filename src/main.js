@@ -22,7 +22,7 @@ if (isInSWScope) {
     const DEFAULT_CACHE_NAME = 'defaultDSWCached';
     const DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
     
-    function treatBadPage (response, pathName, event) {
+    let treatBadPage = function (response, pathName, event) {
         let result;
         DSWManager.rules[response.status || 404].some((cur, idx)=>{
             let matching = pathName.match(cur.rx);
@@ -39,7 +39,7 @@ if (isInSWScope) {
             }
         });
         return result || response;
-    }
+    };
     
     const cacheManager = {
         add: (req, cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION) => {
@@ -220,12 +220,12 @@ if (isInSWScope) {
                                 return Response.redirect(request.url, 302);
                             } else {
                                 let req = new Request(request.url, {
-                                        method: opts.method || request.method,
-                                        headers: opts || request.headers,
-                                        mode: 'same-origin', // need to set this properly
-                                        credentials: request.credentials,
-                                        redirect: 'manual'   // let browser handle redirects
-                                    });
+                                    method: opts.method || request.method,
+                                    headers: opts || request.headers,
+                                    mode: 'same-origin', // need to set this properly
+                                    credentials: request.credentials,
+                                    redirect: 'manual'   // let browser handle redirects
+                                });
                                 
                                 return fetch(req, opts)
                                         .then(treatFetch)

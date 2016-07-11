@@ -158,6 +158,10 @@ try {
 
 if (isInSWScope) {
     (function () {
+
+        var DEFAULT_CACHE_NAME = 'defaultDSWCached';
+        var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
             DSWManager.rules[response.status || 404].some(function (cur, idx) {
@@ -173,9 +177,6 @@ if (isInSWScope) {
             });
             return result || response;
         };
-
-        var DEFAULT_CACHE_NAME = 'defaultDSWCached';
-        var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
 
         var cacheManager = {
             add: function add(req) {
