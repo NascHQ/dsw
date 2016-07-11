@@ -355,7 +355,15 @@ if (isInSWScope) {
             self.addEventListener('fetch', event=>{
                 
                 const url = new URL(event.request.url);
-                const pathName = (new URL(url)).pathname;
+                const pathName = url.pathname;
+                
+                // in case we want to enforce https
+                if (PWASettings.enforceSSL) {
+                    if (url.protocol != 'https:' && url.hostname != 'localhost') {
+                        event.respondWith(Response.redirect(
+                            event.request.url.replace('http:', 'https:'), 302));
+                    }
+                }
                 
                 let i = 0,
                     l = (DSWManager.rules['*'] || []).length;

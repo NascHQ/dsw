@@ -1,4 +1,4 @@
-const PWASettings = {"dswVersion":"2.20.1","applyImmediately":true,"appShell":[],"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"static-html":{"match":{"extension":["html"]},"apply":{"cache":{"name":"static-html-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
+const PWASettings = {"dswVersion":"2.20.1","applyImmediately":true,"appShell":[],"enforceSSL":false,"dswRules":{"moved-pages":{"match":{"path":"/old-site/(.*)"},"apply":{"redirect":"/redirected.html?$1"}},"imageNotFound":{"match":{"status":[404,500],"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"fetch":"/images/public/404.jpg"}},"redirectOlderPage":{"match":{"path":"/legacy-images/.*"},"apply":{"fetch":"/images/public/gizmo.jpg"}},"pageNotFound":{"match":{"status":[404]},"apply":{"fetch":"/404.html"}},"imageNotCached":{"match":{"path":"/images/not-cached"},"apply":{"cache":false}},"images":{"match":{"extension":["jpg","gif","png","jpeg","webp"]},"apply":{"cache":{"name":"cachedImages","version":"1"}}},"statics":{"match":{"extension":["js","css"]},"apply":{"cache":{"name":"static-files","version":"1"}}},"static-html":{"match":{"extension":["html"]},"apply":{"cache":{"name":"static-html-files","version":"1"}}},"userData":{"match":{"path":"/api/user/.*"},"options":{"credentials":"same-origin"},"apply":{"indexedDB":{"name":"userData","version":"1","indexes":["name"]}}},"updates":{"match":{"path":"/api/updates/"},"keepItWarm":true,"apply":{"indexedDB":{"name":"shownUpdates","version":"1"}}},"articles":{"match":{"path":"/api/updates/"},"apply":{"cache":{"name":"cachedArticles","version":"1"}}},"events":{"match":{"path":"/api/events/"},"apply":{"indexedDB":{"name":"eventsList","version":"1"}}},"lineup":{"match":{"path":"/api/events/(.*)/"},"apply":{"indexedDB":{"name":"eventLineup-$1","version":"1"}}}}};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -159,6 +159,10 @@ try {
 
 if (isInSWScope) {
     (function () {
+
+        var DEFAULT_CACHE_NAME = 'defaultDSWCached';
+        var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
             DSWManager.rules[response.status || 404].some(function (cur, idx) {
@@ -174,9 +178,6 @@ if (isInSWScope) {
             });
             return result || response;
         };
-
-        var DEFAULT_CACHE_NAME = 'defaultDSWCached';
-        var DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
 
         var cacheManager = {
             add: function add(req) {
@@ -489,7 +490,14 @@ if (isInSWScope) {
                 self.addEventListener('fetch', function (event) {
 
                     var url = new URL(event.request.url);
-                    var pathName = new URL(url).pathname;
+                    var pathName = url.pathname;
+
+                    // in case we want to enforce https
+                    if (PWASettings.enforceSSL) {
+                        if (url.protocol != 'https:' && url.hostname != 'localhost') {
+                            event.respondWith(Response.redirect(event.request.url.replace('http:', 'https:'), 302));
+                        }
+                    }
 
                     var i = 0,
                         l = (DSWManager.rules['*'] || []).length;

@@ -2,6 +2,7 @@
     "dswVersion": 2.2,
     "applyImmediately": true,
     "appShell": [],
+    "enforceSSL": false,
     "dswRules": {
         "moved-pages": {
             "match": { "path": "\/old-site\/(.*)" },
