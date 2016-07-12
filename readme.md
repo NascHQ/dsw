@@ -1,10 +1,12 @@
+# Dynamic Service Worker
+![Dynamic Service Worker](https://github.com/NascHQ/dsw/blob/master/docs/images/worker-person.png)
+
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
 
-# Dynamic Service Worker
 
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to create setup in a JSON file how your service worker is supposed to deal with requests. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
