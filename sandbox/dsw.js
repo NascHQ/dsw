@@ -259,7 +259,7 @@ if (isInSWScope) {
 
                                 if (matching.length > 2) {
                                     // applying variables
-                                    debugger;
+                                    //debugger;
                                     matching.forEach(function (cur, idx) {
                                         tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
                                     });
