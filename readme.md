@@ -2,7 +2,7 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
-[![Build Status](https://travis-ci.org/NascHQ/dsw.svg?branch=variables)](https://travis-ci.org/NascHQ/dsw) 
+[![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
 
 # Dynamic Service Worker
 
@@ -18,6 +18,11 @@ It's node program which you may install globally:
 Or locally:
 
 ```npm install dsw --save-dev```
+
+## TL;DL
+
+Want simply to see it working as fast as possible?<br/>
+Clone the project, go to its directory, install it and run `npm run try`
 
 ## Using it
 
@@ -324,9 +329,7 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 5 - You can use the "Cache Storage" in the left panel to verify everything that has been cached.
 
-6 - You can use the Lighthouse to validate the service worker situation:
-
-[Lighthoust](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
+6 - You can use the Lighthouse to validate the service worker situation: [Lighthouse](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
 
 
