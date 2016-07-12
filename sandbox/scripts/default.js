@@ -26,9 +26,9 @@ window.addEventListener('load', function(){
     document.getElementById('btn-5-page').addEventListener('click', function(){
         set(document.getElementById('test-5-iframe'), 'src', '/foo.html');
     });
-    document.getElementById('btn-6-data').addEventListener('click', function(){
+    /*document.getElementById('btn-6-data').addEventListener('click', function(){
         set(document.getElementById('test-6-iframe'), 'src', '/api/user/1.json');
-    });
+    });*/
     document.getElementById('btn-7-page').addEventListener('click', function(){
         let listOfOlderPages = [
             'index.html',

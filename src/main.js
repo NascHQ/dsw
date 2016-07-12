@@ -122,6 +122,7 @@ if (isInSWScope) {
                 
                 if (matching.length > 2) {
                     // applying variables
+                    //debugger;
                     matching.forEach(function(cur, idx){
                         tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
                     });
@@ -198,27 +199,23 @@ if (isInSWScope) {
                             // In case it is a redirect, we also set the header to 302
                             // and really change the url of the response.
                             if (result) {
-                                // TODO: here, when it is from a redirect, it should let the browser know about it!
+                                // when it comes from a redirect, we let the browser know about it
+                                // or else...we simply return the result itself
                                 if (request.url == event.request.url) {
                                     return result;
                                 } else {
                                     // coming from a redirect
                                     return Response.redirect(request.url, 302);
-//                                    let req = new Request(request.url, {
-//                                        method: opts.method || request.method,
-//                                        headers: opts || request.headers,
-//                                        mode: 'same-origin', // need to set this properly
-//                                        credentials: request.credentials,
-//                                        redirect: 'manual'   // let browser handle redirects
-//                                    });
-//                                    return fetch(req, opts)
-//                                            .then(treatFetch)
-//                                            .catch(treatFetch);
                                 }
                                 
                             } else if (actionType == 'redirect') {
+                                // if this is supposed to redirect
                                 return Response.redirect(request.url, 302);
                             } else {
+                                // this is a "normal" request, let's deliver it
+                                // but we will be using a new Request with some info
+                                // to allow browsers to understand redirects in case
+                                // must be redirected later on
                                 let req = new Request(request.url, {
                                     method: opts.method || request.method,
                                     headers: opts || request.headers,
