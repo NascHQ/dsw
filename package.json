@@ -3,11 +3,11 @@
   "version": "1.3.2",
   "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
-    "dsw": "./index.js"
+    "dsw": "./bin/index.js"
   },
   "environment": "node",
   "preferGlobal": true,
-  "main": "index.js",
+  "main": "./lib/dsw.js",
   "scripts": {
     "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
@@ -15,7 +15,8 @@
     "build": "browserify src/main.js -o dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",
     "prepublish": "npm run lint",
     "watch": "watch 'npm run build' src",
-    "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888"
+    "try": "echo ':: Trying the sandbox sample:' && node index.js sandbox && http-server ./sandbox -p 8888",
+    "start": "npm run try"
   },
   "repository": {
     "type": "git",
@@ -45,6 +46,7 @@
     "babelify": "latest",
     "browserify": "latest",
     "chai": "^3.5.0",
+    "commander": "^2.9.0",
     "docco": "^0.7.0",
     "eslint": "^3.0.1",
     "gh-pages": "^0.11.0",

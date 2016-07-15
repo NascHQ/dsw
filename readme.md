@@ -275,6 +275,16 @@ Most of times you will want to cache all your static files, like _javascript_ fi
 }
 ```
 
+#### Use it programatically
+
+You can also use it programatically, specially if you intend to use or create a tool to build, like `grunt` or `gulp`.
+
+```js
+const options = {};
+let dsw = requier('dsw');
+dsw.generate('./path-to-project', options);
+```
+
 # Contributing
 
 So, you want to contribute? Cool! We need it! :)
