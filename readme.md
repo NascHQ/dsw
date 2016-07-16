@@ -1,13 +1,24 @@
+# Dynamic Service Worker
+![Dynamic Service Worker](https://github.com/NascHQ/dsw/blob/master/docs/images/worker-person.png)
+
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
 
-# Dynamic Service Worker
-
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to create setup in a JSON file how your service worker is supposed to deal with requests. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
+
+#### Advantages
+
+- use of variables
+- decision over cache naming and versioning for each matching request
+- many named rules (for future debugging tooling...I imagine we can have a lighthouse-like page for debugging your service workers and your rules)
+- support for indexedDB (under development)
+- support for messaging and syncing events (under development)
+- quite simple json configuration and easy to start with the basic, or go further for more complex cases
+- client api with many possibilities (kinda connecting the browser and sw scopes via events)
 
 ## Installing it
 
@@ -344,10 +355,17 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 6 - You can use the Lighthouse to validate the service worker situation: [Lighthouse](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
-### Help by commenting or issueing
+### Help by commenting(or reporting on issues)
 
 If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
 
+#### Related projects
+
+Some other projects that might help you too.
+
+- [Lighthouse](https://github.com/GoogleChrome/lighthouse) - Validates your service worker and manifest for Progressive Web App
+- [SW-Toolbox](https://github.com/GoogleChrome/sw-toolbox) - A collection of tools for service workers
+- [SW-Precache](https://github.com/GoogleChrome/sw-precache) - Precaches specific resources
 
 
 
