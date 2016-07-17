@@ -164,7 +164,7 @@ if (isInSWScope) {
 
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
-            DSWManager.rules[response.status || 404].some(function (cur, idx) {
+            (DSWManager.rules[response.status || 404] || []).some(function (cur, idx) {
                 var matching = pathName.match(cur.rx);
                 if (matching) {
                     if (cur.action.fetch) {
@@ -258,7 +258,6 @@ if (isInSWScope) {
 
                                 if (matching.length > 2) {
                                     // applying variables
-                                    //debugger;
                                     matching.forEach(function (cur, idx) {
                                         tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
                                     });
@@ -292,7 +291,7 @@ if (isInSWScope) {
 
                                         // if it does not exist (cache could not be verified)
                                         if (result && result.status != 200) {
-                                            DSWManager.rules[result.status].some(function (cur, idx) {
+                                            (DSWManager.rules[result.status] || []).some(function (cur, idx) {
                                                 if (pathName.match(cur.rx)) {
                                                     if (cur.action.fetch) {
                                                         // not found requisitions should

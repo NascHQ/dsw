@@ -24,7 +24,7 @@ if (isInSWScope) {
     
     let treatBadPage = function (response, pathName, event) {
         let result;
-        DSWManager.rules[response.status || 404].some((cur, idx)=>{
+        (DSWManager.rules[response.status || 404] || []).some((cur, idx)=>{
             let matching = pathName.match(cur.rx);
             if (matching) {
                 if (cur.action.fetch) {
@@ -154,7 +154,7 @@ if (isInSWScope) {
 
                         // if it does not exist (cache could not be verified)
                         if (result && result.status != 200) {
-                            DSWManager.rules[result.status].some((cur, idx)=>{
+                            (DSWManager.rules[result.status]||[]).some((cur, idx)=>{
                                 if (pathName.match(cur.rx)) {
                                     if (cur.action.fetch) {
                                         // not found requisitions should
