@@ -247,7 +247,7 @@ Maybe you want to cache everything. Every single request (that is successful) wi
 {
     "dswVersion": 2.2,
     "dswRules": {
-        "secretPath": {
+        "cacheAll": {
             "match": {
                 "path": "\/.*"
             },
@@ -271,7 +271,7 @@ Most of times you will want to cache all your static files, like _javascript_ fi
 {
     "dswVersion": 2.2,
     "dswRules": {
-        "secretPath": {
+        "statics": {
             "match": {
                 "extension": ["js", "css"]
             },
