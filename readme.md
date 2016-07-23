@@ -239,6 +239,26 @@ You may want to redirect requests some times, like so:
 }
 ```
 
+#### Using variables
+
+You can apply actions using variables from your regular expression, like this:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "redirectWithVar": {
+            "match": {
+                "path": "\/old-site\/(.*)"
+            },
+            "apply": {
+                "redirect": "/redirected.html?from=$1"
+            }
+        }
+    }
+}
+```
+
 #### Caching EVERYTHING
 
 Maybe you want to cache everything. Every single request (that is successful) will be cached as soon as it is loaded the first time:
