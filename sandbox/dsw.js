@@ -3,6 +3,7 @@ const PWASettings = {
     "applyImmediately": true,
     "appShell": [],
     "enforceSSL": false,
+    "keepUnusedCaches": false,
     "dswRules": {
         "moved-pages": {
             "match": { "path": "\/old-site\/(.*)" },
@@ -55,7 +56,7 @@ const PWASettings = {
             "apply": {
                 "cache": {
                     "name": "static-files",
-                    "version": "1"
+                    "version": "2"
                 }
             }
         },
@@ -285,7 +286,7 @@ if (isInSWScope) {
 
         var treatBadPage = function treatBadPage(response, pathName, event) {
             var result = void 0;
-            DSWManager.rules[response.status || 404].some(function (cur, idx) {
+            (DSWManager.rules[response.status || 404] || []).some(function (cur, idx) {
                 var matching = pathName.match(cur.rx);
                 if (matching) {
                     if (cur.action.fetch) {
@@ -300,6 +301,30 @@ if (isInSWScope) {
         };
 
         var cacheManager = {
+            registeredCaches: [],
+            deleteUnusedCaches: function deleteUnusedCaches(keepUnused) {
+                debugger;
+                if (!keepUnused) {
+                    return caches.keys().then(function (keys) {
+                        cacheManager.registeredCaches;
+                        return Promise.all(keys.map(function (key) {
+                            if (cacheManager.registeredCaches.indexOf(key) < 0) {
+                                return caches.delete(key);
+                            }
+                        }));
+                    });
+                }
+            },
+            mountCacheId: function mountCacheId(rule) {
+                var cacheConf = rule.action.cache;
+                if (cacheConf) {
+                    return (cacheConf.name || DEFAULT_CACHE_NAME) + '::' + (cacheConf.version || DEFAULT_CACHE_VERSION);
+                }
+                return DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
+            },
+            register: function register(rule) {
+                cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
+            },
             add: function add(req) {
                 var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
 
@@ -340,18 +365,22 @@ if (isInSWScope) {
                     case 'IDB':
                     case 'indexedDB':
                         {
+                            debugger;
                             return new Promise(function (resolve, reject) {
-
+                                debugger;
                                 // function to be used after fetching
                                 function treatFetch(response) {
                                     if (response && response.status == 200) {
+                                        debugger;
                                         var done = function done(_) {
+                                            debugger;
                                             resolve(response);
                                         };
 
                                         // store it in the indexedDB
                                         _indexeddbManager2.default.save(rule.name, response.clone()).then(done).catch(done); // if failed saving, we still have the reponse to deliver
                                     } else {
+                                            debugger;
                                             // TODO: treat the not found requests
                                         }
                                 }
@@ -379,7 +408,6 @@ if (isInSWScope) {
 
                                 if (matching.length > 2) {
                                     // applying variables
-                                    //debugger;
                                     matching.forEach(function (cur, idx) {
                                         tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
                                     });
@@ -405,7 +433,7 @@ if (isInSWScope) {
                                 var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
 
                                 if (rule.action.cache) {
-                                    cacheId = (rule.action.cache.name || DEFAULT_CACHE_NAME) + '::' + (rule.action.cache.version || DEFAULT_CACHE_VERSION);
+                                    cacheId = cacheManager.mountCacheId(rule);
                                 }
 
                                 return {
@@ -413,10 +441,10 @@ if (isInSWScope) {
 
                                         // if it does not exist (cache could not be verified)
                                         if (result && result.status != 200) {
-                                            DSWManager.rules[result.status].some(function (cur, idx) {
+                                            (DSWManager.rules[result.status] || []).some(function (cur, idx) {
                                                 if (pathName.match(cur.rx)) {
                                                     if (cur.action.fetch) {
-                                                        // not found requisitions should
+                                                        // not found requests should
                                                         // fetch a different resource
                                                         result = fetch(cur.action.fetch, cur.action.options);
                                                         return true; // stopping the loop
@@ -502,12 +530,19 @@ if (isInSWScope) {
             rules: {},
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
-                this.rules[sts].push({
+                var newRule = {
                     name: rule.name,
                     rx: rx,
                     action: rule['apply']
-                });
-                return this;
+                };
+                this.rules[sts].push(newRule);
+
+                // if there is a rule for cache
+                if (newRule.action.cache) {
+                    // we will register it in the cacheManager
+                    cacheManager.register(newRule);
+                }
+                return newRule;
             },
             setup: function setup(dswConfig) {
                 var _this = this;
@@ -563,7 +598,7 @@ if (isInSWScope) {
                             if (sts == 200) {
                                 sts = '*';
                             }
-                            _this.addRule(sts, heuristic, rx);
+                            var addedRule = _this.addRule(sts, heuristic, rx);
                         });
                     });
 
@@ -646,6 +681,7 @@ if (isInSWScope) {
             if (PWASettings.applyImmediately) {
                 event.waitUntil(self.clients.claim());
             }
+            cacheManager.deleteUnusedCaches(PWASettings.keepUnusedCaches);
         });
 
         self.addEventListener('install', function (event) {

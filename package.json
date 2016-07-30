@@ -15,7 +15,7 @@
     "build": "npm run lint && browserify src/main.js -o dist/dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",
     "prepublish": "",
     "watch": "watch 'npm run build' src",
-    "try": "echo ':: Trying the sandbox sample ::' && dsw sandbox && http-server ./sandbox -p 8888",
+    "try": "echo ':: Trying the sandbox sample ::' && node ./bin/index.js sandbox --verbose && http-server ./sandbox -p 8888",
     "start": "npm run try"
   },
   "repository": {

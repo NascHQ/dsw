@@ -30,6 +30,7 @@ module.exports = {
             "always"
         ],
         "no-console": "off",
+        "no-debugger": "off",
         "no-unused-vars": "off",
         "no-fallthrough": "off"
     }

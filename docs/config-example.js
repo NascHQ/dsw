@@ -12,6 +12,9 @@
     "appShell": [],
     // If this is set to true, every request for http:// will be redirected to https://
     "enforceSSL": false,
+    // Default is false, if changed to true, will NOT delete other caches
+    // otherwise, all caches but the current ones will be deleted on activation
+    "keepUnusedCaches": false,
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
     "dswRules": {
@@ -105,7 +108,25 @@
                     "indexes": ["name"]
                 }
             }
-        }/*,
+        },
+        // In this example, we are redirecting requests using variables
+        // from the matching regular expression
+        "redirectWithVar": {
+            "match": {
+                // We can use in our _apply_ actions, the groups from
+                // this expression, between parenthesis
+                "path": "\/old-site\/(.*)"
+            },
+            "apply": {
+                // here, each groups is represented by a variable, in order
+                // accessed as $x where x is the position of the variable
+                // in the matching expression
+                "redirect": "/redirected.html?from=$1"
+            }
+        }
+        
+        
+        /*,
         "updates": {
             "match": { "path": "\/api\/updates/" },
             "keepItWarm": true,
