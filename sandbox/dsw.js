@@ -175,8 +175,8 @@ var cacheManager = {
     createDB: function createDB(db) {
         return _indexeddbManager2.default.create(db);
     },
+    // Delete all the unused caches for the new version of the Service Worker
     deleteUnusedCaches: function deleteUnusedCaches(keepUnused) {
-        debugger;
         if (!keepUnused) {
             return caches.keys().then(function (keys) {
                 cacheManager.registeredCaches;
@@ -188,6 +188,8 @@ var cacheManager = {
             });
         }
     },
+    // return a name for a default rule or the name for cache using the version
+    // and a separator
     mountCacheId: function mountCacheId(rule) {
         var cacheConf = rule.action.cache;
         if (cacheConf) {
@@ -703,10 +705,14 @@ if (isInSWScope) {
         };
 
         self.addEventListener('activate', function (event) {
-            if (PWASettings.applyImmediately) {
-                event.waitUntil(self.clients.claim());
-            }
-            _cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches);
+            event.waitUntil(function (_) {
+                var promises = [];
+                if (PWASettings.applyImmediately) {
+                    promises.push(self.clients.claim());
+                }
+                promises.push(_cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches));
+                return Promise.all(promises);
+            });
         });
 
         self.addEventListener('install', function (event) {
@@ -738,7 +744,7 @@ if (isInSWScope) {
                 if (!navigator.serviceWorker.controller) {
                     // we will use the same script, already loaded, for our service worker
                     var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                    navigator.serviceWorker.register(src + '?dsw-manager').then(function (SW) {
+                    navigator.serviceWorker.register(src).then(function (SW) {
                         console.info('[ SW ] :: registered');
                         resolve(navigator.serviceWorker.ready);
                     });

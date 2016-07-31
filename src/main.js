@@ -202,10 +202,14 @@ if (isInSWScope) {
     };
 
     self.addEventListener('activate', function(event) {
-        if (PWASettings.applyImmediately) {
-            event.waitUntil(self.clients.claim());
-        }
-        cacheManager.deleteUnusedCaches(PWASettings.keepUnusedCaches);
+        event.waitUntil(_=>{
+            let promises = [];
+            if (PWASettings.applyImmediately) {
+                promises.push(self.clients.claim());
+            }
+            promises.push(cacheManager.deleteUnusedCaches(PWASettings.keepUnusedCaches));
+            return Promise.all(promises);
+        });
     });
     
     self.addEventListener('install', function(event) {
@@ -238,7 +242,7 @@ if (isInSWScope) {
                     // we will use the same script, already loaded, for our service worker
                     var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
                     navigator.serviceWorker
-                        .register(src + '?dsw-manager')
+                        .register(src)
                         .then(SW=>{
                             console.info('[ SW ] :: registered');
                             resolve(navigator.serviceWorker.ready);

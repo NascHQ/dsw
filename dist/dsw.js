@@ -583,10 +583,14 @@ if (isInSWScope) {
         };
 
         self.addEventListener('activate', function (event) {
-            if (PWASettings.applyImmediately) {
-                event.waitUntil(self.clients.claim());
-            }
-            _cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches);
+            event.waitUntil(function (_) {
+                var promises = [];
+                if (PWASettings.applyImmediately) {
+                    promises.push(self.clients.claim());
+                }
+                promises.push(_cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches));
+                return Promise.all(promises);
+            });
         });
 
         self.addEventListener('install', function (event) {
@@ -618,7 +622,7 @@ if (isInSWScope) {
                 if (!navigator.serviceWorker.controller) {
                     // we will use the same script, already loaded, for our service worker
                     var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                    navigator.serviceWorker.register(src + '?dsw-manager').then(function (SW) {
+                    navigator.serviceWorker.register(src).then(function (SW) {
                         console.info('[ SW ] :: registered');
                         resolve(navigator.serviceWorker.ready);
                     });
