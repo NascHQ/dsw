@@ -118,15 +118,11 @@ var cacheManager = {
             case 'IDB':
             case 'indexedDB':
                 {
-                    debugger;
                     return new Promise(function (resolve, reject) {
-                        debugger;
                         // function to be used after fetching
                         function treatFetch(response) {
                             if (response && response.status == 200) {
-                                debugger;
                                 var done = function done(_) {
-                                    debugger;
                                     resolve(response);
                                 };
 
@@ -139,6 +135,7 @@ var cacheManager = {
                         }
 
                         _indexeddbManager2.default.get(rule.name, request).then(function (result) {
+                            debugger;
                             // if we did have it in the indexedDB
                             if (result) {
                                 // we use it
@@ -147,6 +144,7 @@ var cacheManager = {
                             } else {
                                 // if it was not stored, let's fetch it
                                 // fetching
+                                request = DSWManager.createRequest(request);
                                 result = fetch(request, opts).then(treatFetch).catch(treatFetch);
                             }
                         });
@@ -326,15 +324,26 @@ var indexedDBManager = {
                 var db = event.target.result;
                 var baseData = {};
 
-                if (config.key) {
-                    baseData.keyPath = config.key;
+                if (config.indexes) {
+                    baseData.keyPath = config.indexes;
                 }
-                if (!config.key || config.autoIncrement) {
+                if (!config.indexes || config.autoIncrement) {
                     baseData.autoIncrement = true;
                 }
+                if (config.version) {
+                    baseData.version = config.version;
+                } else {
+                    baseData.version = 1;
+                }
 
-                // now we create the structure
-                var store = db.createObjectStore(config.name, baseData);
+                if (event.oldVersion && event.oldVersion < baseData.version) {
+                    // in case there already is a store with that name
+                    // with a previous version
+                    db.deleteObjectStore(config.name);
+                } else if (event.oldVersion === 0) {
+                    // if it is the first time it is creating it
+                    db.createObjectStore(config.name, baseData);
+                }
 
                 dataBaseReady(db, config.name, resolve);
             };
@@ -541,6 +550,14 @@ if (isInSWScope) {
             getRulesBeforeFetching: function getRulesBeforeFetching() {
                 // returns all the rules for * or 200
                 return this.rules['*'] || false;
+            },
+            createRequest: function createRequest(request) {
+                return new Request(request.url || request, {
+                    method: request.method || 'GET',
+                    headers: request.headers || {},
+                    mode: 'cors',
+                    cache: 'default'
+                });
             },
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it

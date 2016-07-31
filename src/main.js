@@ -152,6 +152,15 @@ if (isInSWScope) {
             return this.rules['*'] || false;
         },
         
+        createRequest (request) {
+            return new Request(request.url || request, {
+                method: request.method || 'GET',
+                headers: request.headers || {},
+                mode: 'cors',
+                cache: 'default'
+            });
+        },
+        
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{

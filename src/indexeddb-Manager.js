@@ -37,15 +37,26 @@ const indexedDBManager = {
                 let db = event.target.result;
                 let baseData = {};
                 
-                if (config.key) {
-                    baseData.keyPath = config.key;
+                if (config.indexes) {
+                    baseData.keyPath = config.indexes;
                 }
-                if (!config.key || config.autoIncrement) {
+                if (!config.indexes || config.autoIncrement) {
                     baseData.autoIncrement = true;
                 }
+                if (config.version) {
+                    baseData.version = config.version;
+                }else{
+                    baseData.version = 1;
+                }
                 
-                // now we create the structure
-                let store = db.createObjectStore(config.name, baseData);
+                if (event.oldVersion && event.oldVersion < baseData.version) {
+                    // in case there already is a store with that name
+                    // with a previous version
+                    db.deleteObjectStore(config.name);
+                } else if (event.oldVersion === 0) {
+                    // if it is the first time it is creating it
+                    db.createObjectStore(config.name, baseData);
+                }
                 
                 dataBaseReady(db, config.name, resolve);
             };

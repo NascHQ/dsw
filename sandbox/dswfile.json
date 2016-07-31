@@ -75,45 +75,8 @@
             "apply": {
                 "indexedDB": {
                     "name": "userData",
-                    "version": "1",
+                    "version": "2",
                     "indexes": ["name"]
-                }
-            }
-        },
-        "updates": {
-            "match": { "path": "\/api\/updates/" },
-            "keepItWarm": true,
-            "apply": {
-                "indexedDB": {
-                    "name": "shownUpdates",
-                    "version": "1"
-                }
-            }
-        },
-        "articles": {
-            "match": { "path": "\/api\/updates/" },
-            "apply": {
-                "cache": {
-                    "name": "cachedArticles",
-                    "version": "1"
-                }
-            }
-        },
-        "events": {
-            "match": { "path": "\/api\/events/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventsList",
-                    "version": "1"
-                }
-            }
-        },
-        "lineup": {
-            "match": { "path": "\/api\/events\/(.*)/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventLineup-$1",
-                    "version": "1"
                 }
             }
         }

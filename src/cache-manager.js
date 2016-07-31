@@ -80,15 +80,11 @@ const cacheManager = {
         case 'idb':
         case 'IDB':
         case 'indexedDB': {
-            debugger;
             return new Promise((resolve, reject)=>{
-                debugger;
                 // function to be used after fetching
                 function treatFetch (response) {
                     if (response && response.status == 200) {
-                        debugger;
                         let done = _=>{
-                            debugger;
                             resolve(response);
                         };
 
@@ -104,6 +100,7 @@ const cacheManager = {
 
                 indexedDBManager.get(rule.name, request)
                     .then(result=>{
+                        debugger;
                         // if we did have it in the indexedDB
                         if (result) {
                             // we use it
@@ -112,6 +109,7 @@ const cacheManager = {
                         }else{
                             // if it was not stored, let's fetch it
                             // fetching
+                            request = DSWManager.createRequest(request);
                             result = fetch(request,
                                            opts)
                                         .then(treatFetch)
