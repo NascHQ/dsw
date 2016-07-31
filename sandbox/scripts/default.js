@@ -27,7 +27,8 @@ window.addEventListener('load', function(){
         set(document.getElementById('test-5-iframe'), 'src', '/foo.html');
     });
     document.getElementById('btn-6-data').addEventListener('click', function(){
-        set(document.getElementById('test-6-iframe'), 'src', '/api/user/1.json');
+        let i = Math.ceil(Math.random()*3);
+        set(document.getElementById('test-6-iframe'), 'src', '/api/user/'+i+'.json');
     });
     document.getElementById('btn-7-page').addEventListener('click', function(){
         let listOfOlderPages = [

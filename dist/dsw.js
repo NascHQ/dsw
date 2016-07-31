@@ -148,7 +148,6 @@ var cacheManager = {
                                 result = fetch(request, opts).then(treatFetch).catch(treatFetch);
                             }
                         });
-                        //indexedDBManager.save(rule.name, request);
                     });
                 }
             case 'redirect':
@@ -356,7 +355,8 @@ var indexedDBManager = {
     },
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
-            //let store = getObjectStore(dbName);
+            var store = getObjectStore(dbName);
+
             resolve();
         });
     },

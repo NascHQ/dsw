@@ -70,7 +70,8 @@ const indexedDBManager = {
     
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
-            //let store = getObjectStore(dbName);
+            let store = getObjectStore(dbName);
+            
             resolve();
         });
     },

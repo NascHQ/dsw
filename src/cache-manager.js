@@ -116,7 +116,6 @@ const cacheManager = {
                                         .catch(treatFetch);
                         }
                     });
-                //indexedDBManager.save(rule.name, request);
             });
         }
         case 'redirect':
