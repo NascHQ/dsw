@@ -1,6 +1,7 @@
 
 const DEFAULT_DB_NAME = 'defaultDSWDB';
 const dbs = {};
+var cacheManager;
 
 function getObjectStore(dbName, mode='readwrite') {
     let db = dbs[dbName],
@@ -9,6 +10,9 @@ function getObjectStore(dbName, mode='readwrite') {
 }
 
 const indexedDBManager = {
+    setup (cm) {
+        cacheManager = cm;
+    },
     create (config) {
         return new Promise((resolve, reject)=>{
             
@@ -71,7 +75,9 @@ const indexedDBManager = {
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            
+            // TODO: look for cached keys, then find them in the db
+            caches.match(request)
+                .then(result=>{});
             resolve();
         });
     },

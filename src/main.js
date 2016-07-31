@@ -197,7 +197,7 @@ if (isInSWScope) {
                     if (response && response.status == 200) {
                         return response;
                     } else {
-                        return this.treatBadPage(response, pathName, event);
+                        return DSWManager.treatBadPage(response, pathName, event);
                     }
                 };
                 return event.respondWith(

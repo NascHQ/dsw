@@ -1,7 +1,9 @@
 const PWASettings = {
     "dswVersion": 2.2,
     "applyImmediately": true,
-    "appShell": [],
+    "appShell": [
+        '/helmet.png'
+    ],
     "enforceSSL": false,
     "keepUnusedCaches": false,
     "dswRules": {
@@ -233,7 +235,6 @@ var cacheManager = {
                                 result = fetch(request, opts).then(treatFetch).catch(treatFetch);
                             }
                         });
-                        //indexedDBManager.save(rule.name, request);
                     });
                 }
             case 'redirect':
@@ -389,7 +390,6 @@ var indexedDBManager = {
             var request = indexedDB.open(config.name || DEFAULT_DB_NAME, parseInt(config.version, 10) || undefined);
 
             function dataBaseReady(db, dbName, resolve) {
-                debugger;
                 db.onversionchange = function (event) {
                     db.close();
                     console.log('There is a new version of the database(IndexedDB) for ' + config.name);
@@ -442,7 +442,8 @@ var indexedDBManager = {
     },
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
-            //let store = getObjectStore(dbName);
+            var store = getObjectStore(dbName);
+
             resolve();
         });
     },
@@ -675,7 +676,7 @@ if (isInSWScope) {
                         if (response && response.status == 200) {
                             return response;
                         } else {
-                            return this.treatBadPage(response, pathName, event);
+                            return DSWManager.treatBadPage(response, pathName, event);
                         }
                     };
                     return event.respondWith(fetch(event.request.url, {})

@@ -43,11 +43,19 @@ var DEFAULT_CACHE_VERSION = null;
 var DSWManager = void 0,
     PWASettings = void 0;
 
+// finds the real size of an utf-8 string
+function lengthInUtf8Bytes(str) {
+    // Matches only the 10.. bytes that are non-initial characters in a multi-byte sequence.
+    var m = encodeURIComponent(str).match(/%[89ABab]/g);
+    return str.length + (m ? m.length : 0);
+}
+
 var cacheManager = {
     setup: function setup(DSWMan, PWASet) {
         PWASettings = PWASet;
         DSWManager = DSWMan;
         DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+        _indexeddbManager2.default.setup(cacheManager);
     },
     registeredCaches: [],
     createDB: function createDB(db) {
@@ -287,6 +295,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var DEFAULT_DB_NAME = 'defaultDSWDB';
 var dbs = {};
+var cacheManager;
 
 function getObjectStore(dbName) {
     var mode = arguments.length <= 1 || arguments[1] === undefined ? 'readwrite' : arguments[1];
@@ -297,6 +306,9 @@ function getObjectStore(dbName) {
 }
 
 var indexedDBManager = {
+    setup: function setup(cm) {
+        cacheManager = cm;
+    },
     create: function create(config) {
         return new Promise(function (resolve, reject) {
 
@@ -356,7 +368,8 @@ var indexedDBManager = {
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
             var store = getObjectStore(dbName);
-
+            // TODO: look for cached keys, then find them in the db
+            caches.match(request).then(function (result) {});
             resolve();
         });
     },
@@ -589,7 +602,7 @@ if (isInSWScope) {
                         if (response && response.status == 200) {
                             return response;
                         } else {
-                            return this.treatBadPage(response, pathName, event);
+                            return DSWManager.treatBadPage(response, pathName, event);
                         }
                     };
                     return event.respondWith(fetch(event.request.url, {})

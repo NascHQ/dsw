@@ -1,7 +1,9 @@
 {
     "dswVersion": 2.2,
     "applyImmediately": true,
-    "appShell": [],
+    "appShell": [
+        '/helmet.png'
+    ],
     "enforceSSL": false,
     "keepUnusedCaches": false,
     "dswRules": {
@@ -77,6 +79,17 @@
                     "name": "userData",
                     "version": "2",
                     "indexes": ["name"]
+                }
+            }
+        },
+        "service": {
+            "match": { "path": "\/api\/service\/.*" },
+            "options": { "credentials": "same-origin"},
+            "apply": {
+                "indexedDB": {
+                    "name": "serviceData",
+                    "version": "1",
+                    "indexes": ["id"]
                 }
             }
         }

@@ -6,11 +6,19 @@ let DEFAULT_CACHE_VERSION = null;
 let DSWManager,
     PWASettings;
 
+// finds the real size of an utf-8 string
+function lengthInUtf8Bytes(str) {
+    // Matches only the 10.. bytes that are non-initial characters in a multi-byte sequence.
+    var m = encodeURIComponent(str).match(/%[89ABab]/g);
+    return str.length + (m ? m.length : 0);
+}
+
 const cacheManager = {
     setup: (DSWMan, PWASet)=>{
         PWASettings = PWASet;
         DSWManager = DSWMan;
         DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+        indexedDBManager.setup(cacheManager);
     },
     registeredCaches: [],
     createDB: db=>{
