@@ -10,7 +10,14 @@
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to create setup in a JSON file how your service worker is supposed to deal with requests. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
-#### Advantages
+## Live Demo
+
+You can access this page and see a live demo of DSW working.
+After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything following its rules (described in each block and link).
+You can then go offline and reload the page to validate it.
+[Dynamic Service Worker demo](https://dsw-demo-atdnhdbdgt.now.sh/)
+
+## Advantages
 
 - use of variables
 - decision over cache naming and versioning for each matching request
