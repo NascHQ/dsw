@@ -552,9 +552,34 @@ if (isInSWScope) {
                 'online-first': function onlineFirstStrategy(rule, request, event, matching) {
                     // Will fetch it, and if there is a problem
                     // will look for it in cache
-                    // TODO: make it happen
-                    debugger;
-                    return _cacheManager2.default.get(rule, request, event, matching);
+                    function treatIt(response) {
+                        if (response.status == 200) {
+                            debugger;
+                            if (rule.action.cache) {
+                                (function () {
+                                    // we will update the cache, in background
+                                    var cloned = response.clone();
+                                    caches.open(_cacheManager2.default.mountCacheId(rule)).then(function (cache) {
+                                        cache.put(request, cloned);
+                                        console.info('Updated in cache', request.url);
+                                        return response;
+                                    });
+                                })();
+                            }
+                            console.info('From network: ', request.url);
+                            return response;
+                        }
+                        return caches.match(request).then(function (result) {
+                            // if failed to fetch and was not in cache, we look
+                            // for a fallback response
+                            var pathName = new URL(event.request.url).pathname;
+                            if (result) {
+                                console.info('From cache(after network failure): ', request.url);
+                            }
+                            return result || DSWManager.treatBadPage(response, pathName, event);
+                        });
+                    }
+                    return fetch(request).then(treatIt).catch(treatIt);
                 },
                 'fastest': function fastest(rule, request, event, matching) {
                     // Will fetch AND look in the cache.
@@ -590,11 +615,15 @@ if (isInSWScope) {
                         if (cur.action.fetch) {
                             // not found requisitions should
                             // fetch a different resource
+                            console.info('Found fallback rule for ', pathName, '\nLooking for its result');
                             result = _cacheManager2.default.get(cur, new Request(cur.action.fetch), event, matching);
                             return true; // stopping the loop
                         }
                     }
                 });
+                if (!result) {
+                    console.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                }
                 return result || response;
             },
             setup: function setup(dswConfig) {
@@ -617,6 +646,8 @@ if (isInSWScope) {
                             status = void 0,
                             path = void 0;
 
+                        // in case "match" is an array
+                        // we will treat it as an "OR"
                         if (Array.isArray(heuristic.match)) {
                             extensions = [];
                             path = [];
@@ -628,14 +659,13 @@ if (isInSWScope) {
                                     path.push(cur.path);
                                 }
                             });
-                            debugger;
                             extensions = extensions.join('|');
                             if (extensions.length) {
                                 extensions += '|';
                             }
                             path = (path.join('|') || '([.+]?)') + '|';
-                            debugger;
                         } else {
+                            // "match" may be an object, then we simply use it
                             path = (heuristic.match.path || '') + '([.+]?)';
                             extensions = heuristic.match.extension, status = heuristic.match.status;
                         }
@@ -744,7 +774,6 @@ if (isInSWScope) {
                         var matching = pathName.match(rule.rx);
                         if (matching) {
                             // if there is a rule that matches the url
-                            debugger;
                             return event.respondWith(DSWManager.strategies[rule.strategy](rule, event.request, event, matching));
                         }
                     }

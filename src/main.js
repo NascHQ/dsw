@@ -35,13 +35,32 @@ if (isInSWScope) {
             'online-first': function onlineFirstStrategy (rule, request, event, matching) {
                 // Will fetch it, and if there is a problem
                 // will look for it in cache
-                // TODO: make it happen
-                debugger;
-                return cacheManager.get(rule,
-                     request,
-                     event,
-                     matching
-                );
+                function treatIt (response) {
+                    if (response.status == 200) {
+                        if (rule.action.cache) {
+                            // we will update the cache, in background
+                            let cloned = response.clone();
+                            caches.open(cacheManager.mountCacheId(rule))
+                                .then(function(cache) {
+                                    cache.put(request, cloned);
+                                    console.info('Updated in cache', request.url);
+                                    return response;
+                                });
+                        }
+                        console.info('From network: ', request.url);
+                        return response;
+                    }
+                    return caches.match(request).then(result=>{
+                        // if failed to fetch and was not in cache, we look
+                        // for a fallback response
+                        const pathName = (new URL(event.request.url)).pathname;
+                        if(result){
+                            console.info('From cache(after network failure): ', request.url);
+                        }
+                        return result || DSWManager.treatBadPage(response, pathName, event);
+                    });
+                }
+                return fetch(request).then(treatIt).catch(treatIt);
             },
             'fastest': function fastest (rule, request, event, matching) {
                 // Will fetch AND look in the cache.
@@ -81,6 +100,7 @@ if (isInSWScope) {
                     if (cur.action.fetch) {
                         // not found requisitions should
                         // fetch a different resource
+                        console.info('Found fallback rule for ', pathName, '\nLooking for its result');
                         result = cacheManager.get(cur,
                                                   new Request(cur.action.fetch),
                                                   event,
@@ -89,6 +109,9 @@ if (isInSWScope) {
                     }
                 }
             });
+            if (!result) {
+                console.info('No rules for failed request: ', pathName, '\nWill output the failure');
+            }
             return result || response;
         },
         setup (dswConfig) {
