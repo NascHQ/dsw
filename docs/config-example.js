@@ -25,7 +25,9 @@
             // everything that matches a status like 404 or 500
             // and is an image (in the given extensions)
             "match": {
+                // We are looking for everything with a status 400 or 500
                 "status": [404, 500],
+                // AND with one of these extensions
                 "extension": ["jpg", "gif", "png", "jpeg", "webp"]
             },
             "apply": {
@@ -123,46 +125,34 @@
                 // in the matching expression
                 "redirect": "/redirected.html?from=$1"
             }
-        }
-        
-        
-        /*,
-        "updates": {
-            "match": { "path": "\/api\/updates/" },
-            "keepItWarm": true,
-            "apply": {
-                "indexedDB": {
-                    "name": "shownUpdates",
-                    "version": "1"
-                }
-            }
         },
-        "articles": {
-            "match": { "path": "\/api\/updates/" },
+        // Lets cache everything that has html extension OR is at /
+        // Notice there we are using the OR here, instead of just the AND
+        "static-html": {
+            "match": [
+                // everything with the html or htm extension
+                { "extension": ["html", "htm"] },
+                // OR
+                // everything in /
+                { "path": "\/$" }
+            ],
+            // The default strategy is 'offline-first'
+            // With the online-first strategy, it will ALWAYS go for the
+            // network and use it to update the cache.
+            // Cache will ONLY be used when the network fails.
+            "strategy": "online-first",
             "apply": {
                 "cache": {
-                    "name": "cachedArticles",
+                    "name": "static-html-files",
                     "version": "1"
                 }
             }
-        },
-        "events": {
-            "match": { "path": "\/api\/events/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventsList",
-                    "version": "1"
-                }
-            }
-        },
-        "lineup": {
-            "match": { "path": "\/api\/events\/(.*)/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventLineup-$1",
-                    "version": "1"
-                }
-            }
-        }*/
+        }
     }
 }
+
+
+
+
+
+

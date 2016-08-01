@@ -106,6 +106,22 @@ the current service worker experes (the next reload, or about a day)</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
+              <p>Default is false, if changed to true, will NOT delete other caches
+otherwise, all caches but the current ones will be deleted on activation</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-string">"keepUnusedCaches"</span>: <span class="hljs-literal">false</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
               <p>Here is where you will add all of your rules.
 You can create as many as you want, and name them as you will.</p>
 
@@ -116,11 +132,11 @@ You can create as many as you want, and name them as you will.</p>
         </li>
         
         
-        <li id="section-7">
+        <li id="section-8">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-7">&#182;</a>
+                <a class="pilcrow" href="#section-8">&#182;</a>
               </div>
               <p>You may name your rules here
 this rule will redirect every not found image (or with error) to
@@ -133,31 +149,59 @@ a default image</p>
         </li>
         
         
-        <li id="section-8">
+        <li id="section-9">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-8">&#182;</a>
+                <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
               <p>everything that matches a status like 404 or 500
 and is an image (in the given extensions)</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"match"</span>: {
-                <span class="hljs-string">"status"</span>: [<span class="hljs-number">404</span>, <span class="hljs-number">500</span>],
-                <span class="hljs-string">"extension"</span>: [<span class="hljs-string">"jpg"</span>, <span class="hljs-string">"gif"</span>, <span class="hljs-string">"png"</span>, <span class="hljs-string">"jpeg"</span>, <span class="hljs-string">"webp"</span>]
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"match"</span>: {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>We are looking for everything with a status 400 or 500</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"status"</span>: [<span class="hljs-number">404</span>, <span class="hljs-number">500</span>],</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>AND with one of these extensions</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"extension"</span>: [<span class="hljs-string">"jpg"</span>, <span class="hljs-string">"gif"</span>, <span class="hljs-string">"png"</span>, <span class="hljs-string">"jpeg"</span>, <span class="hljs-string">"webp"</span>]
             },
             <span class="hljs-string">"apply"</span>: {</pre></div></div>
             
         </li>
         
         
-        <li id="section-9">
+        <li id="section-12">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-9">&#182;</a>
+                <a class="pilcrow" href="#section-12">&#182;</a>
               </div>
               <p>will actually become a default 404 image</p>
 
@@ -170,11 +214,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-10">
+        <li id="section-13">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-10">&#182;</a>
+                <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
               <p>This other example redirects pages that are not found</p>
 
@@ -185,11 +229,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-11">
+        <li id="section-14">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-11">&#182;</a>
+                <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
               <p>Any requisition that has a 404 status (including css, js, etc)</p>
 
@@ -203,11 +247,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-12">
+        <li id="section-15">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-12">&#182;</a>
+                <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
               <p>will receive our default 404 page</p>
 
@@ -220,11 +264,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-13">
+        <li id="section-16">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-13">&#182;</a>
+                <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
               <p>Redirecting requests</p>
 
@@ -236,11 +280,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-14">
+        <li id="section-17">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-14">&#182;</a>
+                <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
               <p>In this example, everything inside this directory should be redirected</p>
 
@@ -253,11 +297,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-15">
+        <li id="section-18">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-15">&#182;</a>
+                <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
               <p>we simply fetch the different content
 we could also use the “redirect” action here, it would work
@@ -272,11 +316,11 @@ as the same, but with a 302 status header</p>
         </li>
         
         
-        <li id="section-16">
+        <li id="section-19">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-16">&#182;</a>
+                <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
               <p>Some times, we want something NOT to be cached.
 In the following examples, we will cache EVERY image.
@@ -289,11 +333,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-17">
+        <li id="section-20">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-17">&#182;</a>
+                <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
               <p>the image named “not-cached” will</p>
 
@@ -305,11 +349,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-18">
+        <li id="section-21">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-18">&#182;</a>
+                <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
               <p>not be cached…ever!</p>
 
@@ -322,11 +366,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-19">
+        <li id="section-22">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-19">&#182;</a>
+                <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
               <p>Now, let’s create a cache for every single image (except the one before)</p>
 
@@ -337,11 +381,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-20">
+        <li id="section-23">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-20">&#182;</a>
+                <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
               <p>Everything that matches the right extensions (and has a status
 different than 404 or 500, once we already defined rules for those)</p>
@@ -355,11 +399,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-21">
+        <li id="section-24">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-21">&#182;</a>
+                <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>will be cached at “cached-images::1”</p>
 
@@ -370,11 +414,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-22">
+        <li id="section-25">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-22">&#182;</a>
+                <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
               <p>If you don’t specify the version, it uses the value in dswVersion</p>
 
@@ -388,11 +432,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-23">
+        <li id="section-26">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-23">&#182;</a>
+                <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
               <p>let’s cache our static files</p>
 
@@ -403,11 +447,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-24">
+        <li id="section-27">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-24">&#182;</a>
+                <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
               <p>all of our scripts and styles will be cached (once they don’t meet
 the prefious criteria of 404 status)</p>
@@ -428,11 +472,11 @@ the prefious criteria of 404 status)</p>
         </li>
         
         
-        <li id="section-25">
+        <li id="section-28">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-25">&#182;</a>
+                <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
               <p>Here, we are telling the browser to send cookies and session credentions
 when fetching this
@@ -446,11 +490,11 @@ You can pass any options accepted by fetch, here</p>
         </li>
         
         
-        <li id="section-26">
+        <li id="section-29">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-26">&#182;</a>
+                <a class="pilcrow" href="#section-29">&#182;</a>
               </div>
               <p>indexedDB support is still under development…</p>
 
@@ -462,44 +506,135 @@ You can pass any options accepted by fetch, here</p>
                     <span class="hljs-string">"indexes"</span>: [<span class="hljs-string">"name"</span>]
                 }
             }
-        }<span class="hljs-comment">/*,
-        "updates": {
-            "match": { "path": "\/api\/updates/" },
-            "keepItWarm": true,
-            "apply": {
-                "indexedDB": {
-                    "name": "shownUpdates",
-                    "version": "1"
+        },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-30">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-30">&#182;</a>
+              </div>
+              <p>In this example, we are redirecting requests using variables
+from the matching regular expression</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"redirectWithVar"</span>: {
+            <span class="hljs-string">"match"</span>: {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-31">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-31">&#182;</a>
+              </div>
+              <p>We can use in our <em>apply</em> actions, the groups from
+this expression, between parenthesis</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/old-site\/(.*)"</span>
+            },
+            <span class="hljs-string">"apply"</span>: {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-32">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-32">&#182;</a>
+              </div>
+              <p>here, each groups is represented by a variable, in order
+accessed as $x where x is the position of the variable
+in the matching expression</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"redirect"</span>: <span class="hljs-string">"/redirected.html?from=$1"</span>
+            }
+        },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-33">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-33">&#182;</a>
+              </div>
+              <p>Lets cache everything that has html extension OR is at /
+Notice there we are using the OR here, instead of just the AND</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"static-html"</span>: {
+            <span class="hljs-string">"match"</span>: [</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-34">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-34">&#182;</a>
+              </div>
+              <p>everything with the html or htm extension</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                { <span class="hljs-string">"extension"</span>: [<span class="hljs-string">"html"</span>, <span class="hljs-string">"htm"</span>] },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-35">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-35">&#182;</a>
+              </div>
+              <p>OR
+everything in /</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/$"</span> }
+            ],</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-36">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-36">&#182;</a>
+              </div>
+              <p>The default strategy is ‘offline-first’
+With the online-first strategy, it will ALWAYS go for the
+network and use it to update the cache.
+Cache will ONLY be used when the network fails.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"strategy"</span>: <span class="hljs-string">"online-first"</span>,
+            <span class="hljs-string">"apply"</span>: {
+                <span class="hljs-string">"cache"</span>: {
+                    <span class="hljs-string">"name"</span>: <span class="hljs-string">"static-html-files"</span>,
+                    <span class="hljs-string">"version"</span>: <span class="hljs-string">"1"</span>
                 }
             }
         },
-        "articles": {
-            "match": { "path": "\/api\/updates/" },
-            "apply": {
-                "cache": {
-                    "name": "cachedArticles",
-                    "version": "1"
-                }
-            }
-        },
-        "events": {
-            "match": { "path": "\/api\/events/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventsList",
-                    "version": "1"
-                }
-            }
-        },
-        "lineup": {
-            "match": { "path": "\/api\/events\/(.*)/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventLineup-$1",
-                    "version": "1"
-                }
-            }
-        }*/</span>
     }
 }</pre></div></div>
             
