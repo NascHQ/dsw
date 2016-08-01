@@ -12,6 +12,9 @@
     "appShell": [],
     // If this is set to true, every request for http:// will be redirected to https://
     "enforceSSL": false,
+    // Default is false, if changed to true, will NOT delete other caches
+    // otherwise, all caches but the current ones will be deleted on activation
+    "keepUnusedCaches": false,
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
     "dswRules": {
@@ -22,7 +25,9 @@
             // everything that matches a status like 404 or 500
             // and is an image (in the given extensions)
             "match": {
+                // We are looking for everything with a status 400 or 500
                 "status": [404, 500],
+                // AND with one of these extensions
                 "extension": ["jpg", "gif", "png", "jpeg", "webp"]
             },
             "apply": {
@@ -105,43 +110,43 @@
                     "indexes": ["name"]
                 }
             }
-        }/*,
-        "updates": {
-            "match": { "path": "\/api\/updates/" },
-            "keepItWarm": true,
+        },
+        // In this example, we are redirecting requests using variables
+        // from the matching regular expression
+        "redirectWithVar": {
+            "match": {
+                // We can use in our _apply_ actions, the groups from
+                // this expression, between parenthesis
+                "path": "\/old-site\/(.*)"
+            },
             "apply": {
-                "indexedDB": {
-                    "name": "shownUpdates",
-                    "version": "1"
-                }
+                // here, each groups is represented by a variable, in order
+                // accessed as $x where x is the position of the variable
+                // in the matching expression
+                "redirect": "/redirected.html?from=$1"
             }
         },
-        "articles": {
-            "match": { "path": "\/api\/updates/" },
+        // Lets cache everything that has html extension OR is at /
+        // Notice there we are using the OR here, instead of just the AND
+        "static-html": {
+            "match": [
+                // everything with the html or htm extension
+                { "extension": ["html", "htm"] },
+                // OR
+                // everything in /
+                { "path": "\/$" }
+            ],
+            // The default strategy is 'offline-first'
+            // With the online-first strategy, it will ALWAYS go for the
+            // network and use it to update the cache.
+            // Cache will ONLY be used when the network fails.
+            "strategy": "online-first",
             "apply": {
                 "cache": {
-                    "name": "cachedArticles",
+                    "name": "static-html-files",
                     "version": "1"
                 }
             }
         },
-        "events": {
-            "match": { "path": "\/api\/events/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventsList",
-                    "version": "1"
-                }
-            }
-        },
-        "lineup": {
-            "match": { "path": "\/api\/events\/(.*)/" },
-            "apply": {
-                "indexedDB": {
-                    "name": "eventLineup-$1",
-                    "version": "1"
-                }
-            }
-        }*/
     }
 }
