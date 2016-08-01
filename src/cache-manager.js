@@ -51,6 +51,14 @@ const cacheManager = {
     register: rule=>{
         cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
     },
+    put: (rule, request, response) => {
+        let cloned = response.clone();
+        return caches.open(cacheManager.mountCacheId(rule))
+            .then(function(cache) {
+                cache.put(request, cloned);
+                return response;
+            });
+    },
     add: (req, cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION) => {
         return new Promise((resolve, reject)=>{
             caches.open(cacheId).then(cache => {

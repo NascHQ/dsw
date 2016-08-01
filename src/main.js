@@ -39,13 +39,9 @@ if (isInSWScope) {
                     if (response.status == 200) {
                         if (rule.action.cache) {
                             // we will update the cache, in background
-                            let cloned = response.clone();
-                            caches.open(cacheManager.mountCacheId(rule))
-                                .then(function(cache) {
-                                    cache.put(request, cloned);
-                                    console.info('Updated in cache', request.url);
-                                    return response;
-                                });
+                            cacheManager.put(rule, request, response).then(_=>{
+                                console.info('Updated in cache: ', request.url);
+                            });
                         }
                         console.info('From network: ', request.url);
                         return response;
@@ -61,19 +57,21 @@ if (isInSWScope) {
                     });
                 }
                 return fetch(request).then(treatIt).catch(treatIt);
-            },
+            }/*
+            // STILL DECIDING IF APPLICABLE
+            ,
             'fastest': function fastest (rule, request, event, matching) {
                 // Will fetch AND look in the cache.
                 // The cached data will be returned faster
                 // but once the fetch request returns, it updates
                 // what is in the cache (keeping it up to date)
-                // TODO: make the magic happen
-                return cacheManager.get(rule,
-                     request,
-                     event,
-                     matching
-                );
-            }
+                // TO BE DONE
+                // return cacheManager.get(rule,
+                //     request,
+                //     event,
+                //     matching
+                '' );
+            }*/
         },
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];

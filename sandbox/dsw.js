@@ -188,6 +188,13 @@ var cacheManager = {
     register: function register(rule) {
         cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
     },
+    put: function put(rule, request, response) {
+        var cloned = response.clone();
+        return caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
+            cache.put(request, cloned);
+            return response;
+        });
+    },
     add: function add(req) {
         var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
 
@@ -554,17 +561,11 @@ if (isInSWScope) {
                     // will look for it in cache
                     function treatIt(response) {
                         if (response.status == 200) {
-                            debugger;
                             if (rule.action.cache) {
-                                (function () {
-                                    // we will update the cache, in background
-                                    var cloned = response.clone();
-                                    caches.open(_cacheManager2.default.mountCacheId(rule)).then(function (cache) {
-                                        cache.put(request, cloned);
-                                        console.info('Updated in cache', request.url);
-                                        return response;
-                                    });
-                                })();
+                                // we will update the cache, in background
+                                _cacheManager2.default.put(rule, request, response).then(function (_) {
+                                    console.info('Updated in cache: ', request.url);
+                                });
                             }
                             console.info('From network: ', request.url);
                             return response;
@@ -580,15 +581,21 @@ if (isInSWScope) {
                         });
                     }
                     return fetch(request).then(treatIt).catch(treatIt);
-                },
-                'fastest': function fastest(rule, request, event, matching) {
-                    // Will fetch AND look in the cache.
-                    // The cached data will be returned faster
-                    // but once the fetch request returns, it updates
-                    // what is in the cache (keeping it up to date)
-                    // TODO: make the magic happen
-                    return _cacheManager2.default.get(rule, request, event, matching);
-                }
+                } /*
+                  // STILL DECIDING IF APPLICABLE
+                  ,
+                  'fastest': function fastest (rule, request, event, matching) {
+                     // Will fetch AND look in the cache.
+                     // The cached data will be returned faster
+                     // but once the fetch request returns, it updates
+                     // what is in the cache (keeping it up to date)
+                     // TO BE DONE
+                     // return cacheManager.get(rule,
+                     //     request,
+                     //     event,
+                     //     matching
+                     '' );
+                  }*/
             },
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
