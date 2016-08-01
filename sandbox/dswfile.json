@@ -63,7 +63,11 @@
             }
         },
         "static-html": {
-            "match": { "extension": ["html"] },
+            "match": [
+                { "extension": ["html"] },
+                { "path": "\/$" }
+            ],
+            "strategy": "online-first",
             "apply": {
                 "cache": {
                     "name": "static-html-files",

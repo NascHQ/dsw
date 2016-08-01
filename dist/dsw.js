@@ -439,11 +439,36 @@ if (isInSWScope) {
 
         var DSWManager = {
             rules: {},
+            strategies: {
+                'offline-first': function offlineFirstStrategy(rule, request, event, matching) {
+                    // Will look for the content in cache
+                    // if it is not there, will fetch it,
+                    // store it in the cache
+                    // and then return it to be used
+                    return _cacheManager2.default.get(rule, request, event, matching);
+                },
+                'online-first': function onlineFirstStrategy(rule, request, event, matching) {
+                    // Will fetch it, and if there is a problem
+                    // will look for it in cache
+                    // TODO: make it happen
+                    debugger;
+                    return _cacheManager2.default.get(rule, request, event, matching);
+                },
+                'fastest': function fastest(rule, request, event, matching) {
+                    // Will fetch AND look in the cache.
+                    // The cached data will be returned faster
+                    // but once the fetch request returns, it updates
+                    // what is in the cache (keeping it up to date)
+                    // TODO: make the magic happen
+                    return _cacheManager2.default.get(rule, request, event, matching);
+                }
+            },
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
                 var newRule = {
                     name: rule.name,
                     rx: rx,
+                    strategy: rule.strategy || 'offline-first',
                     action: rule['apply']
                 };
                 this.rules[sts].push(newRule);
@@ -486,19 +511,43 @@ if (isInSWScope) {
                         heuristic.name = ruleName;
 
                         var appl = heuristic['apply'],
-                            extensions = heuristic.match.extension,
-                            status = heuristic.match.status;
+                            extensions = void 0,
+                            status = void 0,
+                            path = void 0;
+
+                        // in case "match" is an array
+                        // we will treat it as an "OR"
+                        if (Array.isArray(heuristic.match)) {
+                            extensions = [];
+                            path = [];
+                            heuristic.match.map(function (cur) {
+                                if (cur.extension) {
+                                    extensions.push(cur.extension);
+                                }
+                                if (cur.path) {
+                                    path.push(cur.path);
+                                }
+                            });
+                            extensions = extensions.join('|');
+                            if (extensions.length) {
+                                extensions += '|';
+                            }
+                            path = (path.join('|') || '([.+]?)') + '|';
+                        } else {
+                            // "match" may be an object, then we simply use it
+                            path = (heuristic.match.path || '') + '([.+]?)';
+                            extensions = heuristic.match.extension, status = heuristic.match.status;
+                        }
 
                         // preparing extentions to be added to the regexp
+                        var ending = '([\/\&\?]|$)';
                         if (Array.isArray(extensions)) {
-                            var ending = '([\/\&\?]|$)';
                             extensions = '(' + extensions.join(ending + '|') + ending + ')';
+                        } else if (typeof extensions == 'string') {
+                            extensions = '(' + extensions + ending + ')';
                         } else {
                             extensions = '.+';
                         }
-
-                        // and the path
-                        var path = /* '((.+)?)' + */(heuristic.match.path || '') + '([.+]?)';
 
                         // and now we "build" the regular expression itself!
                         var rx = new RegExp(path + '(\\.)?((' + extensions + ')([\\?\&\/].+)?)', 'i');
@@ -582,7 +631,7 @@ if (isInSWScope) {
                     // in case we want to enforce https
                     if (PWASettings.enforceSSL) {
                         if (url.protocol != 'https:' && url.hostname != 'localhost') {
-                            event.respondWith(Response.redirect(event.request.url.replace('http:', 'https:'), 302));
+                            return event.respondWith(Response.redirect(event.request.url.replace('http:', 'https:'), 302));
                         }
                     }
 
@@ -594,7 +643,7 @@ if (isInSWScope) {
                         var matching = pathName.match(rule.rx);
                         if (matching) {
                             // if there is a rule that matches the url
-                            return event.respondWith(_cacheManager2.default.get(rule, event.request, event, matching));
+                            return event.respondWith(DSWManager.strategies[rule.strategy](rule, event.request, event, matching));
                         }
                     }
                     // if no rule is applied, we simple request it
