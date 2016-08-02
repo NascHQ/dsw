@@ -159,12 +159,13 @@ const cacheManager = {
         }
         case 'cache': {
 
-            let cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
+            let cacheId;
 
             if(rule.action.cache){
-                cacheId =   cacheManager.mountCacheId(rule);
+                cacheId = cacheManager.mountCacheId(rule);
             }
-
+            
+            // TODO: use goFetch instead of fetch and creating new requests
             return caches.match(request)
                 .then(result=>{
 
@@ -230,7 +231,7 @@ const cacheManager = {
                             // this is a "normal" request, let's deliver it
                             // but we will be using a new Request with some info
                             // to allow browsers to understand redirects in case
-                            // must be redirected later on
+                            // it must be redirected later on
                             let req = new Request(request.url, {
                                 method: opts.method || request.method,
                                 headers: opts || request.headers,

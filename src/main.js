@@ -5,8 +5,10 @@ var isInTest = typeof global.it === 'function';
 
 import getBestMatchingRX from './best-matching-rx.js';
 import cacheManager from './cache-manager.js';
+import goFetch from './go-fetch.js';
 
 const DSW = {};
+const REQUEST_TIME_LIMIT = 5000;
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -26,6 +28,7 @@ if (isInSWScope) {
                 // if it is not there, will fetch it,
                 // store it in the cache
                 // and then return it to be used
+                console.info('offline first: Looking into cache for\n', request.url);
                 return cacheManager.get(rule,
                      request,
                      event,
@@ -46,32 +49,69 @@ if (isInSWScope) {
                         console.info('From network: ', request.url);
                         return response;
                     }
-                    return caches.match(request).then(result=>{
-                        // if failed to fetch and was not in cache, we look
-                        // for a fallback response
-                        const pathName = (new URL(event.request.url)).pathname;
-                        if(result){
-                            console.info('From cache(after network failure): ', request.url);
-                        }
-                        return result || DSWManager.treatBadPage(response, pathName, event);
-                    });
+                    return cacheManager.get(rule, request, event, matching)
+                        .then(result=>{
+                            // if failed to fetch and was not in cache, we look
+                            // for a fallback response
+                            const pathName = (new URL(event.request.url)).pathname;
+                            if(result){
+                                console.info('From cache(after network failure): ', request.url);
+                            }
+                            return result || DSWManager.treatBadPage(response, pathName, event);
+                        });
                 }
-                return fetch(request).then(treatIt).catch(treatIt);
-            }/*
-            // STILL DECIDING IF APPLICABLE
-            ,
-            'fastest': function fastest (rule, request, event, matching) {
+                return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
+            },
+            'fastest': function fastestStrategy (rule, request, event, matching) {
                 // Will fetch AND look in the cache.
                 // The cached data will be returned faster
                 // but once the fetch request returns, it updates
                 // what is in the cache (keeping it up to date)
-                // TO BE DONE
-                // return cacheManager.get(rule,
-                //     request,
-                //     event,
-                //     matching
-                '' );
-            }*/
+                const pathName = (new URL(event.request.url)).pathname;
+                let treated = false,
+                    cachePromise = null;
+                function treatFetch (response) {
+                    let result = null;
+                    if (response.status == 200) {
+                        // if we managed to load it from network and it has
+                        // cache in its actions, we cache it
+                        if (rule.action.cache) {
+                            // we will update the cache, in background
+                            cacheManager.put(rule, request, response).then(_=>{
+                                console.info('Updated in cache: ', request.url);
+                            });
+                        }
+                        console.info('From network (fastest or first time): ', request.url);
+                        result = response;
+                    } else {
+                        // if it failed, we will try and respond with
+                        // something else
+                        result = DSWManager.treatBadPage(response, pathName, event);
+                    }
+                    // if cache was still waiting...
+                    if(typeof cachePromise == 'function') {
+                        // we stop it, the request has returned
+                        setTimeout(cachePromise, 10);
+                    }
+                    return result;
+                }
+                
+                function treatCache (result) {
+                    // if it was in cache, we use it...period.
+                    return result || new Promise((resolve, reject)=>{
+                        // we will wait for the request to end
+                        cachePromise = resolve;
+                    });
+                }
+                
+                return Promise.race([
+                    goFetch(rule, request, event, matching)
+                        .then(treatFetch)
+                        .catch(treatFetch),
+                    cacheManager.get(rule, request, event, matching)
+                        .then(treatCache)
+                ]);
+            }
         },
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];
@@ -92,21 +132,24 @@ if (isInSWScope) {
         },
         treatBadPage (response, pathName, event) {
             let result;
-            (DSWManager.rules[response.status || 404] || []).some((cur, idx)=>{
-                let matching = pathName.match(cur.rx);
-                if (matching) {
-                    if (cur.action.fetch) {
-                        // not found requisitions should
-                        // fetch a different resource
-                        console.info('Found fallback rule for ', pathName, '\nLooking for its result');
-                        result = cacheManager.get(cur,
-                                                  new Request(cur.action.fetch),
-                                                  event,
-                                                  matching);
-                        return true; // stopping the loop
+            (DSWManager.rules[
+                    response && response.status? response.status : 404
+                ] || [])
+                .some((cur, idx)=>{
+                    let matching = pathName.match(cur.rx);
+                    if (matching) {
+                        if (cur.action.fetch) {
+                            // not found requisitions should
+                            // fetch a different resource
+                            console.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            result = cacheManager.get(cur,
+                                                      new Request(cur.action.fetch),
+                                                      event,
+                                                      matching);
+                            return true; // stopping the loop
+                        }
                     }
-                }
-            });
+                });
             if (!result) {
                 console.info('No rules for failed request: ', pathName, '\nWill output the failure');
             }
@@ -166,7 +209,7 @@ if (isInSWScope) {
                     }
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + '(\\.)?(('+ extensions +')([\\?\&\/].+)?)', 'i');
+                    let rx = new RegExp(path + '((\\.)(('+ extensions +')([\\?\&\/].+)?))', 'i');
                     
                     // if it fetches something, and this something is not dynamic
                     // also, if it will redirect to some static url
@@ -236,12 +279,7 @@ if (isInSWScope) {
         },
         
         createRequest (request) {
-            return new Request(request.url || request, {
-                method: request.method || 'GET',
-                headers: request.headers || {},
-                mode: 'cors',
-                cache: 'default'
-            });
+            return goFetch(null, request.url || request);
         },
         
         startListening () {
@@ -277,7 +315,8 @@ if (isInSWScope) {
                         );
                     }
                 }
-                // if no rule is applied, we simple request it
+                // if no rule is applied, we will request it
+                // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
                     if (response && response.status == 200) {
                         return response;
@@ -285,9 +324,11 @@ if (isInSWScope) {
                         return DSWManager.treatBadPage(response, pathName, event);
                     }
                 };
+                
+                // once no rule matched, we simply respond the event with a fetch
                 return event.respondWith(
-                        fetch(event.request.url, {})
-                            // but we will still treat the error pages
+                        goFetch(null, event.request)
+                            // but we will still treat the rules that use the status
                             .then(defaultTreatment)
                             .catch(defaultTreatment)
                 );
@@ -307,7 +348,6 @@ if (isInSWScope) {
     });
     
     self.addEventListener('install', function(event) {
-        // TODO: maybe remove older cache, here?
         if (PWASettings.applyImmediately) {
             event.waitUntil(self.skipWaiting().then(_=>{
                 return DSWManager.setup(PWASettings);

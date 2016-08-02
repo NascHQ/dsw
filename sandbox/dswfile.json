@@ -5,6 +5,7 @@
         '/helmet.png'
     ],
     "enforceSSL": false,
+    "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
     "dswRules": {
         "moved-pages": {
@@ -78,6 +79,7 @@
         "userData": {
             "match": { "path": "\/api\/user\/.*" },
             "options": { "credentials": "same-origin"},
+            "strategy": "fastest",
             "apply": {
                 "indexedDB": {
                     "name": "userData",
@@ -89,6 +91,7 @@
         "service": {
             "match": { "path": "\/api\/service\/.*" },
             "options": { "credentials": "same-origin"},
+            "strategy": "fastest",
             "apply": {
                 "indexedDB": {
                     "name": "serviceData",

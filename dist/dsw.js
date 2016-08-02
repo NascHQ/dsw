@@ -195,12 +195,13 @@ var cacheManager = {
                 {
                     var _ret2 = function () {
 
-                        var cacheId = DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
+                        var cacheId = void 0;
 
                         if (rule.action.cache) {
                             cacheId = cacheManager.mountCacheId(rule);
                         }
 
+                        // TODO: use goFetch instead of fetch and creating new requests
                         return {
                             v: caches.match(request).then(function (result) {
 
@@ -264,7 +265,7 @@ var cacheManager = {
                                         // this is a "normal" request, let's deliver it
                                         // but we will be using a new Request with some info
                                         // to allow browsers to understand redirects in case
-                                        // must be redirected later on
+                                        // it must be redirected later on
                                         var req = new Request(request.url, {
                                             method: opts.method || request.method,
                                             headers: opts || request.headers,
@@ -293,7 +294,78 @@ var cacheManager = {
 
 exports.default = cacheManager;
 
-},{"./indexeddb-manager.js":3}],3:[function(require,module,exports){
+},{"./indexeddb-manager.js":4}],3:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+function goFetch(rule, request, event, matching) {
+
+    // if only request is passed
+    if (request && !rule && !event) {
+        // we will just create a simple request to be used "anywhere"
+        return new Request(request.url || request, {
+            method: request.method || 'GET',
+            headers: request.headers || {},
+            mode: 'cors',
+            cache: 'default'
+        });
+    }
+
+    var actionType = Object.keys(rule.action)[0],
+        tmpUrl = rule.action.fetch || rule.action.redirect;
+
+    var opts = rule.options || {};
+    opts.headers = opts.headers || new Headers();
+
+    // if there are group variables in the matching expression
+    if (matching.length > 2 && tmpUrl) {
+        // we apply the variables
+        matching.forEach(function (cur, idx) {
+            tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
+        });
+    }
+
+    // in case there is a tmpUrl
+    // it means it is a redirect or fetch action
+    if (tmpUrl) {
+        // and we will use it to replace the current request
+
+        // if the cache options is false, we force it not to be cached
+        if (rule.action.cache === false) {
+            opts.headers.append('pragma', 'no-cache');
+            opts.headers.append('cache-control', 'no-cache');
+            tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
+        }
+    }
+
+    // we will create a new request to be used, based on what has been
+    // defined by the rule or current request
+    request = new Request(tmpUrl || request.url, {
+        method: opts.method || request.method,
+        headers: opts || request.headers,
+        mode: actionType == 'redirect' ? 'same-origin' : 'cors',
+        credentials: request.credentials,
+        redirect: actionType == 'redirect' ? 'manual' : request.redirect
+    });
+
+    if (actionType == 'redirect') {
+        // if this is supposed to redirect
+        return Response.redirect(request.url, 302);
+    } else {
+        // if this is a "normal" request, let's deliver it
+        // but we will be using a new Request with some info
+        // to allow browsers to understand redirects in case
+        // it must be redirected later on
+        return fetch(request, opts);
+    }
+}
+
+exports.default = goFetch;
+
+},{}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -408,7 +480,7 @@ var indexedDBManager = {
 
 exports.default = indexedDBManager;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -424,6 +496,10 @@ var _cacheManager = require('./cache-manager.js');
 
 var _cacheManager2 = _interopRequireDefault(_cacheManager);
 
+var _goFetch = require('./go-fetch.js');
+
+var _goFetch2 = _interopRequireDefault(_goFetch);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
@@ -432,6 +508,7 @@ var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
 var DSW = {};
+var REQUEST_TIME_LIMIT = 5000;
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -452,6 +529,7 @@ if (isInSWScope) {
                     // if it is not there, will fetch it,
                     // store it in the cache
                     // and then return it to be used
+                    console.info('offline first: Looking into cache for\n', request.url);
                     return _cacheManager2.default.get(rule, request, event, matching);
                 },
                 'online-first': function onlineFirstStrategy(rule, request, event, matching) {
@@ -468,7 +546,7 @@ if (isInSWScope) {
                             console.info('From network: ', request.url);
                             return response;
                         }
-                        return caches.match(request).then(function (result) {
+                        return _cacheManager2.default.get(rule, request, event, matching).then(function (result) {
                             // if failed to fetch and was not in cache, we look
                             // for a fallback response
                             var pathName = new URL(event.request.url).pathname;
@@ -478,22 +556,52 @@ if (isInSWScope) {
                             return result || DSWManager.treatBadPage(response, pathName, event);
                         });
                     }
-                    return fetch(request).then(treatIt).catch(treatIt);
-                } /*
-                  // STILL DECIDING IF APPLICABLE
-                  ,
-                  'fastest': function fastest (rule, request, event, matching) {
-                     // Will fetch AND look in the cache.
-                     // The cached data will be returned faster
-                     // but once the fetch request returns, it updates
-                     // what is in the cache (keeping it up to date)
-                     // TO BE DONE
-                     // return cacheManager.get(rule,
-                     //     request,
-                     //     event,
-                     //     matching
-                     '' );
-                  }*/
+                    return (0, _goFetch2.default)(rule, request, event, matching).then(treatIt).catch(treatIt);
+                },
+                'fastest': function fastestStrategy(rule, request, event, matching) {
+                    // Will fetch AND look in the cache.
+                    // The cached data will be returned faster
+                    // but once the fetch request returns, it updates
+                    // what is in the cache (keeping it up to date)
+                    var pathName = new URL(event.request.url).pathname;
+                    var treated = false,
+                        cachePromise = null;
+                    function treatFetch(response) {
+                        var result = null;
+                        if (response.status == 200) {
+                            // if we managed to load it from network and it has
+                            // cache in its actions, we cache it
+                            if (rule.action.cache) {
+                                // we will update the cache, in background
+                                _cacheManager2.default.put(rule, request, response).then(function (_) {
+                                    console.info('Updated in cache: ', request.url);
+                                });
+                            }
+                            console.info('From network (fastest or first time): ', request.url);
+                            result = response;
+                        } else {
+                            // if it failed, we will try and respond with
+                            // something else
+                            result = DSWManager.treatBadPage(response, pathName, event);
+                        }
+                        // if cache was still waiting...
+                        if (typeof cachePromise == 'function') {
+                            // we stop it, the request has returned
+                            setTimeout(cachePromise, 10);
+                        }
+                        return result;
+                    }
+
+                    function treatCache(result) {
+                        // if it was in cache, we use it...period.
+                        return result || new Promise(function (resolve, reject) {
+                            // we will wait for the request to end
+                            cachePromise = resolve;
+                        });
+                    }
+
+                    return Promise.race([(0, _goFetch2.default)(rule, request, event, matching).then(treatFetch).catch(treatFetch), _cacheManager2.default.get(rule, request, event, matching).then(treatCache)]);
+                }
             },
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
@@ -514,7 +622,7 @@ if (isInSWScope) {
             },
             treatBadPage: function treatBadPage(response, pathName, event) {
                 var result = void 0;
-                (DSWManager.rules[response.status || 404] || []).some(function (cur, idx) {
+                (DSWManager.rules[response && response.status ? response.status : 404] || []).some(function (cur, idx) {
                     var matching = pathName.match(cur.rx);
                     if (matching) {
                         if (cur.action.fetch) {
@@ -586,7 +694,7 @@ if (isInSWScope) {
                         }
 
                         // and now we "build" the regular expression itself!
-                        var rx = new RegExp(path + '(\\.)?((' + extensions + ')([\\?\&\/].+)?)', 'i');
+                        var rx = new RegExp(path + '((\\.)((' + extensions + ')([\\?\&\/].+)?))', 'i');
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
@@ -650,12 +758,7 @@ if (isInSWScope) {
                 return this.rules['*'] || false;
             },
             createRequest: function createRequest(request) {
-                return new Request(request.url || request, {
-                    method: request.method || 'GET',
-                    headers: request.headers || {},
-                    mode: 'cors',
-                    cache: 'default'
-                });
+                return (0, _goFetch2.default)(null, request.url || request);
             },
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
@@ -682,7 +785,8 @@ if (isInSWScope) {
                             return event.respondWith(DSWManager.strategies[rule.strategy](rule, event.request, event, matching));
                         }
                     }
-                    // if no rule is applied, we simple request it
+                    // if no rule is applied, we will request it
+                    // this is the function to deal with the resolt of this request
                     var defaultTreatment = function defaultTreatment(response) {
                         if (response && response.status == 200) {
                             return response;
@@ -690,8 +794,10 @@ if (isInSWScope) {
                             return DSWManager.treatBadPage(response, pathName, event);
                         }
                     };
-                    return event.respondWith(fetch(event.request.url, {})
-                    // but we will still treat the error pages
+
+                    // once no rule matched, we simply respond the event with a fetch
+                    return event.respondWith((0, _goFetch2.default)(null, event.request)
+                    // but we will still treat the rules that use the status
                     .then(defaultTreatment).catch(defaultTreatment));
                 });
             }
@@ -709,7 +815,6 @@ if (isInSWScope) {
         });
 
         self.addEventListener('install', function (event) {
-            // TODO: maybe remove older cache, here?
             if (PWASettings.applyImmediately) {
                 event.waitUntil(self.skipWaiting().then(function (_) {
                     return DSWManager.setup(PWASettings);
@@ -754,4 +859,4 @@ if (isInSWScope) {
 exports.default = DSW;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./best-matching-rx.js":1,"./cache-manager.js":2}]},{},[4]);
+},{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3}]},{},[5]);
