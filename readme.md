@@ -114,11 +114,39 @@ Reminding that `applyImmediately` is optional. It will replace the previously re
 
 ### Matching
 
-The `match` property accepts:
+The `match` property accepts an _Object_ or an _Array_ or objects with the following configuration:
 
 - status: An array with the matching statuses (eg.: [404, 500])
-- extension: An array of matching extensions (eg.: ["html", "htm", "php"])
+- extension: A string or an array of matching extensions (eg.: ["html", "htm", "php"])
 - path: A regular expression (cast in a string, so JSON can treat it)
+
+When used as an object, multiple properties are used as "AND". For exampe:
+
+```js
+match: {
+    extension: ['html', 'htm'],
+    status: [404, 500]
+}
+```
+
+Will match requests with a `status` equals to 404 or 500, **AND** with an extension of `html or htm`.<br/>
+While:
+```js
+match: [
+    { extension: ['html', 'htm'] },
+    { patch: 'some-dir\/' }
+]
+```
+
+Will match all requests with an extension of `html or htm`, **OR** in the `some-dir/` path (no matter the extension, then).
+
+### Strategy
+
+The strategy tells DSW how to deal with different situations for a request lifecycle.
+It may be:
+
+- **offline-first** [default]: Will look first for the content in cache and retrieve it. If it is not there, will try and fetch it. Then, stores it in the cache.
+- **online-first**: Will _ALWAYS_ go for the network and see it can load the content. If so, adds(or updates) it into cache(if cache is meant to be applied). If it fails fetching it, only then it will look for it in the cache.
 
 ### Applying
 
