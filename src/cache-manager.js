@@ -75,22 +75,22 @@ const cacheManager = {
             url = request.url || request,
             pathName = (new URL(url)).pathname;
 
-        if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i)) {
-            // requisitions to / should 
-            actionType = 'cache';
+        if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i) && rule.action.cache !== false) {
+            // requisitions to / should be cached by default
+            rule.action.cache = rule.action.cache || {};
         }
 
         let opts = rule.options || {};
         opts.headers = opts.headers || new Headers();
-
-        // if the cache options is false, we force it not to be cached
-        if(rule.action.cache === false){
-            opts.headers.append('pragma', 'no-cache');
-            opts.headers.append('cache-control', 'no-cache');
-            url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
-            pathName = (new URL(url)).pathname;
-            request = new Request(url);
-        }
+//
+//        // if the cache options is false, we force it not to be cached
+//        if(rule.action.cache === false){
+//            opts.headers.append('pragma', 'no-cache');
+//            opts.headers.append('cache-control', 'no-cache');
+//            url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
+//            pathName = (new URL(url)).pathname;
+//            request = new Request(url);
+//        }
 
         switch (actionType) {
         case 'idb':
@@ -125,7 +125,7 @@ const cacheManager = {
                         }else{
                             // if it was not stored, let's fetch it
                             // fetching
-                            request = DSWManager.createRequest(request);
+                            request = DSWManager.createRequest(request, event, matching);
                             result = fetch(request,
                                            opts)
                                         .then(treatFetch)
@@ -136,23 +136,9 @@ const cacheManager = {
         }
         case 'redirect':
         case 'fetch': {
-            let tmpUrl = rule.action.fetch || rule.action.redirect;
-
-            if (matching.length > 2) {
-                // applying variables
-                matching.forEach(function(cur, idx){
-                    tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
-                });
-            }
-
-            request = new Request(tmpUrl, {
-                method: opts.method || request.method,
-                headers: opts || request.headers,
-                mode: 'same-origin', // need to set this properly
-                credentials: request.credentials,
-                redirect: 'manual'   // let browser handle redirects
-            });
-
+            request = DSWManager.createRedirect(rule.action.fetch || rule.action.redirect,
+                                                event,
+                                                matching);
             url = request.url;
             pathName = new URL(url).pathname;
             // keep going to be treated with the cache case
@@ -165,49 +151,29 @@ const cacheManager = {
                 cacheId = cacheManager.mountCacheId(rule);
             }
             
-            // TODO: use goFetch instead of fetch and creating new requests
+            // look for the request in the cache
             return caches.match(request)
                 .then(result=>{
-
                     // if it does not exist (cache could not be verified)
                     if (result && result.status != 200) {
+                        // look for rules that match for the request and its status
                         (DSWManager.rules[result.status]||[]).some((cur, idx)=>{
                             if (pathName.match(cur.rx)) {
-                                if (cur.action.fetch) {
-                                    // not found requests should
+                                // if a rule matched for the status and request
+                                // and it tries to fetch a different source
+                                if (cur.action.fetch || cur.action.redirect) {
+                                    // problematic requests should
                                     // fetch a different resource
-                                    result = fetch(cur.action.fetch,
+                                    result = fetch(cur.action.fetch || cur.action.redirect,
                                                   cur.action.options);
                                     return true; // stopping the loop
                                 }
                             }
                         });
+                        // we, then, return the promise of the failed result(for it
+                        // could not be loaded and was not in cache)
                         return result;
                     }else{
-                        let treatFetch = function (response) {
-                            if(!response.status){
-                                response.status = 404;
-                            }
-                            // after retrieving it, we cache it
-                            // if it was ok
-                            if (response.status == 200) {
-                                // if cache is not false, it will be added to cache
-                                if (rule.action.cache !== false) {
-                                    return caches.open(cacheId).then(function(cache) {
-                                        cache.put(request, response.clone());
-                                        console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                        return response;
-                                    });
-                                }else{
-                                    return response;
-                                }
-                            } else {
-                                // otherwise...let's see if there is a fallback
-                                // for the 404 requisition
-                                return DSWManager.treatBadPage(response, pathName, event);
-                            }
-                        };
-
                         // We will return the result, if successful, or
                         // fetch an anternative resource(or redirect)
                         // and treat both success and failure with the
@@ -232,6 +198,29 @@ const cacheManager = {
                             // but we will be using a new Request with some info
                             // to allow browsers to understand redirects in case
                             // it must be redirected later on
+                            let treatFetch = function (response) {
+                                if(!response.status){
+                                    response.status = 404;
+                                }
+                                // after retrieving it, we cache it
+                                // if it was ok
+                                if (response.status == 200) {
+                                    // if cache is not false, it will be added to cache
+                                    if (rule.action.cache !== false) {
+                                        return caches.open(cacheId).then(function(cache) {
+                                            cache.put(request, response.clone());
+                                            console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
+                                            return response;
+                                        });
+                                    }else{
+                                        return response;
+                                    }
+                                } else {
+                                    // otherwise...let's see if there is a fallback
+                                    // for the 404 requisition
+                                    return DSWManager.treatBadPage(response, pathName, event);
+                                }
+                            };
                             let req = new Request(request.url, {
                                 method: opts.method || request.method,
                                 headers: opts || request.headers,

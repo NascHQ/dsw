@@ -278,8 +278,12 @@ if (isInSWScope) {
             return this.rules['*'] || false;
         },
         
-        createRequest (request) {
-            return goFetch(null, request.url || request);
+        createRequest (request, event, matching) {
+            return goFetch(null, request.url || request, event, matching);
+        },
+        
+        createRedirect (request, event, matching) {
+            return goFetch(null, request.url || request, event, matching);
         },
         
         startListening () {
