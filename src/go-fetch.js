@@ -1,7 +1,7 @@
 
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : (request.url || request);
-    debugger;
+    
     // if there are group variables in the matching expression
     if (matching && matching.length > 2 && tmpUrl) {
         // we apply the variables
