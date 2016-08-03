@@ -15,7 +15,7 @@ You will simply have to create setup in a JSON file how your service worker is s
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything following its rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-atdnhdbdgt.now.sh/)
+[Dynamic Service Worker demo](https://dsw-demo-rwnwbdjrxg.now.sh/)
 
 ## Advantages
 
