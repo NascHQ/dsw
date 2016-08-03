@@ -55,7 +55,7 @@ const cacheManager = {
     },
     put: (rule, request, response) => {
         let cloned = response.clone();
-        return caches.open(cacheManager.mountCacheId(rule))
+        return caches.open(typeof rule == 'string'? rule: cacheManager.mountCacheId(rule))
             .then(function(cache) {
                 cache.put(request, cloned);
                 return response;
@@ -108,7 +108,7 @@ const cacheManager = {
                         };
 
                         // store it in the indexedDB
-                        indexedDBManager.save(rule.name, response.clone())
+                        indexedDBManager.save(rule.name, response.clone(), request, rule)
                             .then(done)
                             .catch(done); // if failed saving, we still have the reponse to deliver
                     }else{
@@ -123,12 +123,11 @@ const cacheManager = {
                 // (we use the cache, just so we can user)
                 indexedDBManager.get(rule.name, request)
                     .then(result=>{
-                        debugger;
+                        //debugger;
                         // if we did have it in the indexedDB
                         if (result) {
                             // we use it
-                            console.log('found something');
-                            // TODO: use it
+                            return result;
                         }else{
                             // if it was not stored, let's fetch it
                             request = DSWManager.createRequest(request, event, matching);

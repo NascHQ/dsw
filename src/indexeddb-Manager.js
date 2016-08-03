@@ -1,5 +1,6 @@
 
 const DEFAULT_DB_NAME = 'defaultDSWDB';
+const INDEXEDDB_REQ_IDS = 'indexeddb-id-request';
 const dbs = {};
 var cacheManager;
 
@@ -77,12 +78,27 @@ const indexedDBManager = {
             let store = getObjectStore(dbName);
             // TODO: look for cached keys, then find them in the db
             caches.match(request)
-                .then(result=>{});
-            resolve();
+                .then(result=>{
+                    if(result) {
+                        result.json().then(obj=>{
+                            // if the request was in cache, we now have got
+                            // the id=value for the indexes(keys) to look for,
+                            // in the indexedDB!
+                            debugger;
+                            let store = getObjectStore(dbName),
+                                req;
+                            // TODO: select here, by index
+                            store.index();
+                            resolve();
+                        });
+                    }else{
+                        resolve();
+                    }
+                });
         });
     },
     
-    save (dbName, data) {
+    save (dbName, data, request, rule) {
         return new Promise((resolve, reject)=>{
 
             data.json().then(obj=>{
@@ -93,6 +109,21 @@ const indexedDBManager = {
                 req = store.add(obj);
 
                 req.onsuccess = function () {
+                    
+                    debugger;
+                    let tmp = {};
+                    let indexes = rule.action.indexedDB.indexes || ['id'];
+                    indexes.forEach(cur=>{
+                        tmp[cur] = obj[cur];
+                    });
+                    
+                    cacheManager.put(INDEXEDDB_REQ_IDS,
+                        request,
+                        new Response(JSON.stringify(tmp),
+                            {
+                                headers: { 'Content-Type' : 'application/json' }
+                            })
+                    );
                     resolve();
                 };
                 req.onerror = function(event) {
@@ -102,8 +133,6 @@ const indexedDBManager = {
                 console.error('Failed saving into indexedDB!\n', err.message, err);
                 reject('Failed saving into indexedDB!');
             });
-            
-            console.log(dbName, data);
         });
     }
     
