@@ -1,5 +1,5 @@
 # Dynamic Service Worker
-![Dynamic Service Worker](https://github.com/NascHQ/dsw/blob/master/docs/images/worker-person.png)
+![Dynamic Service Worker](https://raw.githubusercontent.com/NascHQ/dsw/master/docs/images/worker-person.png)
 
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
