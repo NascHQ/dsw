@@ -68,7 +68,7 @@ if (isInSWScope) {
         setup (dswConfig) {
             // let's prepare both cacheManager and strategies with the
             // current referencies
-            cacheManager.setup(DSWManager, PWASettings);
+            cacheManager.setup(DSWManager, PWASettings, goFetch);
             strategies.setup(DSWManager, cacheManager, goFetch);
             
             return new Promise((resolve, reject)=>{

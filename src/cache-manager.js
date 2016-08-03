@@ -4,7 +4,8 @@ const DEFAULT_CACHE_NAME = 'defaultDSWCached';
 let DEFAULT_CACHE_VERSION = null;
 
 let DSWManager,
-    PWASettings;
+    PWASettings,
+    goFetch;
 
 // finds the real size of an utf-8 string
 function lengthInUtf8Bytes(str) {
@@ -14,9 +15,10 @@ function lengthInUtf8Bytes(str) {
 }
 
 const cacheManager = {
-    setup: (DSWMan, PWASet)=>{
+    setup: (DSWMan, PWASet, ftch)=>{
         PWASettings = PWASet;
         DSWManager = DSWMan;
+        goFetch = ftch;
         DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
         indexedDBManager.setup(cacheManager);
     },
@@ -100,6 +102,7 @@ const cacheManager = {
                 // function to be used after fetching
                 function treatFetch (response) {
                     if (response && response.status == 200) {
+                        // with success or not(saving it), we resolve it
                         let done = _=>{
                             resolve(response);
                         };
@@ -109,11 +112,15 @@ const cacheManager = {
                             .then(done)
                             .catch(done); // if failed saving, we still have the reponse to deliver
                     }else{
-                        debugger;
-                        // TODO: treat the not found requests
+                        // if it failed, we can look for a fallback
+                        url = request.url;
+                        pathName = new URL(url).pathname;
+                        return DSWManager.treatBadPage(response, pathName, event);
                     }
                 }
 
+                // let's look for it in our cache, and then in the database
+                // (we use the cache, just so we can user)
                 indexedDBManager.get(rule.name, request)
                     .then(result=>{
                         debugger;
@@ -124,12 +131,10 @@ const cacheManager = {
                             // TODO: use it
                         }else{
                             // if it was not stored, let's fetch it
-                            // fetching
                             request = DSWManager.createRequest(request, event, matching);
-                            result = fetch(request,
-                                           opts)
-                                        .then(treatFetch)
-                                        .catch(treatFetch);
+                            return fetch(request, opts)
+                                .then(treatFetch)
+                                .catch(treatFetch);
                         }
                     });
             });

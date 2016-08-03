@@ -2,7 +2,8 @@
     "dswVersion": 2.2,
     "applyImmediately": true,
     "appShell": [
-        '/helmet.png'
+        '/helmet.png',
+        '/index.html?homescreen=1'
     ],
     "enforceSSL": false,
     "requestTimeLimit": 6000,

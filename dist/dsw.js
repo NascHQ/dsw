@@ -41,7 +41,8 @@ var DEFAULT_CACHE_NAME = 'defaultDSWCached';
 var DEFAULT_CACHE_VERSION = null;
 
 var DSWManager = void 0,
-    PWASettings = void 0;
+    PWASettings = void 0,
+    goFetch = void 0;
 
 // finds the real size of an utf-8 string
 function lengthInUtf8Bytes(str) {
@@ -51,9 +52,10 @@ function lengthInUtf8Bytes(str) {
 }
 
 var cacheManager = {
-    setup: function setup(DSWMan, PWASet) {
+    setup: function setup(DSWMan, PWASet, ftch) {
         PWASettings = PWASet;
         DSWManager = DSWMan;
+        goFetch = ftch;
         DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
         _indexeddbManager2.default.setup(cacheManager);
     },
@@ -137,6 +139,7 @@ var cacheManager = {
                         // function to be used after fetching
                         function treatFetch(response) {
                             if (response && response.status == 200) {
+                                // with success or not(saving it), we resolve it
                                 var done = function done(_) {
                                     resolve(response);
                                 };
@@ -144,11 +147,15 @@ var cacheManager = {
                                 // store it in the indexedDB
                                 _indexeddbManager2.default.save(rule.name, response.clone()).then(done).catch(done); // if failed saving, we still have the reponse to deliver
                             } else {
-                                    debugger;
-                                    // TODO: treat the not found requests
-                                }
+                                // if it failed, we can look for a fallback
+                                url = request.url;
+                                pathName = new URL(url).pathname;
+                                return DSWManager.treatBadPage(response, pathName, event);
+                            }
                         }
 
+                        // let's look for it in our cache, and then in the database
+                        // (we use the cache, just so we can user)
                         _indexeddbManager2.default.get(rule.name, request).then(function (result) {
                             debugger;
                             // if we did have it in the indexedDB
@@ -158,9 +165,8 @@ var cacheManager = {
                                 // TODO: use it
                             } else {
                                 // if it was not stored, let's fetch it
-                                // fetching
                                 request = DSWManager.createRequest(request, event, matching);
-                                result = fetch(request, opts).then(treatFetch).catch(treatFetch);
+                                return fetch(request, opts).then(treatFetch).catch(treatFetch);
                             }
                         });
                     });
@@ -547,7 +553,7 @@ if (isInSWScope) {
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
-                _cacheManager2.default.setup(DSWManager, PWASettings);
+                _cacheManager2.default.setup(DSWManager, PWASettings, _goFetch2.default);
                 _strategies2.default.setup(DSWManager, _cacheManager2.default, _goFetch2.default);
 
                 return new Promise(function (resolve, reject) {
