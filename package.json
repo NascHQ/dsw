@@ -3,7 +3,7 @@
   "version": "1.3.2",
   "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
-    "dsw": "./bin/index.js"
+    "dsw": "./src/main.js"
   },
   "environment": "node",
   "preferGlobal": true,
