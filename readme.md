@@ -8,28 +8,28 @@
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
 
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
-You will simply have to create setup in a JSON file how your service worker is supposed to deal with requests. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
+You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
 ## Live Demo
 
 You can access this page and see a live demo of DSW working.
-After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything following its rules (described in each block and link).
+After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
 [Dynamic Service Worker demo](https://dsw-demo-rwnwbdjrxg.now.sh/)
 
 ## Advantages
 
-- use of variables
-- decision over cache naming and versioning for each matching request
-- many named rules (for future debugging tooling...I imagine we can have a lighthouse-like page for debugging your service workers and your rules)
-- support for indexedDB (under development)
-- support for messaging and syncing events (under development)
-- quite simple json configuration and easy to start with the basic, or go further for more complex cases
-- client api with many possibilities (kinda connecting the browser and sw scopes via events)
+- Use of variables
+- Decision over cache naming and versioning for each matching request
+- Many named rules (for future debugging tooling...I imagine we can have a lighthouse-like page for debugging your service workers and your rules)
+- Support for indexedDB (under development)
+- Support for messaging and syncing events (under development)
+- Quite simple JSON configuration and easy to start with the basic, or go further for more complex cases
+- Client API with many possibilities (like connecting the browser and SW scopes via events)
 
 ## Installing it
 
-It's node program which you may install globally:
+It's a Node.js program that you may install globally:
 
 ```npm install -g dsw```
 
@@ -37,9 +37,9 @@ Or locally:
 
 ```npm install dsw --save-dev```
 
-## TL;DL
+## TL;DR
 
-Want simply to see it working as fast as possible?<br/>
+Want to just see it working as fast as possible?<br/>
 Clone the project, go to its directory, install it and run `npm run try`
 
 ## Using it
