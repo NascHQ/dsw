@@ -634,7 +634,158 @@ Cache will ONLY be used when the network fails.</p>
                     <span class="hljs-string">"version"</span>: <span class="hljs-string">"1"</span>
                 }
             }
-        }
+        },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-37">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-37">&#182;</a>
+              </div>
+              <p>Let’s use IndexedDB to store some data</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"userData"</span>: {
+            <span class="hljs-string">"match"</span>: { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/api\/user\/.*"</span> },
+            <span class="hljs-string">"options"</span>: { <span class="hljs-string">"credentials"</span>: <span class="hljs-string">"same-origin"</span>},</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-38">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-38">&#182;</a>
+              </div>
+              <p>We will try to keep it up to date.
+DSW will look for it online, and if not possible, then look in the
+cached object in IndexedDB.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"strategy"</span>: <span class="hljs-string">"offline-first"</span>,
+            <span class="hljs-string">"apply"</span>: {
+                <span class="hljs-string">"indexedDB"</span>: {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-39">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-39">&#182;</a>
+              </div>
+              <p>The IndexedDB name</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-string">"name"</span>: <span class="hljs-string">"userData"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-40">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-40">&#182;</a>
+              </div>
+              <p>The version of it. If you change it, your db will be updated.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-string">"version"</span>: <span class="hljs-string">"3"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-41">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-41">&#182;</a>
+              </div>
+              <p>The <em>json</em> data we are expecting in this example gives us
+and id, and we will use it as our kay for the IndexedDB structure.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-string">"key"</span>: <span class="hljs-string">"id"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-42">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-42">&#182;</a>
+              </div>
+              <p>but we will also define some indexes</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-string">"indexes"</span>: [</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-43">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-43">&#182;</a>
+              </div>
+              <p>one of the indexes is the property “name”</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                        <span class="hljs-string">"name"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-44">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-44">&#182;</a>
+              </div>
+              <p>the other index is the property “twitter”…</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                        {
+                            <span class="hljs-string">"name"</span>: <span class="hljs-string">"twitter"</span>,
+                            <span class="hljs-string">"path"</span>: <span class="hljs-string">"twitter"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-45">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-45">&#182;</a>
+              </div>
+              <p>…but for this one, we want to specify that it is unique.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                            <span class="hljs-string">"options"</span>: {
+                                <span class="hljs-string">"unique"</span>: <span class="hljs-literal">true</span>
+                            }
+                        }
+                    ]
+                }
+            }
+        },
     }
 }</pre></div></div>
             
