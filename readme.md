@@ -157,7 +157,7 @@ It may be:
 - redirect: same as fetch, but setting the header status to 302
 - cache: An object containing cache information for the request
 
-#### Cache information
+#### Cache
 
 DSW will treat the cache layer for you.
 
@@ -167,12 +167,63 @@ Pass to the cache object in your apply definition, an object containing:
 - version (optional)
 
 You can also define `cache: false`. This will force the request **not to be cached**.
-
 Seens silly, but is useful when you want an exception for your cached data.
+
+#### IndexedDB
+
+Some times, you will request a _JSON_ and IndexedDB is the best way to store it.
+
+To do so, you will use the `indexedDB` action in your `apply` rule.
+Pass an object containing the following:
+
+- name: The name of your IndexedDB
+- version(optional): The version of your IndexedDB structure
+- key: The name of the key, for the indexed data
+- indexes: An array with everything you want to use as index.
+
+Indexes may be a _String_ or an object containing:
+
+- path: The path where to find the index in your object
+- name(optional): The name of the index (if not sent, path will be used as the name)
+- options(optional): Any options you want to set to your index (like `unique` or `multiEntry`)
+
+For example:
+
+```js
+"apply": {
+    "indexedDB": {
+        "name": "userData",
+        "version": "3",
+        "key": "id",
+        "indexes": [
+            "age",
+            {
+                "name": "twitter",
+                "path": "twitter",
+                "options": {
+                    "unique": true
+                }
+            }
+        ]
+    }
+}
+```
+
+In this example, we will have three indexes: age, twitter and id (created automatically as it is the key).
+
+If you **DO NOT** want to cache your json stored in IndexedDB, set `cache: false` in your rule/apply configuration.
+
+**How it works**
+
+You may be wondering how it caches your data.
+Well, it uses the `cacheApi` to store as requests, only your keys. When you try to use it, it will use these ids to find the stored data you want, in your indexedDB.
+
+This way, you can access the information in your IndexedDB by yourself, while your requests will automatically deal with it, too.
+
 
 # Examples
 
-Using both `match` and `apply`, we can for do a lot of things.<br/>
+Using both `match` and `apply`, we can do a lot of things.<br/>
 Don't forget to re-run `dsw path-to-project` whenever you made a change to your `dswfile.js` file.
 
 #### Treating not found pages (404)
@@ -341,7 +392,58 @@ Most of times you will want to cache all your static files, like _javascript_ fi
 }
 ```
 
-#### Use it programatically
+#### Sending credentials
+
+In case you want to send credentials or other settings to fetch, you can use the `options` property.
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+	"userData": {
+        "match": { "path": "\/api\/user\/.*" },
+        "options": { "credentials": "same-origin"},
+        "apply": {
+            // apply somethig
+        }
+    }
+}
+```
+
+#### Sending credentials
+
+In case you want to send credentials or other settings to fetch, you can use the `options` property.
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+	"userData": {
+        "match": { "path": "\/api\/user\/.*" },
+        "options": { "credentials": "same-origin"},
+        "strategy": "online-first",
+        "apply": {
+            "indexedDB": {
+                "name": "userData",
+                "version": "3",
+                "key": "id",
+                "indexes": [
+                    "name",
+                    {
+                        "name": "twitter",
+                        "path": "twitter",
+                        "options": {
+                            "unique": true
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
+```
+
+### Use it programatically
 
 You can also use it programatically, specially if you intend to use or create a tool to build, like `grunt` or `gulp`.
 
