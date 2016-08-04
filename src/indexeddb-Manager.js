@@ -42,10 +42,10 @@ const indexedDBManager = {
                 let db = event.target.result;
                 let baseData = {};
                 
-                if (config.indexes) {
-                    baseData.keyPath = config.indexes;
+                if (config.key) {
+                    baseData.keyPath = config.key;
                 }
-                if (!config.indexes || config.autoIncrement) {
+                if (!config.key || config.autoIncrement) {
                     baseData.autoIncrement = true;
                 }
                 if (config.version) {
@@ -60,7 +60,23 @@ const indexedDBManager = {
                     db.deleteObjectStore(config.name);
                 } else if (event.oldVersion === 0) {
                     // if it is the first time it is creating it
-                    db.createObjectStore(config.name, baseData);
+                    let objectStore = db.createObjectStore(config.name, baseData);
+                    // in case there are indexes defined, we create them
+                    if (config.indexes) {
+                        config.indexes.forEach(index=>{
+                            if (typeof index == 'string') {
+                                objectStore.createIndex(index, index, {});
+                            } else {
+                                objectStore.createIndex(index.name,
+                                               index.path || index.name,
+                                               index.options);
+                            }
+                        });
+                    }
+                    // we will also make the key, an index
+                    objectStore.createIndex(config.key,
+                                           config.key,
+                                           { unique: true });
                 }
                 
                 dataBaseReady(db, config.name, resolve);
@@ -76,7 +92,6 @@ const indexedDBManager = {
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            // TODO: look for cached keys, then find them in the db
             caches.match(request)
                 .then(result=>{
                     if(result) {
@@ -84,12 +99,23 @@ const indexedDBManager = {
                             // if the request was in cache, we now have got
                             // the id=value for the indexes(keys) to look for,
                             // in the indexedDB!
-                            debugger;
                             let store = getObjectStore(dbName),
-                                req;
-                            // TODO: select here, by index
-                            store.index();
-                            resolve();
+                                index = store.index(obj.key),
+                                getter = index.get(obj.value);
+                            // in case we did get the content from indexedDB
+                            // let's create a new Response out of it!
+                            getter.onsuccess = event=>{
+                                resolve(new Response(JSON.stringify(event.target.result),
+                                    {
+                                        headers: { 'Content-Type' : 'application/json' }
+                                    })
+                                );
+                            };
+                            getter.onerror = event=>{
+                                // if we did not find it (or faced a problem) in
+                                // indexeddb, we leave it to the network
+                                resolve();
+                            };
                         });
                     }else{
                         resolve();
@@ -109,13 +135,10 @@ const indexedDBManager = {
                 req = store.add(obj);
 
                 req.onsuccess = function () {
-                    
-                    debugger;
                     let tmp = {};
-                    let indexes = rule.action.indexedDB.indexes || ['id'];
-                    indexes.forEach(cur=>{
-                        tmp[cur] = obj[cur];
-                    });
+                    let key = rule.action.indexedDB.key || 'id';
+                    tmp.key = key;
+                    tmp.value = obj[key];
                     
                     cacheManager.put(INDEXEDDB_REQ_IDS,
                         request,

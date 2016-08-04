@@ -123,11 +123,10 @@ const cacheManager = {
                 // (we use the cache, just so we can user)
                 indexedDBManager.get(rule.name, request)
                     .then(result=>{
-                        //debugger;
                         // if we did have it in the indexedDB
                         if (result) {
                             // we use it
-                            return result;
+                            return treatFetch(result);
                         }else{
                             // if it was not stored, let's fetch it
                             request = DSWManager.createRequest(request, event, matching);

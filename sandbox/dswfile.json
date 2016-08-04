@@ -80,12 +80,22 @@
         "userData": {
             "match": { "path": "\/api\/user\/.*" },
             "options": { "credentials": "same-origin"},
-            "strategy": "fastest",
+            "strategy": "offline-first",
             "apply": {
                 "indexedDB": {
                     "name": "userData",
-                    "version": "2",
-                    "indexes": ["name"]
+                    "version": "3",
+                    "key": "id",
+                    "indexes": [
+                        "name",
+                        {
+                            "name": "twitter",
+                            "path": "twitter",
+                            "options": {
+                                "unique": true
+                            }
+                        }
+                    ]
                 }
             }
         },

@@ -157,11 +157,10 @@ var cacheManager = {
                         // let's look for it in our cache, and then in the database
                         // (we use the cache, just so we can user)
                         _indexeddbManager2.default.get(rule.name, request).then(function (result) {
-                            //debugger;
                             // if we did have it in the indexedDB
                             if (result) {
                                 // we use it
-                                return result;
+                                return treatFetch(result);
                             } else {
                                 // if it was not stored, let's fetch it
                                 request = DSWManager.createRequest(request, event, matching);
@@ -399,10 +398,10 @@ var indexedDBManager = {
                 var db = event.target.result;
                 var baseData = {};
 
-                if (config.indexes) {
-                    baseData.keyPath = config.indexes;
+                if (config.key) {
+                    baseData.keyPath = config.key;
                 }
-                if (!config.indexes || config.autoIncrement) {
+                if (!config.key || config.autoIncrement) {
                     baseData.autoIncrement = true;
                 }
                 if (config.version) {
@@ -416,8 +415,22 @@ var indexedDBManager = {
                     // with a previous version
                     db.deleteObjectStore(config.name);
                 } else if (event.oldVersion === 0) {
-                    // if it is the first time it is creating it
-                    db.createObjectStore(config.name, baseData);
+                    (function () {
+                        // if it is the first time it is creating it
+                        var objectStore = db.createObjectStore(config.name, baseData);
+                        // in case there are indexes defined, we create them
+                        if (config.indexes) {
+                            config.indexes.forEach(function (index) {
+                                if (typeof index == 'string') {
+                                    objectStore.createIndex(index, index, {});
+                                } else {
+                                    objectStore.createIndex(index.name, index.path || index.name, index.options);
+                                }
+                            });
+                        }
+                        // we will also make the key, an index
+                        objectStore.createIndex(config.key, config.key, { unique: true });
+                    })();
                 }
 
                 dataBaseReady(db, config.name, resolve);
@@ -432,19 +445,27 @@ var indexedDBManager = {
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
             var store = getObjectStore(dbName);
-            // TODO: look for cached keys, then find them in the db
             caches.match(request).then(function (result) {
                 if (result) {
                     result.json().then(function (obj) {
                         // if the request was in cache, we now have got
                         // the id=value for the indexes(keys) to look for,
                         // in the indexedDB!
-                        debugger;
                         var store = getObjectStore(dbName),
-                            req = void 0;
-                        // TODO: select here, by index
-                        store.index();
-                        resolve();
+                            index = store.index(obj.key),
+                            getter = index.get(obj.value);
+                        // in case we did get the content from indexedDB
+                        // let's create a new Response out of it!
+                        getter.onsuccess = function (event) {
+                            resolve(new Response(JSON.stringify(event.target.result), {
+                                headers: { 'Content-Type': 'application/json' }
+                            }));
+                        };
+                        getter.onerror = function (event) {
+                            // if we did not find it (or faced a problem) in
+                            // indexeddb, we leave it to the network
+                            resolve();
+                        };
                     });
                 } else {
                     resolve();
@@ -463,13 +484,10 @@ var indexedDBManager = {
                 req = store.add(obj);
 
                 req.onsuccess = function () {
-
-                    debugger;
                     var tmp = {};
-                    var indexes = rule.action.indexedDB.indexes || ['id'];
-                    indexes.forEach(function (cur) {
-                        tmp[cur] = obj[cur];
-                    });
+                    var key = rule.action.indexedDB.key || 'id';
+                    tmp.key = key;
+                    tmp.value = obj[key];
 
                     cacheManager.put(INDEXEDDB_REQ_IDS, request, new Response(JSON.stringify(tmp), {
                         headers: { 'Content-Type': 'application/json' }
