@@ -147,7 +147,41 @@
                     "version": "1"
                 }
             }
-        }
+        },
+        // Let's use IndexedDB to store some data
+        "userData": {
+            "match": { "path": "\/api\/user\/.*" },
+            "options": { "credentials": "same-origin"},
+            // We will try to keep it up to date.
+            // DSW will look for it online, and if not possible, then look in the
+            // cached object in IndexedDB.
+            "strategy": "offline-first",
+            "apply": {
+                "indexedDB": {
+                    // The IndexedDB name
+                    "name": "userData",
+                    // The version of it. If you change it, your db will be updated.
+                    "version": "3",
+                    // The _json_ data we are expecting in this example gives us
+                    // and id, and we will use it as our kay for the IndexedDB structure.
+                    "key": "id",
+                    // but we will also define some indexes
+                    "indexes": [
+                        // one of the indexes is the property "name"
+                        "name",
+                        // the other index is the property "twitter"...
+                        {
+                            "name": "twitter",
+                            "path": "twitter",
+                            // ...but for this one, we want to specify that it is unique.
+                            "options": {
+                                "unique": true
+                            }
+                        }
+                    ]
+                }
+            }
+        },
     }
 }
 
