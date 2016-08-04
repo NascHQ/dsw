@@ -811,7 +811,9 @@ if (isInSWScope) {
         });
     };
 
-    window.DSW = DSW;
+    if (typeof window !== 'undefined') {
+        window.DSW = DSW;
+    }
 }
 
 exports.default = DSW;

@@ -2,6 +2,7 @@
     "name": "dsw-demo",
     "version": "0.0.1",
     "dependencies": {
+        "dsw": "*",
         "http-server": "*"
     },
     "scripts": {
