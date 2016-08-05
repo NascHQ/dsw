@@ -289,6 +289,41 @@ exports.default = cacheManager;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+var mountCacheControl = function mountCacheControl(rule) {
+    if (!rule.action.cache) {
+        return 'no-store,no-cache';
+    }
+
+    var cache = 'no-cache'; // we want it to at least revalidate
+    var duration = rule.action.cache.duration || -1;
+
+    if (typeof duration == 'string') {
+        // let's use a formated string to know the expiration time
+        var sizes = {
+            s: 1,
+            m: 60,
+            h: 3600,
+            d: 86400,
+            w: 604800,
+            M: 2592000,
+            Y: 31449600
+        };
+
+        var size = duration.slice(-1),
+            val = duration.slice(0, -1);
+        if (sizes[size]) {
+            duration = 'max-age=' + val * sizes[size];
+        } else {
+            console.warn('Invalid duration ' + duration, rule);
+            duration = '';
+        }
+    } else {
+        if (duration === -1) {
+            duration = '';
+        }
+    }
+    return cache + ' ' + duration;
+};
 
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : request.url || request;
@@ -320,8 +355,10 @@ function goFetch(rule, request, event, matching) {
     // if the cache options is false, we force it not to be cached
     if (rule.action.cache === false) {
         opts.headers.append('pragma', 'no-cache');
-        opts.headers.append('cache-control', 'no-cache');
+        opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
+    } else {
+        opts.headers.append('cache-control', mountCacheControl(rule));
     }
 
     // we will create a new request to be used, based on what has been
@@ -877,42 +914,59 @@ var strategies = {
         // what is in the cache (keeping it up to date)
         var pathName = new URL(event.request.url).pathname;
         var treated = false,
-            cachePromise = null;
+            resolved = null;
         function treatFetch(response) {
             var result = null;
+
             if (response.status == 200) {
                 // if we managed to load it from network and it has
                 // cache in its actions, we cache it
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        console.info('Updated in cache: ', request.url);
+                        console.info('Updated in cache (from fastest): ', request.url);
                     });
                 }
-                console.info('From network (fastest or first time): ', request.url);
-                result = response;
-            } else {
-                // if it failed, we will try and respond with
-                // something else
-                result = DSWManager.treatBadPage(response, pathName, event);
             }
-            // if cache was still waiting...
-            if (typeof cachePromise == 'function') {
-                // we stop it, the request has returned
-                setTimeout(cachePromise, 10);
+
+            // if cache has not resolved it yet
+            if (!resolved) {
+                // if it downloaded well, we use it (probably the first access)
+                if (response.status == 200) {
+                    console.log('fastest strategy: loaded from network', request.url);
+                    resolved = true;
+                    result = response;
+                } else {
+                    // if it failed, we will try and respond with
+                    // something else
+                    result = DSWManager.treatBadPage(response, pathName, event);
+                }
+                return result;
             }
-            return result;
         }
 
         function treatCache(result) {
-            // if it was in cache, we use it...period.
-            return result || new Promise(function (resolve, reject) {
+
+            if (result && !resolved) {
+                // if it was in cache, we use it...period.
+                resolved = true;
+                console.log('fastest strategy: loaded from cache', request.url);
+                return result;
+            }
+            // if it was not in cache, we will wait a little bit, and then kill it
+            return new Promise(function (resolve, reject) {
                 // we will wait for the request to end
-                cachePromise = resolve;
+                setTimeout(resolve, 5000);
             });
         }
 
-        return Promise.race([goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch), cacheManager.get(rule, request, event, matching).then(treatCache)]);
+        return Promise.race([
+        // one promise go for the network
+        goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch),
+        // the other, for the cache
+        cacheManager.get(rule, request, event, matching).then(treatCache)
+        // 3, 2, 1...GO!
+        ]);
     }
 };
 

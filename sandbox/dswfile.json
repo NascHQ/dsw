@@ -51,7 +51,8 @@
             "apply": {
                 "cache": {
                     "name": "cachedImages",
-                    "version": "1"
+                    "version": "1",
+                    "duration": "1s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
                 }
             }
         },
@@ -69,7 +70,7 @@
                 { "extension": ["html"] },
                 { "path": "\/$" }
             ],
-            "strategy": "online-first",
+            "strategy": "fastest",
             "apply": {
                 "cache": {
                     "name": "static-html-files",

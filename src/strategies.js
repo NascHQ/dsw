@@ -55,47 +55,61 @@ const strategies = {
         // what is in the cache (keeping it up to date)
         const pathName = (new URL(event.request.url)).pathname;
         let treated = false,
-            cachePromise = null;
+            resolved = null;
         function treatFetch (response) {
             let result = null;
+            
             if (response.status == 200) {
                 // if we managed to load it from network and it has
                 // cache in its actions, we cache it
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(_=>{
-                        console.info('Updated in cache: ', request.url);
+                        console.info('Updated in cache (from fastest): ', request.url);
                     });
                 }
-                console.info('From network (fastest or first time): ', request.url);
-                result = response;
-            } else {
-                // if it failed, we will try and respond with
-                // something else
-                result = DSWManager.treatBadPage(response, pathName, event);
             }
-            // if cache was still waiting...
-            if(typeof cachePromise == 'function') {
-                // we stop it, the request has returned
-                setTimeout(cachePromise, 10);
+            
+            // if cache has not resolved it yet
+            if (!resolved) {
+                // if it downloaded well, we use it (probably the first access)
+                if (response.status == 200) {
+                    console.log('fastest strategy: loaded from network', request.url);
+                    resolved = true;
+                    result = response;
+                } else {
+                    // if it failed, we will try and respond with
+                    // something else
+                    result = DSWManager.treatBadPage(response, pathName, event);
+                }
+                return result;
             }
-            return result;
         }
 
         function treatCache (result) {
-            // if it was in cache, we use it...period.
-            return result || new Promise((resolve, reject)=>{
+            
+            if (result && !resolved) {
+                // if it was in cache, we use it...period.
+                resolved = true;
+                console.log('fastest strategy: loaded from cache', request.url);
+                return result;
+            }
+            // if it was not in cache, we will wait a little bit, and then kill it
+            return new Promise((resolve, reject)=>{
                 // we will wait for the request to end
-                cachePromise = resolve;
+                setTimeout(resolve, 5000);
             });
         }
 
         return Promise.race([
+            // one promise go for the network
             goFetch(rule, request, event, matching)
                 .then(treatFetch)
                 .catch(treatFetch),
+            // the other, for the cache
             cacheManager.get(rule, request, event, matching)
                 .then(treatCache)
+            // 3, 2, 1...GO!
         ]);
     }
 };
