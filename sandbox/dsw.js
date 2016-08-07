@@ -146,8 +146,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-
 var _indexeddbManager = require('./indexeddb-manager.js');
 
 var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
@@ -155,6 +153,7 @@ var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DEFAULT_CACHE_NAME = 'defaultDSWCached';
+var CACHE_CREATED_DBNAME = 'cacheCreatedTime';
 var DEFAULT_CACHE_VERSION = null;
 
 var DSWManager = void 0,
@@ -168,244 +167,6 @@ function lengthInUtf8Bytes(str) {
     return str.length + (m ? m.length : 0);
 }
 
-var cacheManager = {
-    setup: function setup(DSWMan, PWASet, ftch) {
-        PWASettings = PWASet;
-        DSWManager = DSWMan;
-        goFetch = ftch;
-        DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
-        _indexeddbManager2.default.setup(cacheManager);
-    },
-    registeredCaches: [],
-    createDB: function createDB(db) {
-        return _indexeddbManager2.default.create(db);
-    },
-    // Delete all the unused caches for the new version of the Service Worker
-    deleteUnusedCaches: function deleteUnusedCaches(keepUnused) {
-        if (!keepUnused) {
-            return caches.keys().then(function (keys) {
-                cacheManager.registeredCaches;
-                return Promise.all(keys.map(function (key) {
-                    if (cacheManager.registeredCaches.indexOf(key) < 0) {
-                        return caches.delete(key);
-                    }
-                }));
-            });
-        }
-    },
-    // return a name for a default rule or the name for cache using the version
-    // and a separator
-    mountCacheId: function mountCacheId(rule) {
-        var cacheConf = rule.action.cache;
-        if (cacheConf) {
-            return (cacheConf.name || DEFAULT_CACHE_NAME) + '::' + (cacheConf.version || DEFAULT_CACHE_VERSION);
-        }
-        return DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
-    },
-    register: function register(rule) {
-        cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
-    },
-    put: function put(rule, request, response) {
-        var cloned = response.clone();
-        return caches.open(typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule)).then(function (cache) {
-            cache.put(request, cloned);
-            return response;
-        });
-    },
-    add: function add(req) {
-        var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
-
-        return new Promise(function (resolve, reject) {
-            caches.open(cacheId).then(function (cache) {
-                cache.add(req);
-                resolve();
-            }).catch(function (err) {
-                console.error(err);
-                resolve();
-            });
-        });
-    },
-    get: function get(rule, request, event, matching) {
-        var actionType = Object.keys(rule.action)[0],
-            url = request.url || request,
-            pathName = new URL(url).pathname;
-
-        if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i) && rule.action.cache !== false) {
-            // requisitions to / should be cached by default
-            rule.action.cache = rule.action.cache || {};
-        }
-
-        var opts = rule.options || {};
-        opts.headers = opts.headers || new Headers();
-        //
-        //        // if the cache options is false, we force it not to be cached
-        //        if(rule.action.cache === false){
-        //            opts.headers.append('pragma', 'no-cache');
-        //            opts.headers.append('cache-control', 'no-cache');
-        //            url = request.url + (request.url.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
-        //            pathName = (new URL(url)).pathname;
-        //            request = new Request(url);
-        //        }
-
-        switch (actionType) {
-            case 'idb':
-            case 'IDB':
-            case 'indexedDB':
-                {
-                    return new Promise(function (resolve, reject) {
-                        // function to be used after fetching
-                        function treatFetch(response) {
-                            if (response && response.status == 200) {
-                                // with success or not(saving it), we resolve it
-                                var done = function done(_) {
-                                    resolve(response);
-                                };
-
-                                // store it in the indexedDB
-                                _indexeddbManager2.default.save(rule.name, response.clone(), request, rule).then(done).catch(done); // if failed saving, we still have the reponse to deliver
-                            } else {
-                                // if it failed, we can look for a fallback
-                                url = request.url;
-                                pathName = new URL(url).pathname;
-                                return DSWManager.treatBadPage(response, pathName, event);
-                            }
-                        }
-
-                        // let's look for it in our cache, and then in the database
-                        // (we use the cache, just so we can user)
-                        _indexeddbManager2.default.get(rule.name, request).then(function (result) {
-                            // if we did have it in the indexedDB
-                            if (result) {
-                                // we use it
-                                return treatFetch(result);
-                            } else {
-                                // if it was not stored, let's fetch it
-                                request = DSWManager.createRequest(request, event, matching);
-                                return fetch(request, opts).then(treatFetch).catch(treatFetch);
-                            }
-                        });
-                    });
-                }
-            case 'redirect':
-            case 'fetch':
-                {
-                    request = DSWManager.createRedirect(rule.action.fetch || rule.action.redirect, event, matching);
-                    url = request.url;
-                    pathName = new URL(url).pathname;
-                    // keep going to be treated with the cache case
-                }
-            case 'cache':
-                {
-                    var _ret = function () {
-
-                        var cacheId = void 0;
-
-                        if (rule.action.cache) {
-                            cacheId = cacheManager.mountCacheId(rule);
-                        }
-
-                        // look for the request in the cache
-                        return {
-                            v: caches.match(request).then(function (result) {
-                                // if it does not exist (cache could not be verified)
-                                if (result && result.status != 200) {
-                                    // look for rules that match for the request and its status
-                                    (DSWManager.rules[result.status] || []).some(function (cur, idx) {
-                                        if (pathName.match(cur.rx)) {
-                                            // if a rule matched for the status and request
-                                            // and it tries to fetch a different source
-                                            if (cur.action.fetch || cur.action.redirect) {
-                                                // problematic requests should
-                                                // fetch a different resource
-                                                result = fetch(cur.action.fetch || cur.action.redirect, cur.action.options);
-                                                return true; // stopping the loop
-                                            }
-                                        }
-                                    });
-                                    // we, then, return the promise of the failed result(for it
-                                    // could not be loaded and was not in cache)
-                                    return result;
-                                } else {
-                                    // We will return the result, if successful, or
-                                    // fetch an anternative resource(or redirect)
-                                    // and treat both success and failure with the
-                                    // same "callback"
-                                    // In case it is a redirect, we also set the header to 302
-                                    // and really change the url of the response.
-                                    if (result) {
-                                        // when it comes from a redirect, we let the browser know about it
-                                        // or else...we simply return the result itself
-                                        if (request.url == event.request.url) {
-                                            return result;
-                                        } else {
-                                            // coming from a redirect
-                                            return Response.redirect(request.url, 302);
-                                        }
-                                    } else if (actionType == 'redirect') {
-                                        // if this is supposed to redirect
-                                        return Response.redirect(request.url, 302);
-                                    } else {
-                                        // this is a "normal" request, let's deliver it
-                                        // but we will be using a new Request with some info
-                                        // to allow browsers to understand redirects in case
-                                        // it must be redirected later on
-                                        var treatFetch = function treatFetch(response) {
-                                            if (!response.status) {
-                                                response.status = 404;
-                                            }
-                                            // after retrieving it, we cache it
-                                            // if it was ok
-                                            if (response.status == 200) {
-                                                // if cache is not false, it will be added to cache
-                                                if (rule.action.cache !== false) {
-                                                    return caches.open(cacheId).then(function (cache) {
-                                                        cache.put(request, response.clone());
-                                                        console.log('[ dsw ] :: Result was not in cache, was loaded and added to cache now', url);
-                                                        return response;
-                                                    });
-                                                } else {
-                                                    return response;
-                                                }
-                                            } else {
-                                                // otherwise...let's see if there is a fallback
-                                                // for the 404 requisition
-                                                return DSWManager.treatBadPage(response, pathName, event);
-                                            }
-                                        };
-                                        var req = new Request(request.url, {
-                                            method: opts.method || request.method,
-                                            headers: opts || request.headers,
-                                            mode: 'same-origin', // need to set this properly
-                                            credentials: request.credentials,
-                                            redirect: 'manual' // let browser handle redirects
-                                        });
-
-                                        return fetch(req, opts).then(treatFetch).catch(treatFetch);
-                                    }
-                                }
-                            })
-                        };
-                    }();
-
-                    if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
-                }
-            default:
-                {
-                    // also used in fetch actions
-                    return fetch(url);
-                }
-        }
-    }
-};
-
-exports.default = cacheManager;
-
-},{"./indexeddb-manager.js":4}],3:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
 var mountCacheControl = function mountCacheControl(rule) {
     if (!rule.action.cache) {
         return 'no-store,no-cache';
@@ -442,9 +203,280 @@ var mountCacheControl = function mountCacheControl(rule) {
     return cache + ' ' + duration;
 };
 
-function goFetch(rule, request, event, matching) {
-    var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : request.url || request;
+var cacheManager = {
+    setup: function setup(DSWMan, PWASet, ftch) {
+        PWASettings = PWASet;
+        DSWManager = DSWMan;
+        goFetch = ftch;
+        DEFAULT_CACHE_VERSION = PWASettings.dswVersion || '1';
+        _indexeddbManager2.default.setup(cacheManager);
+        // we will also create an IndexedDB to store the cache creationDates
+        // for rules that have cash expiration
+        _indexeddbManager2.default.create({
+            version: 1,
+            name: CACHE_CREATED_DBNAME,
+            key: 'url'
+        });
+    },
+    registeredCaches: [],
+    createDB: function createDB(db) {
+        return _indexeddbManager2.default.create(db);
+    },
+    // Delete all the unused caches for the new version of the Service Worker
+    deleteUnusedCaches: function deleteUnusedCaches(keepUnused) {
+        if (!keepUnused) {
+            return caches.keys().then(function (keys) {
+                cacheManager.registeredCaches;
+                return Promise.all(keys.map(function (key) {
+                    if (cacheManager.registeredCaches.indexOf(key) < 0) {
+                        return caches.delete(key);
+                    }
+                }));
+            });
+        }
+    },
+    // return a name for a default rule or the name for cache using the version
+    // and a separator
+    mountCacheId: function mountCacheId(rule) {
+        var cacheConf = rule.action.cache;
+        if (cacheConf) {
+            return (cacheConf.name || DEFAULT_CACHE_NAME) + '::' + (cacheConf.version || DEFAULT_CACHE_VERSION);
+        }
+        return DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION;
+    },
+    register: function register(rule) {
+        cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
+    },
+    // just a different method signature, for .add
+    put: function put(rule, request, response) {
+        cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response);
 
+        //        let cloned = response.clone();
+        //        indexedDBManager.addOrUpdate(
+        //            {
+        //                url: request.url||request,
+        //                dateAdded: (new Date).getTime()
+        //            },
+        //            CACHE_CREATED_DBNAME);
+        //        return caches.open(typeof rule == 'string'? rule: cacheManager.mountCacheId(rule))
+        //            .then(function(cache) {
+        //                cache.put(request, cloned);
+        //                return response;
+        //            });
+    },
+    add: function add(request) {
+        var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
+        var response = arguments[2];
+
+        return new Promise(function (resolve, reject) {
+            function addIt(response) {
+                if (response.status == 200) {
+                    caches.open(cacheId).then(function (cache) {
+                        // adding to cache`
+                        cache.put(request, response.clone());
+                        resolve(response);
+                        // saves the current time for further validation
+                        cacheManager.setUpdateTime(request);
+                    }).catch(function (err) {
+                        console.error(err);
+                        resolve(response);
+                    });
+                } else {
+                    reject(response);
+                }
+            }
+
+            if (!response) {
+                fetch(goFetch(null, request)).then(addIt).catch(function (err) {
+                    console.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
+                    reject(response);
+                });
+            } else {
+                addIt(response);
+            }
+        });
+    },
+    setUpdateTime: function setUpdateTime(req) {
+        _indexeddbManager2.default.addOrUpdate({
+            url: req.url || req,
+            dateAdded: new Date().getTime()
+        }, CACHE_CREATED_DBNAME);
+    },
+    get: function get(rule, request, event, matching) {
+        var actionType = Object.keys(rule.action)[0],
+            url = request.url || request,
+            pathName = new URL(url).pathname;
+
+        if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i) && rule.action.cache !== false) {
+            // requisitions to / should be cached by default
+            rule.action.cache = rule.action.cache || {};
+        }
+
+        var opts = rule.options || {};
+        opts.headers = opts.headers || new Headers();
+
+        switch (actionType) {
+            case 'idb':
+            case 'IDB':
+            case 'indexedDB':
+                {
+                    return new Promise(function (resolve, reject) {
+                        // function to be used after fetching
+                        function treatFetch(response) {
+                            if (response && response.status == 200) {
+                                // with success or not(saving it), we resolve it
+                                var done = function done(_) {
+                                    cacheManager.setUpdateTime(request);
+                                    resolve(response);
+                                };
+
+                                // store it in the indexedDB
+                                _indexeddbManager2.default.save(rule.name, response.clone(), request, rule).then(done).catch(done); // if failed saving, we still have the reponse to deliver
+                            } else {
+                                // if it failed, we can look for a fallback
+                                url = request.url;
+                                pathName = new URL(url).pathname;
+                                return DSWManager.treatBadPage(response, pathName, event);
+                            }
+                        }
+
+                        // let's look for it in our cache, and then in the database
+                        // (we use the cache, just so we can user)
+                        _indexeddbManager2.default.get(rule.name, request).then(function (result) {
+                            // if we did have it in the indexedDB
+                            if (result) {
+                                // we use it
+                                return treatFetch(result);
+                            } else {
+                                // if it was not stored, let's fetch it
+                                //request = DSWManager.createRequest(request, event, matching);
+                                return goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch);
+                            }
+                        });
+                    });
+                }
+            case 'redirect':
+            case 'fetch':
+                {
+                    request = DSWManager.createRedirect(rule.action.fetch || rule.action.redirect, event, matching);
+                    url = request.url;
+                    pathName = new URL(url).pathname;
+                    // keep going to be treated with the cache case
+                }
+            case 'cache':
+                {
+
+                    var cacheId = void 0;
+
+                    if (rule.action.cache) {
+                        cacheId = cacheManager.mountCacheId(rule);
+                    }
+
+                    // look for the request in the cache
+                    return caches.match(request).then(function (result) {
+                        // if it does not exist (cache could not be verified)
+                        if (result && result.status != 200) {
+                            // look for rules that match for the request and its status
+                            (DSWManager.rules[result.status] || []).some(function (cur, idx) {
+                                if (pathName.match(cur.rx)) {
+                                    // if a rule matched for the status and request
+                                    // and it tries to fetch a different source
+                                    if (cur.action.fetch || cur.action.redirect) {
+                                        // problematic requests should
+                                        // fetch a different resource
+                                        //                                    result = fetch(cur.action.fetch || cur.action.redirect,
+                                        //                                                  cur.action.options);
+                                        result = goFetch(rule, request, event, matching);
+                                        return true; // stopping the loop
+                                    }
+                                }
+                            });
+                            // we, then, return the promise of the failed result(for it
+                            // could not be loaded and was not in cache)
+                            return result;
+                        } else {
+                            // We will return the result, if successful, or
+                            // fetch an anternative resource(or redirect)
+                            // and treat both success and failure with the
+                            // same "callback"
+                            // In case it is a redirect, we also set the header to 302
+                            // and really change the url of the response.
+                            if (result) {
+                                var maxAge = result.headers.get('cache-control').replace(/[\Wa-z]/g, '');
+                                //debugger;
+
+                                // when it comes from a redirect, we let the browser know about it
+                                // or else...we simply return the result itself
+                                if (request.url == event.request.url) {
+                                    return result;
+                                } else {
+                                    // coming from a redirect
+                                    return Response.redirect(request.url, 302);
+                                }
+                            } else if (actionType == 'redirect') {
+                                // if this is supposed to redirect
+                                return Response.redirect(request.url, 302);
+                            } else {
+                                // this is a "normal" request, let's deliver it
+                                // but we will be using a new Request with some info
+                                // to allow browsers to understand redirects in case
+                                // it must be redirected later on
+                                var treatFetch = function treatFetch(response) {
+                                    if (!response.status) {
+                                        response.status = 404;
+                                    }
+                                    // after retrieving it, we cache it
+                                    // if it was ok
+                                    if (response.status == 200) {
+                                        // if cache is not false, it will be added to cache
+                                        if (rule.action.cache !== false) {
+                                            return cacheManager.add(request, cacheManager.mountCacheId(rule), response);
+                                        } else {
+                                            return response;
+                                        }
+                                    } else {
+                                        // otherwise...let's see if there is a fallback
+                                        // for the 404 requisition
+                                        return DSWManager.treatBadPage(response, pathName, event);
+                                    }
+                                };
+                                var req = new Request(request.url, {
+                                    method: opts.method || request.method,
+                                    headers: opts || request.headers,
+                                    mode: 'same-origin', // need to set this properly
+                                    credentials: request.credentials,
+                                    redirect: 'manual' // let browser handle redirects
+                                });
+
+                                return goFetch(rule, request, event, matching) // fetch(req, opts)
+                                .then(treatFetch).catch(treatFetch);
+                            }
+                        }
+                    });
+                }
+            default:
+                {
+                    // also used in fetch actions
+                    return fetch(url);
+                }
+        }
+    }
+};
+
+exports.default = cacheManager;
+
+},{"./indexeddb-manager.js":4}],3:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+function goFetch(rule, request, event, matching) {
+    var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
+    if (!tmpUrl) {
+        tmpUrl = request.url || request;
+    }
     // if there are group variables in the matching expression
     if (matching && matching.length > 2 && tmpUrl) {
         // we apply the variables
@@ -474,8 +506,6 @@ function goFetch(rule, request, event, matching) {
         opts.headers.append('pragma', 'no-cache');
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
-    } else {
-        opts.headers.append('cache-control', mountCacheControl(rule));
     }
 
     // we will create a new request to be used, based on what has been
@@ -599,6 +629,8 @@ var indexedDBManager = {
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
             var store = getObjectStore(dbName);
+            // We will actuallly look for its IDs in cache, to use them to find
+            // the real, complete object in the indexedDB
             caches.match(request).then(function (result) {
                 if (result) {
                     result.json().then(function (obj) {
@@ -627,6 +659,18 @@ var indexedDBManager = {
             });
         });
     },
+    addOrUpdate: function addOrUpdate(obj, dbName) {
+        return new Promise(function (resolve, reject) {
+            var store = getObjectStore(dbName);
+            var req = store.add(obj);
+            req.onsuccess = function addOrUpdateSuccess() {
+                resolve(obj);
+            };
+            req.onerror = function addOrUpdateError(err) {
+                resolve(obj);
+            };
+        });
+    },
     save: function save(dbName, data, request, rule) {
         return new Promise(function (resolve, reject) {
 
@@ -637,6 +681,8 @@ var indexedDBManager = {
 
                 req = store.add(obj);
 
+                // We will use the CacheAPI to store, in cache, only the IDs for
+                // the given object
                 req.onsuccess = function () {
                     var tmp = {};
                     var key = rule.action.indexedDB.key || 'id';

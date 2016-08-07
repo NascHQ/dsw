@@ -1,42 +1,9 @@
-const mountCacheControl= rule=>{
-    if (!rule.action.cache) {
-        return 'no-store,no-cache';
-    }
-    
-    let cache = 'no-cache'; // we want it to at least revalidate
-    let duration = rule.action.cache.duration || -1;
-    
-    if (typeof duration == 'string') {
-        // let's use a formated string to know the expiration time
-        const sizes = {
-            s: 1,
-            m: 60,
-            h: 3600,
-            d: 86400,
-            w: 604800,
-            M: 2592000,
-            Y: 31449600
-        };
-        
-        let size = duration.slice(-1),
-            val = duration.slice(0, -1);
-        if (sizes[size]) {
-            duration = 'max-age=' + val * sizes[size];
-        } else {
-            console.warn('Invalid duration ' + duration, rule);
-            duration = '';
-        }
-    } else {
-        if (duration === -1) {
-            duration = '';
-        }
-    }
-    return cache + ' ' + duration;
-};
 
 function goFetch (rule, request, event, matching) {
-    let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : (request.url || request);
-    
+    let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
+    if (!tmpUrl) {
+        tmpUrl = request.url || request;
+    }
     // if there are group variables in the matching expression
     if (matching && matching.length > 2 && tmpUrl) {
         // we apply the variables
@@ -66,8 +33,6 @@ function goFetch (rule, request, event, matching) {
         opts.headers.append('pragma', 'no-cache');
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
-    } else {
-        opts.headers.append('cache-control', mountCacheControl(rule));
     }
     
     // we will create a new request to be used, based on what has been

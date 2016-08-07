@@ -92,6 +92,8 @@ const indexedDBManager = {
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
+            // We will actuallly look for its IDs in cache, to use them to find
+            // the real, complete object in the indexedDB
             caches.match(request)
                 .then(result=>{
                     if(result) {
@@ -124,6 +126,19 @@ const indexedDBManager = {
         });
     },
     
+    addOrUpdate (obj, dbName) {
+        return new Promise((resolve, reject)=>{
+            let store = getObjectStore(dbName);
+            let req = store.add(obj);
+            req.onsuccess = function addOrUpdateSuccess () {
+                resolve(obj);
+            };
+            req.onerror = function addOrUpdateError (err) {
+                resolve(obj);
+            };
+        });
+    },
+    
     save (dbName, data, request, rule) {
         return new Promise((resolve, reject)=>{
 
@@ -133,7 +148,9 @@ const indexedDBManager = {
                     req;
                 
                 req = store.add(obj);
-
+                
+                // We will use the CacheAPI to store, in cache, only the IDs for
+                // the given object
                 req.onsuccess = function () {
                     let tmp = {};
                     let key = rule.action.indexedDB.key || 'id';
