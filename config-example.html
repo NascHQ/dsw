@@ -465,9 +465,7 @@ the prefious criteria of 404 status)</p>
                     <span class="hljs-string">"version"</span>: <span class="hljs-string">"1"</span>
                 }
             }
-        },
-        <span class="hljs-string">"userData"</span>: {
-            <span class="hljs-string">"match"</span>: { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/api\/user\/.*"</span> },</pre></div></div>
+        },</pre></div></div>
             
         </li>
         
@@ -477,45 +475,6 @@ the prefious criteria of 404 status)</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-28">&#182;</a>
-              </div>
-              <p>Here, we are telling the browser to send cookies and session credentions
-when fetching this
-You can pass any options accepted by fetch, here</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"options"</span>: { <span class="hljs-string">"credentials"</span>: <span class="hljs-string">"same-origin"</span>},
-            <span class="hljs-string">"apply"</span>: {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-29">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-29">&#182;</a>
-              </div>
-              <p>indexedDB support is still under development…</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"indexedDB"</span>: {
-                    <span class="hljs-string">"name"</span>: <span class="hljs-string">"userData"</span>,
-                    <span class="hljs-string">"version"</span>: <span class="hljs-string">"1"</span>,
-                    <span class="hljs-string">"indexes"</span>: [<span class="hljs-string">"name"</span>]
-                }
-            }
-        },</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-30">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
               <p>In this example, we are redirecting requests using variables
 from the matching regular expression</p>
@@ -528,11 +487,11 @@ from the matching regular expression</p>
         </li>
         
         
-        <li id="section-31">
+        <li id="section-29">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
+                <a class="pilcrow" href="#section-29">&#182;</a>
               </div>
               <p>We can use in our <em>apply</em> actions, the groups from
 this expression, between parenthesis</p>
@@ -546,11 +505,11 @@ this expression, between parenthesis</p>
         </li>
         
         
-        <li id="section-32">
+        <li id="section-30">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-32">&#182;</a>
+                <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
               <p>here, each groups is represented by a variable, in order
 accessed as $x where x is the position of the variable
@@ -565,11 +524,11 @@ in the matching expression</p>
         </li>
         
         
-        <li id="section-33">
+        <li id="section-31">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-33">&#182;</a>
+                <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
               <p>Lets cache everything that has html extension OR is at /
 Notice there we are using the OR here, instead of just the AND</p>
@@ -582,11 +541,11 @@ Notice there we are using the OR here, instead of just the AND</p>
         </li>
         
         
-        <li id="section-34">
+        <li id="section-32">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-34">&#182;</a>
+                <a class="pilcrow" href="#section-32">&#182;</a>
               </div>
               <p>everything with the html or htm extension</p>
 
@@ -597,11 +556,11 @@ Notice there we are using the OR here, instead of just the AND</p>
         </li>
         
         
-        <li id="section-35">
+        <li id="section-33">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-35">&#182;</a>
+                <a class="pilcrow" href="#section-33">&#182;</a>
               </div>
               <p>OR
 everything in /</p>
@@ -614,11 +573,11 @@ everything in /</p>
         </li>
         
         
-        <li id="section-36">
+        <li id="section-34">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-36">&#182;</a>
+                <a class="pilcrow" href="#section-34">&#182;</a>
               </div>
               <p>The default strategy is ‘offline-first’
 With the online-first strategy, it will ALWAYS go for the
@@ -639,28 +598,27 @@ Cache will ONLY be used when the network fails.</p>
         </li>
         
         
-        <li id="section-37">
+        <li id="section-35">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-37">&#182;</a>
+                <a class="pilcrow" href="#section-35">&#182;</a>
               </div>
               <p>Let’s use IndexedDB to store some data</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"userData"</span>: {
-            <span class="hljs-string">"match"</span>: { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/api\/user\/.*"</span> },
-            <span class="hljs-string">"options"</span>: { <span class="hljs-string">"credentials"</span>: <span class="hljs-string">"same-origin"</span>},</pre></div></div>
+            <span class="hljs-string">"match"</span>: { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/api\/user\/.*"</span> },</pre></div></div>
             
         </li>
         
         
-        <li id="section-38">
+        <li id="section-36">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-38">&#182;</a>
+                <a class="pilcrow" href="#section-36">&#182;</a>
               </div>
               <p>We will try to keep it up to date.
 DSW will look for it online, and if not possible, then look in the
@@ -675,11 +633,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-39">
+        <li id="section-37">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-39">&#182;</a>
+                <a class="pilcrow" href="#section-37">&#182;</a>
               </div>
               <p>The IndexedDB name</p>
 
@@ -690,11 +648,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-40">
+        <li id="section-38">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-40">&#182;</a>
+                <a class="pilcrow" href="#section-38">&#182;</a>
               </div>
               <p>The version of it. If you change it, your db will be updated.</p>
 
@@ -705,11 +663,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-41">
+        <li id="section-39">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-41">&#182;</a>
+                <a class="pilcrow" href="#section-39">&#182;</a>
               </div>
               <p>The <em>json</em> data we are expecting in this example gives us
 and id, and we will use it as our kay for the IndexedDB structure.</p>
@@ -721,11 +679,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-42">
+        <li id="section-40">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-42">&#182;</a>
+                <a class="pilcrow" href="#section-40">&#182;</a>
               </div>
               <p>but we will also define some indexes</p>
 
@@ -736,11 +694,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-43">
+        <li id="section-41">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-43">&#182;</a>
+                <a class="pilcrow" href="#section-41">&#182;</a>
               </div>
               <p>one of the indexes is the property “name”</p>
 
@@ -751,11 +709,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-44">
+        <li id="section-42">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-44">&#182;</a>
+                <a class="pilcrow" href="#section-42">&#182;</a>
               </div>
               <p>the other index is the property “twitter”…</p>
 
@@ -768,11 +726,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-45">
+        <li id="section-43">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-45">&#182;</a>
+                <a class="pilcrow" href="#section-43">&#182;</a>
               </div>
               <p>…but for this one, we want to specify that it is unique.</p>
 
@@ -786,6 +744,81 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
                 }
             }
         },
+        <span class="hljs-string">"dashbord"</span>: {
+            <span class="hljs-string">"match"</span>: { <span class="hljs-string">"path"</span>: <span class="hljs-string">"\/api\/dashbord\/.*"</span> },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-44">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-44">&#182;</a>
+              </div>
+              <p>Here, we are telling the browser to send cookies and session credentions
+when fetching this
+You can pass any options accepted by fetch, here</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"options"</span>: { <span class="hljs-string">"credentials"</span>: <span class="hljs-string">"same-origin"</span>},</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-45">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-45">&#182;</a>
+              </div>
+              <p>With the fastest strategy, both the network and cache will be verified.
+It means it will <em>always</em> start a new request, but also means that
+once it’s resolved, it will keep the cache up to date.
+If the data is in cache, it will use the cached data.
+It assures us that the fastest result will be used, but also, that
+it will keep the data up to date in the cache</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="hljs-string">"strategy"</span>: <span class="hljs-string">"fastest"</span>,
+            <span class="hljs-string">"apply"</span>: {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-46">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-46">&#182;</a>
+              </div>
+              <p>indexedDB support is still under development…</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                <span class="hljs-string">"indexedDB"</span>: {
+                    <span class="hljs-string">"name"</span>: <span class="hljs-string">"dashbord"</span>,
+                    <span class="hljs-string">"version"</span>: <span class="hljs-string">"1"</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-47">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-47">&#182;</a>
+              </div>
+              <p>we can specify indexes using only strings</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                    <span class="hljs-string">"indexes"</span>: [<span class="hljs-string">"name"</span>]
+                }
+            }
+        }
     }
 }</pre></div></div>
             

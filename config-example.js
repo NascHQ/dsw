@@ -96,21 +96,6 @@
                 }
             }
         },
-        "userData": {
-            "match": { "path": "\/api\/user\/.*" },
-            // Here, we are telling the browser to send cookies and session credentions
-            // when fetching this
-            // You can pass any options accepted by fetch, here
-            "options": { "credentials": "same-origin"},
-            "apply": {
-                // indexedDB support is still under development...
-                "indexedDB": {
-                    "name": "userData",
-                    "version": "1",
-                    "indexes": ["name"]
-                }
-            }
-        },
         // In this example, we are redirecting requests using variables
         // from the matching regular expression
         "redirectWithVar": {
@@ -151,7 +136,6 @@
         // Let's use IndexedDB to store some data
         "userData": {
             "match": { "path": "\/api\/user\/.*" },
-            "options": { "credentials": "same-origin"},
             // We will try to keep it up to date.
             // DSW will look for it online, and if not possible, then look in the
             // cached object in IndexedDB.
@@ -182,6 +166,29 @@
                 }
             }
         },
+        "dashbord": {
+            "match": { "path": "\/api\/dashbord\/.*" },
+            // Here, we are telling the browser to send cookies and session credentions
+            // when fetching this
+            // You can pass any options accepted by fetch, here
+            "options": { "credentials": "same-origin"},
+            // With the fastest strategy, both the network and cache will be verified.
+            // It means it will _always_ start a new request, but also means that
+            // once it's resolved, it will keep the cache up to date.
+            // If the data is in cache, it will use the cached data.
+            // It assures us that the fastest result will be used, but also, that
+            // it will keep the data up to date in the cache
+            "strategy": "fastest",
+            "apply": {
+                // indexedDB support is still under development...
+                "indexedDB": {
+                    "name": "dashbord",
+                    "version": "1",
+                    // we can specify indexes using only strings
+                    "indexes": ["name"]
+                }
+            }
+        }
     }
 }
 
