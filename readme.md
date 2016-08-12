@@ -3,7 +3,7 @@
 
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
+[![GitHub [ERROR] :: Failed reading file at /Library/WebServer/Documents/www/tests/deletar-dsw/dswfile.jsonlicense](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
 
@@ -80,7 +80,7 @@ To do so, if you installed it globally:
 
 If you installed locally, though:
 
-```node node_modules/dsw/ path-to-your-project```
+```node node_modules/dsw/bin [path-to-your-project]```
 
 This second example is specially useful if you intend to run it in a stand alone project or want to trigger it using a script in your `package.json` file.
 
