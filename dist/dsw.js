@@ -36,7 +36,7 @@ var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DEFAULT_CACHE_NAME = 'defaultDSWCached';
-var CACHE_CREATED_DBNAME = 'cacheCreatedTime';
+//const CACHE_CREATED_DBNAME = 'cacheCreatedTime';
 var DEFAULT_CACHE_VERSION = null;
 
 var DSWManager = void 0,
@@ -50,13 +50,8 @@ function lengthInUtf8Bytes(str) {
     return str.length + (m ? m.length : 0);
 }
 
-var mountCacheControl = function mountCacheControl(rule) {
-    if (!rule.action.cache) {
-        return 'no-store,no-cache';
-    }
-
-    var cache = 'no-cache'; // we want it to at least revalidate
-    var duration = rule.action.cache.duration || -1;
+var parseExpiration = function parseExpiration(rule, expires) {
+    var duration = expires || -1;
 
     if (typeof duration == 'string') {
         // let's use a formated string to know the expiration time
@@ -73,17 +68,17 @@ var mountCacheControl = function mountCacheControl(rule) {
         var size = duration.slice(-1),
             val = duration.slice(0, -1);
         if (sizes[size]) {
-            duration = 'max-age=' + val * sizes[size];
+            duration = val * sizes[size];
         } else {
             console.warn('Invalid duration ' + duration, rule);
-            duration = '';
-        }
-    } else {
-        if (duration === -1) {
-            duration = '';
+            duration = -1;
         }
     }
-    return cache + ' ' + duration;
+    if (duration >= 0) {
+        return parseInt(duration, 10);
+    } else {
+        return 0;
+    }
 };
 
 var cacheManager = {
@@ -95,11 +90,11 @@ var cacheManager = {
         _indexeddbManager2.default.setup(cacheManager);
         // we will also create an IndexedDB to store the cache creationDates
         // for rules that have cash expiration
-        _indexeddbManager2.default.create({
-            version: 1,
-            name: CACHE_CREATED_DBNAME,
-            key: 'url'
-        });
+        //        indexedDBManager.create({
+        //            version: 1,
+        //            name: CACHE_CREATED_DBNAME,
+        //            key: 'url'
+        //        });
     },
     registeredCaches: [],
     createDB: function createDB(db) {
@@ -121,7 +116,7 @@ var cacheManager = {
     // return a name for a default rule or the name for cache using the version
     // and a separator
     mountCacheId: function mountCacheId(rule) {
-        var cacheConf = rule.action.cache;
+        var cacheConf = rule ? rule.action.cache : false;
         if (cacheConf) {
             return (cacheConf.name || DEFAULT_CACHE_NAME) + '::' + (cacheConf.version || DEFAULT_CACHE_VERSION);
         }
@@ -134,23 +129,20 @@ var cacheManager = {
     put: function put(rule, request, response) {
         cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response);
 
-        //        let cloned = response.clone();
+        var cloned = response.clone();
         //        indexedDBManager.addOrUpdate(
         //            {
         //                url: request.url||request,
         //                dateAdded: (new Date).getTime()
         //            },
         //            CACHE_CREATED_DBNAME);
-        //        return caches.open(typeof rule == 'string'? rule: cacheManager.mountCacheId(rule))
-        //            .then(function(cache) {
-        //                cache.put(request, cloned);
-        //                return response;
-        //            });
+        return caches.open(typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule)).then(function (cache) {
+            cache.put(request, cloned);
+            return response;
+        });
     },
-    add: function add(request) {
-        var cacheId = arguments.length <= 1 || arguments[1] === undefined ? DEFAULT_CACHE_NAME + '::' + DEFAULT_CACHE_VERSION : arguments[1];
-        var response = arguments[2];
-
+    add: function add(request, cacheId, response) {
+        cacheId = cacheId || cacheManager.mountCacheId();
         return new Promise(function (resolve, reject) {
             function addIt(response) {
                 if (response.status == 200) {
@@ -159,7 +151,7 @@ var cacheManager = {
                         cache.put(request, response.clone());
                         resolve(response);
                         // saves the current time for further validation
-                        cacheManager.setUpdateTime(request);
+                        //cacheManager.setUpdateTime(request);
                     }).catch(function (err) {
                         console.error(err);
                         resolve(response);
@@ -180,10 +172,19 @@ var cacheManager = {
         });
     },
     setUpdateTime: function setUpdateTime(req) {
-        _indexeddbManager2.default.addOrUpdate({
-            url: req.url || req,
-            dateAdded: new Date().getTime()
-        }, CACHE_CREATED_DBNAME);
+        var expiresAt = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
+
+        setTimeout(function (_) {
+            console.log('AGORA CARALHOOOOOOOOOO', req.url || req);
+        }, expiresAt);
+
+        //        indexedDBManager.addOrUpdate(
+        //            {
+        //                url: req.url||req,
+        //                dateAdded: (new Date).getTime(),
+        //                expiresAt
+        //            },
+        //            CACHE_CREATED_DBNAME);
     },
     get: function get(rule, request, event, matching) {
         var actionType = Object.keys(rule.action)[0],
@@ -191,12 +192,20 @@ var cacheManager = {
             pathName = new URL(url).pathname;
 
         if (pathName == '/' || pathName.match(/^\/index\.([a-z0-9]+)/i) && rule.action.cache !== false) {
-            // requisitions to / should be cached by default
+            // requests to / should be cached by default
             rule.action.cache = rule.action.cache || {};
         }
 
         var opts = rule.options || {};
         opts.headers = opts.headers || new Headers();
+
+        // if there is an expiration time, we should see if it has expired
+        if (rule.action[actionType].expires) {
+            //return new Promise((resolve, reject)=>{
+            // get the expiration time
+            // TODO: if not expired, return the get itself, else, return goFetch
+            //});
+        }
 
         switch (actionType) {
             case 'idb':
@@ -209,7 +218,9 @@ var cacheManager = {
                             if (response && response.status == 200) {
                                 // with success or not(saving it), we resolve it
                                 var done = function done(_) {
-                                    cacheManager.setUpdateTime(request);
+                                    if (rule.action[actionType].expires) {
+                                        cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
+                                    }
                                     resolve(response);
                                 };
 
@@ -266,9 +277,6 @@ var cacheManager = {
                                     // and it tries to fetch a different source
                                     if (cur.action.fetch || cur.action.redirect) {
                                         // problematic requests should
-                                        // fetch a different resource
-                                        //                                    result = fetch(cur.action.fetch || cur.action.redirect,
-                                        //                                                  cur.action.options);
                                         result = goFetch(rule, request, event, matching);
                                         return true; // stopping the loop
                                     }
@@ -313,6 +321,9 @@ var cacheManager = {
                                     if (response.status == 200) {
                                         // if cache is not false, it will be added to cache
                                         if (rule.action.cache !== false) {
+                                            if (rule.action[actionType].expires) {
+                                                cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
+                                            }
                                             return cacheManager.add(request, cacheManager.mountCacheId(rule), response);
                                         } else {
                                             return response;
@@ -323,13 +334,13 @@ var cacheManager = {
                                         return DSWManager.treatBadPage(response, pathName, event);
                                     }
                                 };
-                                var req = new Request(request.url, {
-                                    method: opts.method || request.method,
-                                    headers: opts || request.headers,
-                                    mode: 'same-origin', // need to set this properly
-                                    credentials: request.credentials,
-                                    redirect: 'manual' // let browser handle redirects
-                                });
+                                //                            let req = new Request(request.url, {
+                                //                                method: opts.method || request.method,
+                                //                                headers: opts || request.headers,
+                                //                                mode: 'same-origin', // need to set this properly
+                                //                                credentials: request.credentials,
+                                //                                redirect: 'manual'   // let browser handle redirects
+                                //                            });
 
                                 return goFetch(rule, request, event, matching) // fetch(req, opts)
                                 .then(treatFetch).catch(treatFetch);
@@ -390,9 +401,9 @@ function goFetch(rule, request, event, matching) {
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
     }
-
-    // we will create a new request to be used, based on what has been
-    // defined by the rule or current request
+    //    
+    //    // we will create a new request to be used, based on what has been
+    //    // defined by the rule or current request
     request = new Request(tmpUrl || request.url, {
         method: opts.method || request.method,
         headers: opts || request.headers,
@@ -400,6 +411,7 @@ function goFetch(rule, request, event, matching) {
         credentials: request.credentials,
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     });
+    // REMOVING THIS, this failes to load the "copy" request from cacheAPI! Also, not a good performance!
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect
@@ -959,60 +971,76 @@ var strategies = {
         // but once the fetch request returns, it updates
         // what is in the cache (keeping it up to date)
         var pathName = new URL(event.request.url).pathname;
-        var treated = false,
-            resolved = null;
-        function treatFetch(response) {
-            var result = null;
+        var networkTreated = false,
+            cacheTreated = false,
+            networkFailed = false,
+            cacheFailed = false;
 
-            if (response.status == 200) {
-                // if we managed to load it from network and it has
-                // cache in its actions, we cache it
-                if (rule.action.cache) {
-                    // we will update the cache, in background
-                    cacheManager.put(rule, request, response).then(function (_) {
-                        console.info('Updated in cache (from fastest): ', request.url);
-                    });
-                }
-            }
+        // fetch at the same time from the network and from cache
+        // in fail function, verify if it failed for both, then treatBadRequest
+        // in success, the first to have a 200 response, resolves it
+        return new Promise(function (resolve, reject) {
+            function treatFetch(response) {
+                var result = void 0;
 
-            // if cache has not resolved it yet
-            if (!resolved) {
-                // if it downloaded well, we use it (probably the first access)
+                // firstly, let's asure we update the cache, if needed
                 if (response.status == 200) {
-                    console.log('fastest strategy: loaded from network', request.url);
-                    resolved = true;
-                    result = response;
-                } else {
-                    // if it failed, we will try and respond with
-                    // something else
-                    result = DSWManager.treatBadPage(response, pathName, event);
+                    // if we managed to load it from network and it has
+                    // cache in its actions, we cache it
+                    if (rule.action.cache) {
+                        // we will update the cache, in background
+                        cacheManager.put(rule, request, response).then(function (_) {
+                            console.info('Updated in cache (from fastest): ', request.url);
+                        });
+                    }
                 }
-                return result;
+
+                // if cache has not resolved it yet
+                if (!cacheTreated) {
+                    // if it downloaded well, we use it (probably the first access)
+                    if (response.status == 200) {
+                        console.log('fastest strategy: loaded from network', request.url);
+                        networkTreated = true;
+                        // if cache could not resolve it, the network resolves
+                        resolve(response);
+                    } else {
+                        // if it failed, we will try and respond with
+                        // something else
+                        networkFailed = true;
+                        treatCatch(response);
+                    }
+                }
             }
-        }
 
-        function treatCache(result) {
-
-            if (result && !resolved) {
-                // if it was in cache, we use it...period.
-                resolved = true;
-                console.log('fastest strategy: loaded from cache', request.url);
-                return result;
+            function treatCache(result) {
+                // if it was in cache, and network hasn't resolved previously
+                if (result && !networkTreated) {
+                    cacheTreated = true; // this will prevent network from resolving too
+                    console.log('fastest strategy: loaded from cache', request.url);
+                    resolve(result);
+                    return result;
+                } else {
+                    // lets flag cache as failed, once it's not there
+                    cacheFailed = true;
+                    treatCatch();
+                }
             }
-            // if it was not in cache, we will wait a little bit, and then kill it
-            return new Promise(function (resolve, reject) {
-                // we will wait for the request to end
-                setTimeout(resolve, 5000);
-            });
-        }
 
-        return Promise.race([
-        // one promise go for the network
-        goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch),
-        // the other, for the cache
-        cacheManager.get(rule, request, event, matching).then(treatCache)
-        // 3, 2, 1...GO!
-        ]);
+            function treatCatch(response) {
+                // if both network and cache failed,
+                // we have a problem with the request, let's treat it
+                if (networkFailed && cacheFailed) {
+                    resolve(DSWManager.treatBadPage(response, pathName, event));
+                }
+                // otherwise, we still got a chance on having a result from
+                // one of the sources (network or cache), and keep waiting for it
+            }
+
+            // one promise go for the network
+            goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatCatch);
+            // the other, for the cache
+            cacheManager.get(rule, request.clone(), event, matching).then(treatCache).catch(treatCatch);
+        });
     }
 };
 

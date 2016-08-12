@@ -34,9 +34,9 @@ function goFetch (rule, request, event, matching) {
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
     }
-    
-    // we will create a new request to be used, based on what has been
-    // defined by the rule or current request
+//    
+//    // we will create a new request to be used, based on what has been
+//    // defined by the rule or current request
     request = new Request(tmpUrl || request.url, {
         method: opts.method || request.method,
         headers: opts || request.headers,
@@ -44,6 +44,7 @@ function goFetch (rule, request, event, matching) {
         credentials: request.credentials,
         redirect: actionType == 'redirect'? 'manual' : request.redirect
     });
+    // REMOVING THIS, this failes to load the "copy" request from cacheAPI! Also, not a good performance!
     
     if (actionType == 'redirect') {
         // if this is supposed to redirect
