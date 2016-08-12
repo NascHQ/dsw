@@ -15,7 +15,7 @@ You will simply have to set up how your service worker will handle requests in a
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-yxfzbpncxt.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-kegjgtktcm.now.sh)
 
 ## Advantages
 
@@ -147,6 +147,7 @@ It may be:
 
 - **offline-first** [default]: Will look first for the content in cache and retrieve it. If it is not there, will try and fetch it. Then, stores it in the cache.
 - **online-first**: Will _ALWAYS_ go for the network and see it can load the content. If so, adds(or updates) it into cache(if cache is meant to be applied). If it fails fetching it, only then it will look for it in the cache.
+- **fastest**: Will try **both** the network and the cache. The first to resolve will be used. The advantage is that once it has loaded from the network, it will update the cache, this way, the user always sees the last or the second last versions, and the cache keeps up to date. The disadvantage here, is that it always opens a network request.
 
 ### Applying
 
