@@ -147,7 +147,7 @@ const cacheManager = {
     },
     setUpdateTime: (req, expiresAt=0)=>{
         setTimeout(_=>{
-            console.log('AGORA CARALHOOOOOOOOOO', req.url || req);
+            console.log('NOWWW', req.url || req);
         }, expiresAt);
         
 //        indexedDBManager.addOrUpdate(
