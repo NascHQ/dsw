@@ -175,7 +175,7 @@ var cacheManager = {
         var expiresAt = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 
         setTimeout(function (_) {
-            console.log('AGORA CARALHOOOOOOOOOO', req.url || req);
+            console.log('NOWWW', req.url || req);
         }, expiresAt);
 
         //        indexedDBManager.addOrUpdate(

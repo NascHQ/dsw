@@ -15,7 +15,7 @@ You will simply have to set up how your service worker will handle requests in a
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-kegjgtktcm.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-pttlyqirfg.now.sh)
 
 ## Advantages
 
