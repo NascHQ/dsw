@@ -65,7 +65,7 @@ if (isInSWScope) {
             }
             return result || response;
         },
-        setup (dswConfig) {
+        setup (dswConfig={}) {
             // let's prepare both cacheManager and strategies with the
             // current referencies
             cacheManager.setup(DSWManager, PWASettings, goFetch);
@@ -266,6 +266,10 @@ if (isInSWScope) {
     });
     
     self.addEventListener('install', function(event) {
+        // undoing some bad named properties :/
+        PWASettings.dswRules = PWASettings.rules || PWASettings.dswRules || {};
+        PWASettings.dswVersion = PWASettings.version || PWASettings.dswVersion || '1';
+        
         if (PWASettings.applyImmediately) {
             event.waitUntil(self.skipWaiting().then(_=>{
                 return DSWManager.setup(PWASettings);
@@ -281,6 +285,7 @@ if (isInSWScope) {
     
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event
+        //debugger;
     });
     
     DSWManager.startListening();

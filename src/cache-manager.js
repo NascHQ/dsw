@@ -40,7 +40,7 @@ const parseExpiration= (rule, expires)=>{
         }
     }
     if (duration >= 0) {
-        return parseInt(duration, 10);
+        return parseInt(duration, 10) * 1000;
     } else {
         return 0;
     }
@@ -81,6 +81,9 @@ const cacheManager = {
     // return a name for a default rule or the name for cache using the version
     // and a separator
     mountCacheId: rule => {
+        if(typeof rule == 'string') {
+            return rule;
+        }
         let cacheConf = rule? rule.action.cache : false;
         if (cacheConf) {
             return (cacheConf.name || DEFAULT_CACHE_NAME) +
@@ -97,7 +100,8 @@ const cacheManager = {
         cacheManager.add(
             request,
             typeof rule == 'string'? rule: cacheManager.mountCacheId(rule),
-            response
+            response,
+            rule
         );
         
         let cloned = response.clone();
@@ -107,14 +111,14 @@ const cacheManager = {
 //                dateAdded: (new Date).getTime()
 //            },
 //            CACHE_CREATED_DBNAME);
-        return caches.open(typeof rule == 'string'? rule: cacheManager.mountCacheId(rule))
+        return caches.open(cacheManager.mountCacheId(rule))
             .then(function(cache) {
                 cache.put(request, cloned);
                 return response;
             });
     },
-    add: (request, cacheId, response) => {
-        cacheId = cacheId || cacheManager.mountCacheId();
+    add: (request, cacheId, response, rule) => {
+        cacheId = cacheId || cacheManager.mountCacheId(rule);
         return new Promise((resolve, reject)=>{
             function addIt (response) {
                 if (response.status == 200) {
@@ -123,7 +127,7 @@ const cacheManager = {
                         cache.put(request, response.clone());
                         resolve(response);
                         // saves the current time for further validation
-                        //cacheManager.setUpdateTime(request);
+                        //cacheManager.setExpiringTime(request, rule||cacheId, ???);
                     }).catch(err=>{
                         console.error(err);
                         resolve(response);
@@ -145,14 +149,25 @@ const cacheManager = {
             }
         });
     },
-    setUpdateTime: (req, expiresAt=0)=>{
+    setExpiringTime: (request, rule, expiresAt=0)=>{
+        if (typeof expiresAt == 'string') {
+            expiresAt = cacheManager.parseExpiration(rule, expiresAt);
+        }
         setTimeout(_=>{
-            console.log('NOWWW', req.url || req);
+            console.log('WILL DELETE', request.url || request, cacheManager.mountCacheId(rule));
+            caches.open(cacheManager.mountCacheId(rule)).then(cache=>{
+                cache.delete(request).then(deleted=>{
+                    debugger;
+                    if (deleted) {
+                        console.log('NOWWW', request.url || request, cacheManager.mountCacheId(rule));
+                    }
+                });
+            });
         }, expiresAt);
         
 //        indexedDBManager.addOrUpdate(
 //            {
-//                url: req.url||req,
+//                url: request.url||request,
 //                dateAdded: (new Date).getTime(),
 //                expiresAt
 //            },
@@ -170,28 +185,27 @@ const cacheManager = {
 
         let opts = rule.options || {};
         opts.headers = opts.headers || new Headers();
-
-        // if there is an expiration time, we should see if it has expired
-        if (rule.action[actionType].expires) {
-            //return new Promise((resolve, reject)=>{
-                // get the expiration time
-                // TODO: if not expired, return the get itself, else, return goFetch
-            //});
-        }
+        
+        actionType = actionType.toLowerCase();
+        // let's allow an idb alias for indexeddb...maybe we could move it to a
+        // separated structure
+        actionType = actionType == 'idb'? 'indexeddb': actionType;
         
         switch (actionType) {
-        case 'idb':
-        case 'IDB':
-        case 'indexedDB': {
+        case 'indexeddb': {
             return new Promise((resolve, reject)=>{
                 // function to be used after fetching
                 function treatFetch (response) {
                     if (response && response.status == 200) {
                         // with success or not(saving it), we resolve it
                         let done = _=>{
-                            if (rule.action[actionType].expires) {
-                                cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
-                            }
+                            // TODO: add support for expire for indexeddb
+//                            if (rule.action[actionType].expires) {
+//                                cacheManager
+//                                    .setExpiringTime(request,
+//                                                     rule,
+//                                                     parseExpiration(rule, rule.action[actionType].expires));
+//                            }
                             resolve(response);
                         };
 
@@ -299,12 +313,14 @@ const cacheManager = {
                                 if (response.status == 200) {
                                     // if cache is not false, it will be added to cache
                                     if (rule.action.cache !== false) {
+                                        // and if it shall expire, let's schedule it!
                                         if (rule.action[actionType].expires) {
-                                            cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
+                                            cacheManager.setExpiringTime(request, rule, parseExpiration(rule, rule.action[actionType].expires));
                                         }
                                         return cacheManager.add(request,
                                                                 cacheManager.mountCacheId(rule),
-                                                                response);
+                                                                response,
+                                                                rule);
                                     }else{
                                         return response;
                                     }

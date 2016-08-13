@@ -52,7 +52,7 @@ const PWASettings = {
                 "cache": {
                     "name": "cachedImages",
                     "version": "1",
-                    "expires": "1s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
+                    "expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
                 }
             }
         },
@@ -110,6 +110,12 @@ const PWASettings = {
                     "version": "1",
                     "indexes": ["id"]
                 }
+            }
+        },
+        "easterEgg": {
+            "match": { "path": "\/easter-egg" },
+            "apply": {
+                "output": "You found an easter egg!!!"
             }
         }
     }
@@ -192,7 +198,7 @@ var parseExpiration = function parseExpiration(rule, expires) {
         }
     }
     if (duration >= 0) {
-        return parseInt(duration, 10);
+        return parseInt(duration, 10) * 1000;
     } else {
         return 0;
     }
@@ -233,6 +239,9 @@ var cacheManager = {
     // return a name for a default rule or the name for cache using the version
     // and a separator
     mountCacheId: function mountCacheId(rule) {
+        if (typeof rule == 'string') {
+            return rule;
+        }
         var cacheConf = rule ? rule.action.cache : false;
         if (cacheConf) {
             return (cacheConf.name || DEFAULT_CACHE_NAME) + '::' + (cacheConf.version || DEFAULT_CACHE_VERSION);
@@ -244,7 +253,7 @@ var cacheManager = {
     },
     // just a different method signature, for .add
     put: function put(rule, request, response) {
-        cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response);
+        cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response, rule);
 
         var cloned = response.clone();
         //        indexedDBManager.addOrUpdate(
@@ -253,13 +262,13 @@ var cacheManager = {
         //                dateAdded: (new Date).getTime()
         //            },
         //            CACHE_CREATED_DBNAME);
-        return caches.open(typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule)).then(function (cache) {
+        return caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
             cache.put(request, cloned);
             return response;
         });
     },
-    add: function add(request, cacheId, response) {
-        cacheId = cacheId || cacheManager.mountCacheId();
+    add: function add(request, cacheId, response, rule) {
+        cacheId = cacheId || cacheManager.mountCacheId(rule);
         return new Promise(function (resolve, reject) {
             function addIt(response) {
                 if (response.status == 200) {
@@ -268,7 +277,7 @@ var cacheManager = {
                         cache.put(request, response.clone());
                         resolve(response);
                         // saves the current time for further validation
-                        //cacheManager.setUpdateTime(request);
+                        //cacheManager.setExpiringTime(request, rule||cacheId, ???);
                     }).catch(function (err) {
                         console.error(err);
                         resolve(response);
@@ -288,16 +297,27 @@ var cacheManager = {
             }
         });
     },
-    setUpdateTime: function setUpdateTime(req) {
-        var expiresAt = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
+    setExpiringTime: function setExpiringTime(request, rule) {
+        var expiresAt = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
 
+        if (typeof expiresAt == 'string') {
+            expiresAt = cacheManager.parseExpiration(rule, expiresAt);
+        }
         setTimeout(function (_) {
-            console.log('NOWWW', req.url || req);
+            console.log('WILL DELETE', request.url || request, cacheManager.mountCacheId(rule));
+            caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
+                cache.delete(request).then(function (deleted) {
+                    debugger;
+                    if (deleted) {
+                        console.log('NOWWW', request.url || request, cacheManager.mountCacheId(rule));
+                    }
+                });
+            });
         }, expiresAt);
 
         //        indexedDBManager.addOrUpdate(
         //            {
-        //                url: req.url||req,
+        //                url: request.url||request,
         //                dateAdded: (new Date).getTime(),
         //                expiresAt
         //            },
@@ -316,18 +336,13 @@ var cacheManager = {
         var opts = rule.options || {};
         opts.headers = opts.headers || new Headers();
 
-        // if there is an expiration time, we should see if it has expired
-        if (rule.action[actionType].expires) {
-            //return new Promise((resolve, reject)=>{
-            // get the expiration time
-            // TODO: if not expired, return the get itself, else, return goFetch
-            //});
-        }
+        actionType = actionType.toLowerCase();
+        // let's allow an idb alias for indexeddb...maybe we could move it to a
+        // separated structure
+        actionType = actionType == 'idb' ? 'indexeddb' : actionType;
 
         switch (actionType) {
-            case 'idb':
-            case 'IDB':
-            case 'indexedDB':
+            case 'indexeddb':
                 {
                     return new Promise(function (resolve, reject) {
                         // function to be used after fetching
@@ -335,9 +350,13 @@ var cacheManager = {
                             if (response && response.status == 200) {
                                 // with success or not(saving it), we resolve it
                                 var done = function done(_) {
-                                    if (rule.action[actionType].expires) {
-                                        cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
-                                    }
+                                    // TODO: add support for expire for indexeddb
+                                    //                            if (rule.action[actionType].expires) {
+                                    //                                cacheManager
+                                    //                                    .setExpiringTime(request,
+                                    //                                                     rule,
+                                    //                                                     parseExpiration(rule, rule.action[actionType].expires));
+                                    //                            }
                                     resolve(response);
                                 };
 
@@ -438,10 +457,11 @@ var cacheManager = {
                                     if (response.status == 200) {
                                         // if cache is not false, it will be added to cache
                                         if (rule.action.cache !== false) {
+                                            // and if it shall expire, let's schedule it!
                                             if (rule.action[actionType].expires) {
-                                                cacheManager.setUpdateTime(request, parseExpiration(rule.action[actionType].expires));
+                                                cacheManager.setExpiringTime(request, rule, parseExpiration(rule, rule.action[actionType].expires));
                                             }
-                                            return cacheManager.add(request, cacheManager.mountCacheId(rule), response);
+                                            return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
                                         } else {
                                             return response;
                                         }
@@ -802,8 +822,10 @@ if (isInSWScope) {
                 }
                 return result || response;
             },
-            setup: function setup(dswConfig) {
+            setup: function setup() {
                 var _this = this;
+
+                var dswConfig = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
@@ -985,6 +1007,10 @@ if (isInSWScope) {
         });
 
         self.addEventListener('install', function (event) {
+            // undoing some bad named properties :/
+            PWASettings.dswRules = PWASettings.rules || PWASettings.dswRules || {};
+            PWASettings.dswVersion = PWASettings.version || PWASettings.dswVersion || '1';
+
             if (PWASettings.applyImmediately) {
                 event.waitUntil(self.skipWaiting().then(function (_) {
                     return DSWManager.setup(PWASettings);
@@ -1000,6 +1026,7 @@ if (isInSWScope) {
 
         self.addEventListener('sync', function (event) {
             // TODO: add support to sync event
+            //debugger;
         });
 
         DSWManager.startListening();
