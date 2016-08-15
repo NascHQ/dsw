@@ -33,6 +33,10 @@ var _indexeddbManager = require('./indexeddb-manager.js');
 
 var _indexeddbManager2 = _interopRequireDefault(_indexeddbManager);
 
+var _utils = require('./utils.js');
+
+var _utils2 = _interopRequireDefault(_utils);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DEFAULT_CACHE_NAME = 'defaultDSWCached';
@@ -184,7 +188,6 @@ var cacheManager = {
             console.log('WILL DELETE', request.url || request, cacheManager.mountCacheId(rule));
             caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
                 cache.delete(request).then(function (deleted) {
-                    debugger;
                     if (deleted) {
                         console.log('NOWWW', request.url || request, cacheManager.mountCacheId(rule));
                     }
@@ -219,6 +222,10 @@ var cacheManager = {
         actionType = actionType == 'idb' ? 'indexeddb' : actionType;
 
         switch (actionType) {
+            case 'output':
+                {
+                    return new Response(_utils2.default.applyMatch(matching, rule.action[actionType]));
+                }
             case 'indexeddb':
                 {
                     return new Promise(function (resolve, reject) {
@@ -373,25 +380,27 @@ var cacheManager = {
 
 exports.default = cacheManager;
 
-},{"./indexeddb-manager.js":4}],3:[function(require,module,exports){
+},{"./indexeddb-manager.js":4,"./utils.js":7}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _utils = require('./utils.js');
+
+var _utils2 = _interopRequireDefault(_utils);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
+
     // if there are group variables in the matching expression
-    if (matching && matching.length > 2 && tmpUrl) {
-        // we apply the variables
-        matching.forEach(function (cur, idx) {
-            tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
-        });
-    }
+    tmpUrl = _utils2.default.applyMatch(matching, tmpUrl);
 
     // if no rule is passed
     if (request && !rule) {
@@ -415,9 +424,9 @@ function goFetch(rule, request, event, matching) {
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
     }
-    //    
-    //    // we will create a new request to be used, based on what has been
-    //    // defined by the rule or current request
+
+    // we will create a new request to be used, based on what has been
+    // defined by the rule or current request
     request = new Request(tmpUrl || request.url, {
         method: opts.method || request.method,
         headers: opts || request.headers,
@@ -425,7 +434,6 @@ function goFetch(rule, request, event, matching) {
         credentials: request.credentials,
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     });
-    // REMOVING THIS, this failes to load the "copy" request from cacheAPI! Also, not a good performance!
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect
@@ -441,7 +449,7 @@ function goFetch(rule, request, event, matching) {
 
 exports.default = goFetch;
 
-},{}],4:[function(require,module,exports){
+},{"./utils.js":7}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -742,25 +750,25 @@ if (isInSWScope) {
                             if (extensions.length) {
                                 extensions += '|';
                             }
-                            path = (path.join('|') || '([.+]?)') + '|';
+                            path = (path.join('|') || '') + '|';
                         } else {
                             // "match" may be an object, then we simply use it
-                            path = (heuristic.match.path || '') + '([.+]?)';
+                            path = heuristic.match.path || ''; // aqui + '([.+]?)';
                             extensions = heuristic.match.extension, status = heuristic.match.status;
                         }
 
                         // preparing extentions to be added to the regexp
                         var ending = '([\/\&\?]|$)';
                         if (Array.isArray(extensions)) {
-                            extensions = '(' + extensions.join(ending + '|') + ending + ')';
+                            extensions = '([.+]?)(' + extensions.join(ending + '|') + ending + ')';
                         } else if (typeof extensions == 'string') {
-                            extensions = '(' + extensions + ending + ')';
+                            extensions = '([.+]?)(' + extensions + ending + ')';
                         } else {
-                            extensions = '.+';
+                            extensions = '';
                         }
 
                         // and now we "build" the regular expression itself!
-                        var rx = new RegExp(path + '((\\.)((' + extensions + ')([\\?\&\/].+)?))', 'i');
+                        var rx = new RegExp(path + (extensions ? '((\\.)((' + extensions + ')([\\?\&\/].+)?))' : ''), 'i');
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
@@ -1066,5 +1074,26 @@ var strategies = {
 };
 
 exports.default = strategies;
+
+},{}],7:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var utils = {
+    applyMatch: function applyMatch(matching, text) {
+        if (matching && matching.length > 1 && text) {
+            // we apply the variables
+            matching.forEach(function (cur, idx) {
+                text = text.replace(new RegExp('\\$' + idx, 'i'), cur);
+            });
+        }
+        return text;
+    }
+};
+
+exports.default = utils;
 
 },{}]},{},[5]);

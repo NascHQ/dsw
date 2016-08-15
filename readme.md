@@ -10,6 +10,8 @@
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
+If you are starting from scratch and want to see it working "out of nothing", you can use the content inside `/boilerplate`.
+
 ## Live Demo
 
 You can access this page and see a live demo of DSW working.

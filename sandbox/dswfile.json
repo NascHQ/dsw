@@ -9,6 +9,12 @@
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
     "dswRules": {
+        "easterEgg": {
+            "match": { "path": "\/easter-egg" },
+            "apply": {
+                "output": "You found an easter egg!!!"
+            }
+        },
         "moved-pages": {
             "match": { "path": "\/old-site\/(.*)" },
             "apply": {
@@ -51,8 +57,8 @@
             "apply": {
                 "cache": {
                     "name": "cachedImages",
-                    "version": "1",
-                    "expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
+                    "version": "1"//,
+                    //"expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
                 }
             }
         },
@@ -110,12 +116,6 @@
                     "version": "1",
                     "indexes": ["id"]
                 }
-            }
-        },
-        "easterEgg": {
-            "match": { "path": "\/easter-egg" },
-            "apply": {
-                "output": "You found an easter egg!!!"
             }
         }
     }

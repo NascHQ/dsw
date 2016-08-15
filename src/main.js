@@ -104,10 +104,10 @@ if (isInSWScope) {
                         if (extensions.length) {
                             extensions+= '|';
                         }
-                        path = (path.join('|') || '([.+]?)') + '|';
+                        path = (path.join('|') || '') + '|';
                     } else {
                         // "match" may be an object, then we simply use it
-                        path = (heuristic.match.path || '' ) + '([.+]?)';
+                        path = (heuristic.match.path || '' );// aqui + '([.+]?)';
                         extensions = heuristic.match.extension,
                         status = heuristic.match.status;
                     }
@@ -115,15 +115,15 @@ if (isInSWScope) {
                     // preparing extentions to be added to the regexp
                     let ending = '([\/\&\?]|$)';
                     if (Array.isArray(extensions)){
-                        extensions = '(' + extensions.join(ending+'|') + ending + ')';
+                        extensions = '([.+]?)(' + extensions.join(ending+'|') + ending + ')';
                     } else if (typeof extensions == 'string'){
-                        extensions = '(' + extensions + ending + ')';
+                        extensions = '([.+]?)(' + extensions + ending + ')';
                     } else {
-                        extensions = '.+';
+                        extensions = '';
                     }
 
                     // and now we "build" the regular expression itself!
-                    let rx = new RegExp(path + '((\\.)(('+ extensions +')([\\?\&\/].+)?))', 'i');
+                    let rx = new RegExp(path + (extensions? '((\\.)(('+ extensions +')([\\?\&\/].+)?))': ''), 'i');
                     
                     // if it fetches something, and this something is not dynamic
                     // also, if it will redirect to some static url

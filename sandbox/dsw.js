@@ -9,6 +9,12 @@ const PWASettings = {
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
     "dswRules": {
+        "easterEgg": {
+            "match": { "path": "\/easter-egg" },
+            "apply": {
+                "output": "You found an easter egg!!!"
+            }
+        },
         "moved-pages": {
             "match": { "path": "\/old-site\/(.*)" },
             "apply": {
@@ -51,8 +57,8 @@ const PWASettings = {
             "apply": {
                 "cache": {
                     "name": "cachedImages",
-                    "version": "1",
-                    "expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
+                    "version": "1"//,
+                    //"expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
                 }
             }
         },
@@ -110,12 +116,6 @@ const PWASettings = {
                     "version": "1",
                     "indexes": ["id"]
                 }
-            }
-        },
-        "easterEgg": {
-            "match": { "path": "\/easter-egg" },
-            "apply": {
-                "output": "You found an easter egg!!!"
             }
         }
     }
@@ -342,6 +342,11 @@ var cacheManager = {
         actionType = actionType == 'idb' ? 'indexeddb' : actionType;
 
         switch (actionType) {
+            case 'output':
+                {
+                    debugger;
+                    return new Response(rule.action[actionType]);
+                }
             case 'indexeddb':
                 {
                     return new Promise(function (resolve, reject) {
@@ -509,7 +514,7 @@ function goFetch(rule, request, event, matching) {
         tmpUrl = request.url || request;
     }
     // if there are group variables in the matching expression
-    if (matching && matching.length > 2 && tmpUrl) {
+    if (matching && matching.length > 1 && tmpUrl) {
         // we apply the variables
         matching.forEach(function (cur, idx) {
             tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
@@ -538,9 +543,9 @@ function goFetch(rule, request, event, matching) {
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + new Date().getTime();
     }
-    //    
-    //    // we will create a new request to be used, based on what has been
-    //    // defined by the rule or current request
+
+    // we will create a new request to be used, based on what has been
+    // defined by the rule or current request
     request = new Request(tmpUrl || request.url, {
         method: opts.method || request.method,
         headers: opts || request.headers,
@@ -548,7 +553,6 @@ function goFetch(rule, request, event, matching) {
         credentials: request.credentials,
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     });
-    // REMOVING THIS, this failes to load the "copy" request from cacheAPI! Also, not a good performance!
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect
@@ -865,25 +869,25 @@ if (isInSWScope) {
                             if (extensions.length) {
                                 extensions += '|';
                             }
-                            path = (path.join('|') || '([.+]?)') + '|';
+                            path = (path.join('|') || '') + '|';
                         } else {
                             // "match" may be an object, then we simply use it
-                            path = (heuristic.match.path || '') + '([.+]?)';
+                            path = heuristic.match.path || ''; // aqui + '([.+]?)';
                             extensions = heuristic.match.extension, status = heuristic.match.status;
                         }
 
                         // preparing extentions to be added to the regexp
                         var ending = '([\/\&\?]|$)';
                         if (Array.isArray(extensions)) {
-                            extensions = '(' + extensions.join(ending + '|') + ending + ')';
+                            extensions = '([.+]?)(' + extensions.join(ending + '|') + ending + ')';
                         } else if (typeof extensions == 'string') {
-                            extensions = '(' + extensions + ending + ')';
+                            extensions = '([.+]?)(' + extensions + ending + ')';
                         } else {
-                            extensions = '.+';
+                            extensions = '';
                         }
 
                         // and now we "build" the regular expression itself!
-                        var rx = new RegExp(path + '((\\.)((' + extensions + ')([\\?\&\/].+)?))', 'i');
+                        var rx = new RegExp(path + (extensions ? '((\\.)((' + extensions + ')([\\?\&\/].+)?))' : ''), 'i');
 
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url

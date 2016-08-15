@@ -1,4 +1,5 @@
 import indexedDBManager from './indexeddb-manager.js';
+import utils from './utils.js';
 
 const DEFAULT_CACHE_NAME = 'defaultDSWCached';
 //const CACHE_CREATED_DBNAME = 'cacheCreatedTime';
@@ -157,7 +158,6 @@ const cacheManager = {
             console.log('WILL DELETE', request.url || request, cacheManager.mountCacheId(rule));
             caches.open(cacheManager.mountCacheId(rule)).then(cache=>{
                 cache.delete(request).then(deleted=>{
-                    debugger;
                     if (deleted) {
                         console.log('NOWWW', request.url || request, cacheManager.mountCacheId(rule));
                     }
@@ -192,6 +192,12 @@ const cacheManager = {
         actionType = actionType == 'idb'? 'indexeddb': actionType;
         
         switch (actionType) {
+        case 'output': {
+            return new Response(
+                utils.applyMatch(matching,
+                                 rule.action[actionType])
+            );
+        }
         case 'indexeddb': {
             return new Promise((resolve, reject)=>{
                 // function to be used after fetching

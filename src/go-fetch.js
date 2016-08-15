@@ -1,16 +1,13 @@
+import utils from './utils.js';
 
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
+    
     // if there are group variables in the matching expression
-    if (matching && matching.length > 2 && tmpUrl) {
-        // we apply the variables
-        matching.forEach(function(cur, idx){
-            tmpUrl = tmpUrl.replace(new RegExp('\\$' + idx, 'i'), cur);
-        });
-    }
+    tmpUrl = utils.applyMatch(matching, tmpUrl);
     
     // if no rule is passed
     if (request && !rule) {
@@ -34,9 +31,9 @@ function goFetch (rule, request, event, matching) {
         opts.headers.append('cache-control', 'no-store,no-cache');
         tmpUrl = tmpUrl + (tmpUrl.indexOf('?') > 0 ? '&' : '?') + (new Date).getTime();
     }
-//    
-//    // we will create a new request to be used, based on what has been
-//    // defined by the rule or current request
+
+    // we will create a new request to be used, based on what has been
+    // defined by the rule or current request
     request = new Request(tmpUrl || request.url, {
         method: opts.method || request.method,
         headers: opts || request.headers,
@@ -44,7 +41,6 @@ function goFetch (rule, request, event, matching) {
         credentials: request.credentials,
         redirect: actionType == 'redirect'? 'manual' : request.redirect
     });
-    // REMOVING THIS, this failes to load the "copy" request from cacheAPI! Also, not a good performance!
     
     if (actionType == 'redirect') {
         // if this is supposed to redirect
