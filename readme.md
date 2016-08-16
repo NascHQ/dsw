@@ -20,6 +20,8 @@ You can then go offline and reload the page to validate it.
 ## Advantages
 
 - Use of variables
+- Different strategies (offline-first, online-first or fastest)
+- Easy-to-set rules for 404 pages, redirects, cache or use indexedDB or outpus
 - Decision over cache naming and versioning for each matching request
 - Many named rules (for future debugging tooling...I imagine we can have a lighthouse-like page for debugging your service workers and your rules)
 - Support for indexedDB (under development)
