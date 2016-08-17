@@ -2,8 +2,8 @@
     "dswVersion": 2.2,
     "applyImmediately": true,
     "appShell": [
-        '/helmet.png',
-        '/index.html?homescreen=1'
+        "/helmet.png",
+        "/index.html?homescreen=1"
     ],
     "enforceSSL": false,
     "requestTimeLimit": 6000,
@@ -57,8 +57,8 @@
             "apply": {
                 "cache": {
                     "name": "cachedImages",
-                    "version": "1"//,
-                    //"expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
+                    "version": "1",
+                    "expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
                 }
             }
         },

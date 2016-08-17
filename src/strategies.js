@@ -15,10 +15,11 @@ const strategies = {
         // store it in the cache
         // and then return it to be used
         console.info('offline first: Looking into cache for\n', request.url);
-        return cacheManager.get(rule,
-             request,
-             event,
-             matching
+        return cacheManager.get(
+            rule,
+            request,
+            event,
+            matching
         );
     },
     'online-first': function onlineFirstStrategy (rule, request, event, matching) {
@@ -46,7 +47,9 @@ const strategies = {
                     return result || DSWManager.treatBadPage(response, pathName, event);
                 });
         }
-        return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
+        return goFetch(rule, request, event, matching)
+            .then(treatIt)
+            .catch(treatIt);
     },
     'fastest': function fastestStrategy (rule, request, event, matching) {
         // Will fetch AND look in the cache.

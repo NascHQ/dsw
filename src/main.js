@@ -82,7 +82,8 @@ if (isInSWScope) {
                     heuristic = dswConfig.dswRules[heuristic];
                     heuristic.name = ruleName;
 
-                    let appl = heuristic['apply'],
+                    heuristic.action = heuristic.action || heuristic['apply'];
+                    let appl = heuristic.action,
                         extensions,
                         status,
                         path;
@@ -131,7 +132,10 @@ if (isInSWScope) {
                     if ( (appl.fetch && !appl.fetch.match(noVars))
                         ||
                         (appl.redirect && !appl.redirect.match(noVars))) {
-                        preCache.push(appl.fetch || appl.redirect);
+                        preCache.push({
+                            url: appl.fetch || appl.redirect,
+                            rule: heuristic
+                        });
                     }
                     
                     // in case the rule uses an indexedDB
@@ -177,7 +181,7 @@ if (isInSWScope) {
                     return Promise.all(
                         preCache.map(function(cur) {
                             return cacheManager
-                                    .add(cur);
+                                    .add(cur.url||cur, null, null, cur.rule);
                         }).concat(dbs.map(function(cur) {
                             return cacheManager.createDB(cur);
                         })
@@ -302,11 +306,63 @@ if (isInSWScope) {
                         .register(src)
                         .then(SW=>{
                             console.info('[ SW ] :: registered');
-                            resolve(navigator.serviceWorker.ready);
+                            if (config && config.sync) {
+                                if ('SyncManager' in window) {
+                                    navigator.serviceWorker.ready.then(function(reg) {
+                                        return reg.sync.register('myFirstSync');
+                                    })
+                                    .then(_=>{
+                                        resolve({
+                                            status: true,
+                                            sync: true,
+                                            sw: true
+                                        });
+                                    })
+                                    .catch(function(err) {
+                                        reject({
+                                            status: false,
+                                            sync: false,
+                                            sw: true,
+                                            message: 'Registered Service worker, but was unable to activate sync',
+                                            error: err
+                                        });
+                                    });
+                                } else {
+                                    reject({
+                                        status: false,
+                                        sync: false,
+                                        sw: true,
+                                        message: 'Registered Service worker, but was unable to activate sync',
+                                        error: null
+                                    });
+                                }
+                            } else {
+                                resolve({
+                                    status: true,
+                                    sync: false,
+                                    sw: true
+                                });
+                            }
+                        })
+                        .catch(err=>{
+                            reject({
+                                status: false,
+                                sync: false,
+                                sw: false,
+                                message: 'Failed registering service worker',
+                                error: err
+                            });
                         });
+
                 }
             }else{
-                reject('Service worker not supported');
+                reject({
+                    status: false,
+                    sync: false,
+                    sw: false,
+                    message: 'Service Worker not supported',
+                    error: null
+                });
             }
         });
     };

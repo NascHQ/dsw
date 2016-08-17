@@ -35,6 +35,14 @@
                 "fetch": "/images/public/404.jpg"
             }
         },
+        // You can also output a string right away
+        "easterEgg": {
+            "match": { "path": "\/easter-egg" },
+            "apply": {
+                // by using the output action (it accepts variables, as in other examples)
+                "output": "You found an easter egg!!!"
+            }
+        }
         // This other example redirects pages that are not found
         "pageNotFound": {
             // Any requisition that has a 404 status (including css, js, etc)

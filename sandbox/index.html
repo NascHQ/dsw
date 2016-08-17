@@ -18,21 +18,22 @@
         <script src="dsw.js"></script>
         <script>
             DSW.setup()
-                .then(function(){
+                .then(function(result){
                     var el = document.getElementById('offline-support-message');
                     el.classList.add('offline-support');
                     el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
                     setTimeout(function(){
-                        history.go(0);
+                        //history.go(0);
                     }, 6000);
                 })
-                .catch(function(){
+                .catch(function(error){
                     var el = document.getElementById('offline-support-message');
                     el.innerHTML = 'Offline is not supported in this browser!';
                     el.classList.add('no-offline-support');
                     setTimeout(function(){
                         el.classList.remove('no-offline-support');
                     }, 6000);
+                    console.warn(error);
                 });
         </script>
 

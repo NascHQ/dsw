@@ -159,6 +159,7 @@ It may be:
 - fetch: The (string)path to be loaded instead of the original request
 - redirect: same as fetch, but setting the header status to 302
 - cache: An object containing cache information for the request
+- output: String, accepting the use of variables ($1, $2, etc) to be the response itselfe
 
 #### Cache
 

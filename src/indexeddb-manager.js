@@ -126,6 +126,21 @@ const indexedDBManager = {
         });
     },
     
+    find: (dbName, key, value)=>{
+        return new Promise((resolve, reject)=>{
+            let store = getObjectStore(dbName),
+                index = store.index(key),
+                getter = index.get(value);
+            
+            getter.onsuccess = event=>{
+                resolve(event.target.result);
+            };
+            getter.onerror = event=>{
+                reject();
+            };
+        });
+    },
+    
     addOrUpdate (obj, dbName) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
