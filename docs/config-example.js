@@ -138,6 +138,8 @@
                 "cache": {
                     "name": "static-html-files",
                     "version": "1"
+                    // we can also expire the cache
+                    "expires": "1h" // 1s, 1m, 1h, 1d, 1w, 1M, 1y
                 }
             }
         },

@@ -17,7 +17,7 @@ If you are starting from scratch and want to see it working "out of nothing", yo
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-pttlyqirfg.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-vlfgpsyjas.now.sh)
 
 ## Advantages
 
@@ -171,9 +171,24 @@ Pass to the cache object in your apply definition, an object containing:
 
 - name (mandatory, although a default name will be used if this is not passed)
 - version (optional)
+- expires (optional)
 
 You can also define `cache: false`. This will force the request **not to be cached**.
 Seens silly, but is useful when you want an exception for your cached data.
+
+Expires is a number in mileseconds or a string with the pattern:
+
+- x seconds: `xs`
+- x minutes: `xm`
+- x hours: `xh`
+- x days: `xd`
+- x weeks: `xw`
+- x months: `xM`
+- x years: `xy`
+
+By default, caches wont expire...ever! Only when the cache version changes.<br/>
+When expired, DSW will look for the up to date content and will update it into the cache.<br/>
+Although, if it fails retrieving the updated data, it will still use the previously cached data, until it manages to get the updated content.
 
 #### IndexedDB
 

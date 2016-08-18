@@ -58,7 +58,7 @@ const PWASettings = {
                 "cache": {
                     "name": "cachedImages",
                     "version": "1",
-                    "expires": "15s" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y or -1
+                    "expires": "1h" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y
                 }
             }
         },
