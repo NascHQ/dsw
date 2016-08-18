@@ -484,9 +484,12 @@ Here is how...and yep, as Service workers are still a little too new, it is a li
 
 ```git clone https://github.com/NascHQ/dsw```
 
-2 - Enter the project directory
+2 - Enter the project directory and install it
 
-```cd dsw```
+```
+cd dsw
+npm install
+```
 
 3 - Start watching it
 
