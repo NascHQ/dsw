@@ -281,7 +281,7 @@ var cacheManager = {
                         cache.put(request, response.clone());
                         resolve(response);
                         // in case it is supposed to expire
-                        if (rule && rule.action.cache && rule.action.cache.expires) {
+                        if (rule && rule.action && rule.action.cache && rule.action.cache.expires) {
                             // saves the current time for further validation
                             cacheManager.setExpiringTime(request, rule || cacheId, rule.action.cache.expires);
                         }
@@ -417,7 +417,6 @@ var cacheManager = {
                     // lets verify if the cache is expired or not
                     return verifyCache.then(function (expired) {
                         var lookForCache = void 0;
-                        debugger;
                         if (expired && !forceFromCache) {
                             // in case it has expired, it resolves automatically
                             // with no results from cache

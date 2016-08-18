@@ -158,7 +158,7 @@ var cacheManager = {
                         cache.put(request, response.clone());
                         resolve(response);
                         // in case it is supposed to expire
-                        if (rule && rule.action.cache && rule.action.cache.expires) {
+                        if (rule && rule.action && rule.action.cache && rule.action.cache.expires) {
                             // saves the current time for further validation
                             cacheManager.setExpiringTime(request, rule || cacheId, rule.action.cache.expires);
                         }
