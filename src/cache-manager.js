@@ -283,7 +283,6 @@ const cacheManager = {
             // lets verify if the cache is expired or not
             return verifyCache.then(expired=>{
                 let lookForCache;
-                debugger;
                 if (expired && !forceFromCache) {
                     // in case it has expired, it resolves automatically
                     // with no results from cache

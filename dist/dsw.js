@@ -294,7 +294,6 @@ var cacheManager = {
                     // lets verify if the cache is expired or not
                     return verifyCache.then(function (expired) {
                         var lookForCache = void 0;
-                        debugger;
                         if (expired && !forceFromCache) {
                             // in case it has expired, it resolves automatically
                             // with no results from cache
