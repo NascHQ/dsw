@@ -540,6 +540,11 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
 
+#### Browser support
+
+Service workers have been adopted by browsers and you can see an updated list here:<br/>
+[isServiceWorkerReady?](https://jakearchibald.github.io/isserviceworkerready/)
+
 #### Related projects
 
 Some other projects that might help you too.
