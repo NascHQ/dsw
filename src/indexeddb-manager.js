@@ -144,7 +144,7 @@ const indexedDBManager = {
     addOrUpdate (obj, dbName) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            let req = store.add(obj);
+            let req = store.put(obj);
             req.onsuccess = function addOrUpdateSuccess () {
                 resolve(obj);
             };

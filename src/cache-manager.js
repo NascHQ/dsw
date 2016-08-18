@@ -177,7 +177,6 @@ const cacheManager = {
             indexedDBManager.find(CACHE_CREATED_DBNAME, 'url', request.url || request)
                 .then(r=>{
                     if (r && ((new Date).getTime() > r.dateAdded + r.expiresAt)) {
-                        debugger;
                         resolve(true);
                     } else {
                         resolve(false);
@@ -188,7 +187,7 @@ const cacheManager = {
                 });
         });
     },
-    get: (rule, request, event, matching)=>{
+    get: (rule, request, event, matching, forceFromCache)=>{
         let actionType = Object.keys(rule.action)[0],
             url = request.url || request,
             pathName = (new URL(url)).pathname;
@@ -284,7 +283,8 @@ const cacheManager = {
             // lets verify if the cache is expired or not
             return verifyCache.then(expired=>{
                 let lookForCache;
-                if (expired) {
+                debugger;
+                if (expired && !forceFromCache) {
                     // in case it has expired, it resolves automatically
                     // with no results from cache
                     lookForCache = Promise.resolve();
@@ -299,6 +299,13 @@ const cacheManager = {
                     .then(result=>{
                         // if it does not exist (cache could not be verified)
                         if (result && result.status != 200) {
+                            // if it has expired in cache, failed requests for
+                            // updates should return the previously cached data
+                            // even if it has expired
+                            if (expired) {
+                                // the true argument flag means it should come from cache, anyways
+                                return cacheManager.get(rule, request, event, matching, true);
+                            }
                             // look for rules that match for the request and its status
                             (DSWManager.rules[result.status]||[]).some((cur, idx)=>{
                                 if (pathName.match(cur.rx)) {
@@ -357,6 +364,15 @@ const cacheManager = {
                                             return response;
                                         }
                                     } else {
+                                        // if it had expired, but could not be retrieved
+                                        // from network, let's give its cache a chance!
+                                        if (expired) {
+                                            console.warn('Cache for ',
+                                                        request.url || request,
+                                                        'had expired, but the updated version could not be retrieved from the network!\n',
+                                                        'Delivering the outdated cached data');
+                                            return cacheManager.get(rule, request, event, matching, true);
+                                        }
                                         // otherwise...let's see if there is a fallback
                                         // for the 404 requisition
                                         return DSWManager.treatBadPage(response, pathName, event);
