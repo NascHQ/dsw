@@ -17,7 +17,7 @@ If you are starting from scratch and want to see it working "out of nothing", yo
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-vlfgpsyjas.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-jbzuwbkfeh.now.sh)
 
 ## Advantages
 
@@ -30,6 +30,7 @@ You can then go offline and reload the page to validate it.
 - Support for messaging and syncing events (under development)
 - Quite simple JSON configuration and easy to start with the basic, or go further for more complex cases
 - Client API with many possibilities
+- Support for opaque requests
 
 ## Installing it
 
@@ -143,6 +144,12 @@ match: [
 ```
 
 Will match all requests with an extension of `html or htm`, **OR** in the `some-dir/` path (no matter the extension, then).
+
+Please notice that requests for different domains will become `opaque`.
+
+This means they will work, but may be cached with a bad status.
+This avoids the famous CORS errors, but exposes you to the chances of having them
+with the wrong cached data(if it failed in the first time the user loaded it).
 
 ### Strategy
 
