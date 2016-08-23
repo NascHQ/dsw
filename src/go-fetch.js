@@ -49,7 +49,7 @@ function goFetch (rule, request, event, matching) {
     }
     
     // if the host is not the same
-    if (!((new URL(tmpUrl)).hostname.indexOf(domain) <= 0)) {
+    if ((new URL(tmpUrl)).hostname.indexOf(domain) >= 0) {
         // we set it to an opaque request
         //reqConfig.mode = 'no-cors';
         request = new Request(tmpUrl || request.url, reqConfig);

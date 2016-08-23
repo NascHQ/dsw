@@ -481,7 +481,6 @@ var cacheManager = {
 
                                         if (response.type == 'opaque') {
                                             // if it is a opaque response, let it go!
-                                            debugger;
                                             if (rule.action.cache !== false) {
                                                 return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
                                             }
@@ -592,7 +591,7 @@ function goFetch(rule, request, event, matching) {
     }
 
     // if the host is not the same
-    if (!(new URL(tmpUrl).hostname.indexOf(domain) <= 0)) {
+    if (new URL(tmpUrl).hostname.indexOf(domain) >= 0) {
         // we set it to an opaque request
         //reqConfig.mode = 'no-cors';
         request = new Request(tmpUrl || request.url, reqConfig);
