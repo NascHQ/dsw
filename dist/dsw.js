@@ -152,7 +152,7 @@ var cacheManager = {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
         return new Promise(function (resolve, reject) {
             function addIt(response) {
-                if (response.status == 200) {
+                if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(function (cache) {
                         // adding to cache`
                         cache.put(request, response.clone());
@@ -355,6 +355,15 @@ var cacheManager = {
                                     // to allow browsers to understand redirects in case
                                     // it must be redirected later on
                                     var treatFetch = function treatFetch(response) {
+
+                                        if (response.type == 'opaque') {
+                                            // if it is a opaque response, let it go!
+                                            if (rule.action.cache !== false) {
+                                                return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
+                                            }
+                                            return response;
+                                        }
+
                                         if (!response.status) {
                                             response.status = 404;
                                         }
@@ -390,7 +399,7 @@ var cacheManager = {
             default:
                 {
                     // also used in fetch actions
-                    return fetch(url);
+                    return event;
                 }
         }
     }
@@ -411,11 +420,14 @@ var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+var domain = (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
+
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
+    var originalUrl = tmpUrl;
 
     // if there are group variables in the matching expression
     tmpUrl = _utils2.default.applyMatch(matching, tmpUrl);
@@ -445,13 +457,22 @@ function goFetch(rule, request, event, matching) {
 
     // we will create a new request to be used, based on what has been
     // defined by the rule or current request
-    request = new Request(tmpUrl || request.url, {
+    var reqConfig = {
         method: opts.method || request.method,
         headers: opts || request.headers,
-        mode: actionType == 'redirect' ? 'same-origin' : 'cors',
-        credentials: request.credentials,
+        mode: actionType == 'redirect' ? request.mode || 'same-origin' : 'cors',
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
-    });
+    };
+    if (request.credentials) {
+        reqConfig.credentials = request.credentials;
+    }
+
+    // if the host is not the same
+    if (!(new URL(tmpUrl).hostname.indexOf(domain) <= 0)) {
+        // we set it to an opaque request
+        //reqConfig.mode = 'no-cors';
+        request = new Request(tmpUrl || request.url, reqConfig);
+    }
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect

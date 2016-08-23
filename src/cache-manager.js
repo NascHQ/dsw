@@ -125,7 +125,7 @@ const cacheManager = {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
         return new Promise((resolve, reject)=>{
             function addIt (response) {
-                if (response.status == 200) {
+                if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
                         // adding to cache`
                         cache.put(request, response.clone());
@@ -348,6 +348,18 @@ const cacheManager = {
                                 // to allow browsers to understand redirects in case
                                 // it must be redirected later on
                                 let treatFetch = function (response) {
+                                    
+                                    if (response.type == 'opaque') {
+                                        // if it is a opaque response, let it go!
+                                        if (rule.action.cache !== false) {
+                                            return cacheManager.add(request,
+                                                                    cacheManager.mountCacheId(rule),
+                                                                    response,
+                                                                    rule);
+                                        }
+                                        return response;
+                                    }
+                                        
                                     if(!response.status){
                                         response.status = 404;
                                     }
@@ -390,7 +402,7 @@ const cacheManager = {
         }
         default: {
             // also used in fetch actions
-            return fetch(url);
+            return event;
         }
         }
     }
