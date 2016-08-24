@@ -208,6 +208,11 @@ if (isInSWScope) {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
                 
+                // in case there are no rules (happens when chrome crashes, for example)
+                if (!Object.keys(DSWManager.rules).length) {
+                    return DSWManager.setup().then(_=>fetch(event));
+                }
+                
                 const url = new URL(event.request.url);
                 const pathName = url.pathname;
                 
