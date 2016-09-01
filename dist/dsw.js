@@ -144,7 +144,9 @@ var cacheManager = {
         }
 
         return caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
-            cache.put(request, cloned);
+            if (request.method != 'POST') {
+                cache.put(request, cloned);
+            }
             return response;
         });
     },
@@ -155,7 +157,9 @@ var cacheManager = {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(function (cache) {
                         // adding to cache`
-                        cache.put(request, response.clone());
+                        if (request.method != 'POST') {
+                            cache.put(request, response.clone());
+                        }
                         resolve(response);
                         // in case it is supposed to expire
                         if (rule && rule.action && rule.action.cache && rule.action.cache.expires) {
@@ -234,6 +238,35 @@ var cacheManager = {
         }
 
         switch (actionType) {
+            case 'bypass':
+                {
+                    // if it is a bypass action (no rule shall be applied, at all)
+                    if (rule.action[actionType] == 'request') {
+                        // it may be of type request
+                        // and we will simple allow it to go ahead
+                        // this also means we will NOT treat any result from it
+                        console.info('Bypassing request, going for the network for', request.url);
+
+                        var treatResponse = function treatResponse(response) {
+                            if (response.status >= 200 && response.status < 300) {
+                                return response;
+                            } else {
+                                console.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
+                                return new Response(''); // ignored
+                            }
+                        };
+                        // here we will use a "raw" fetch, instead of goFetch, which would
+                        // create a new Request and define propreties to it
+                        return fetch(event.request).then(treatResponse).catch(treatResponse);
+                    } else {
+                        // or of type 'ignore' (or anything else, actually)
+                        // and we will simply output nothing, as if ignoring both the
+                        // request and response
+                        actionType = 'output';
+                        rule.action[actionType] = '';
+                        console.info('Bypassing request, outputing nothing out of it');
+                    }
+                }
             case 'output':
                 {
                     return new Response(_utils2.default.applyMatch(matching, rule.action[actionType]));
@@ -463,9 +496,10 @@ function goFetch(rule, request, event, matching) {
         mode: actionType == 'redirect' ? request.mode || 'same-origin' : 'cors',
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     };
-    if (request.credentials) {
-        reqConfig.credentials = request.credentials;
-    }
+
+    //    if (request.credentials && request.credentials != 'omit') {
+    //        reqConfig.credentials = request.credentials;
+    //    }
 
     // if the host is not the same
     if (new URL(tmpUrl).hostname.indexOf(domain) >= 0) {
@@ -900,13 +934,13 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-
+                    //                if (event) {
+                    //                    return fetch(event.request);
+                    //                }
                     // in case there are no rules (happens when chrome crashes, for example)
-                    if (!Object.keys(DSWManager.rules).length) {
-                        return DSWManager.setup().then(function (_) {
-                            return fetch(event);
-                        });
-                    }
+                    //                if (!Object.keys(DSWManager.rules).length) {
+                    //                    return DSWManager.setup().then(_=>fetch(event));
+                    //                }
 
                     var url = new URL(event.request.url);
                     var pathName = url.pathname;

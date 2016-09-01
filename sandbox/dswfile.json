@@ -2,6 +2,7 @@
     "dswVersion": 2.2,
     "applyImmediately": true,
     "appShell": [
+        "/dsw.js",
         "/helmet.png",
         "/index.html?homescreen=1"
     ],
@@ -9,14 +10,26 @@
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
     "dswRules": {
+        "byPassable": {
+            "match": { "path": "/bypass/" },
+            "apply": {
+                "bypass": "request"
+            }
+        },
+        "ignorable": {
+            "match": { "path": "/ignore/" },
+            "apply": {
+                "bypass": "ignore"
+            }
+        },
         "easterEgg": {
-            "match": { "path": "\/easter-egg" },
+            "match": { "path": "/easter-egg" },
             "apply": {
                 "output": "You found an easter egg!!!"
             }
         },
         "moved-pages": {
-            "match": { "path": "\/old-site\/(.*)" },
+            "match": { "path": "/old-site/(.*)" },
             "apply": {
                 "redirect": "/redirected.html?$1"
             }
@@ -32,7 +45,7 @@
         },
         "redirectOlderPage": {
             "match": {
-                "path": "\/legacy-images\/.*"
+                "path": "/legacy-images/.*"
             },
             "apply": {
                 "fetch": "/images/public/gizmo.jpg"
@@ -47,7 +60,7 @@
             }
         },
         "imageNotCached": {
-            "match": { "path": "\/images\/not-cached" },
+            "match": { "path": "/images/not-cached" },
             "apply": {
                 "cache": false
             }
@@ -74,7 +87,7 @@
         "static-html": {
             "match": [
                 { "extension": ["html"] },
-                { "path": "\/$" }
+                { "path": "/$" }
             ],
             "strategy": "fastest",
             "apply": {
@@ -85,7 +98,7 @@
             }
         },
         "userData": {
-            "match": { "path": "\/api\/user\/.*" },
+            "match": { "path": "/api/user/.*" },
             "options": { "credentials": "same-origin"},
             "strategy": "offline-first",
             "apply": {
@@ -107,7 +120,7 @@
             }
         },
         "service": {
-            "match": { "path": "\/api\/service\/.*" },
+            "match": { "path": "/api/service/.*" },
             "options": { "credentials": "same-origin"},
             "strategy": "fastest",
             "apply": {

@@ -44,9 +44,10 @@ function goFetch (rule, request, event, matching) {
         mode: actionType == 'redirect'? (request.mode || 'same-origin') : 'cors',
         redirect: actionType == 'redirect'? 'manual' : request.redirect
     };
-    if (request.credentials) {
-        reqConfig.credentials = request.credentials;
-    }
+    
+//    if (request.credentials && request.credentials != 'omit') {
+//        reqConfig.credentials = request.credentials;
+//    }
     
     // if the host is not the same
     if ((new URL(tmpUrl)).hostname.indexOf(domain) >= 0) {

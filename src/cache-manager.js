@@ -117,7 +117,9 @@ const cacheManager = {
 
         return caches.open(cacheManager.mountCacheId(rule))
             .then(function(cache) {
-                cache.put(request, cloned);
+                if (request.method != 'POST') {
+                    cache.put(request, cloned);
+                }
                 return response;
             });
     },
@@ -128,7 +130,9 @@ const cacheManager = {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
                         // adding to cache`
-                        cache.put(request, response.clone());
+                        if (request.method != 'POST') {
+                            cache.put(request, response.clone());
+                        }
                         resolve(response);
                         // in case it is supposed to expire
                         if (rule &&
@@ -219,6 +223,37 @@ const cacheManager = {
         }
         
         switch (actionType) {
+        case 'bypass': {
+            // if it is a bypass action (no rule shall be applied, at all)
+            if (rule.action[actionType] == 'request') {
+                // it may be of type request
+                // and we will simple allow it to go ahead
+                // this also means we will NOT treat any result from it
+                console.info('Bypassing request, going for the network for',
+                             request.url);
+                
+                let treatResponse = function (response) {
+                    if (response.status >= 200 && response.status < 300) {
+                        return response;
+                    } else {
+                        console.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
+                        return new Response(''); // ignored
+                    }
+                };
+                // here we will use a "raw" fetch, instead of goFetch, which would
+                // create a new Request and define propreties to it
+                return fetch(event.request)
+                        .then(treatResponse)
+                        .catch(treatResponse);
+            } else {
+                // or of type 'ignore' (or anything else, actually)
+                // and we will simply output nothing, as if ignoring both the
+                // request and response
+                actionType = 'output';
+                rule.action[actionType] = '';
+                console.info('Bypassing request, outputing nothing out of it');
+            }
+        }
         case 'output': {
             return new Response(
                 utils.applyMatch(matching,

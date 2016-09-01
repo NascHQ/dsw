@@ -37,7 +37,7 @@
         },
         // You can also output a string right away
         "easterEgg": {
-            "match": { "path": "\/easter-egg" },
+            "match": { "path": "/easter-egg" },
             "apply": {
                 // by using the output action (it accepts variables, as in other examples)
                 "output": "You found an easter egg!!!"
@@ -58,7 +58,7 @@
         "redirectOlderPage": {
             "match": {
                 // In this example, everything inside this directory should be redirected
-                "path": "\/legacy-images\/.*"
+                "path": "/legacy-images/.*"
             },
             "apply": {
                 // we simply fetch the different content
@@ -72,7 +72,7 @@
         // That's why we are defining here one exception.
         "imageNotCached": {
             // the image named "not-cached" will
-            "match": { "path": "\/images\/not-cached" },
+            "match": { "path": "/images/not-cached" },
             "apply": {
                 // not be cached...ever!
                 "cache": false
@@ -110,7 +110,7 @@
             "match": {
                 // We can use in our _apply_ actions, the groups from
                 // this expression, between parenthesis
-                "path": "\/old-site\/(.*)"
+                "path": "/old-site/(.*)"
             },
             "apply": {
                 // here, each groups is represented by a variable, in order
@@ -127,7 +127,7 @@
                 { "extension": ["html", "htm"] },
                 // OR
                 // everything in /
-                { "path": "\/$" }
+                { "path": "/$" }
             ],
             // The default strategy is 'offline-first'
             // With the online-first strategy, it will ALWAYS go for the
@@ -145,7 +145,7 @@
         },
         // Let's use IndexedDB to store some data
         "userData": {
-            "match": { "path": "\/api\/user\/.*" },
+            "match": { "path": "/api/user/.*" },
             // We will try to keep it up to date.
             // DSW will look for it online, and if not possible, then look in the
             // cached object in IndexedDB.
@@ -176,8 +176,29 @@
                 }
             }
         },
+        // You can also bypass some requests
+        "byPassable": {
+            "match": { "path": "/bypass/" },
+            "apply": {
+                // With the "request" value, it WILL perform the request, with no treatment.
+                // But the response will either be the response itself(in case of success)
+                // or an empty string(if failed)
+                "bypass": "request"
+            }
+        },
+        // When bypassing, you may also want to simply ignore some path
+        "ignorable": {
+            // imagine you have an old path and that some legacy script, html or css is
+            // still trying to load resources from it
+            "match": { "path": "/ignore/" },
+            "apply": {
+                // by ignoring it, no network request will be started, and the output
+                // will be always a successful empty string
+                "bypass": "ignore"
+            }
+        },
         "dashbord": {
-            "match": { "path": "\/api\/dashbord\/.*" },
+            "match": { "path": "/api/dashbord/.*" },
             // Here, we are telling the browser to send cookies and session credentions
             // when fetching this
             // You can pass any options accepted by fetch, here

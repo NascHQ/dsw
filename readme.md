@@ -169,6 +169,7 @@ It may be:
 - redirect: same as fetch, but setting the header status to 302
 - cache: An object containing cache information for the request
 - output: String, accepting the use of variables ($1, $2, etc) to be the response itselfe
+- bypass: Will **not** treat the request anyhow, neither the response.<br.>Accepts the values `request` (will go for the network, and if it fails, will output an empty string) or `ignore` (will always output an empty string).
 
 #### Cache
 
@@ -395,7 +396,6 @@ Maybe you want to cache everything. Every single request (that is successful) wi
     }
 }
 ```
-
 
 #### Caching your static files
 

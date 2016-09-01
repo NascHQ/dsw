@@ -43,21 +43,20 @@ window.addEventListener('load', function(){
         set(document.getElementById('test-7-iframe'), 'src', '/old-site/' +
             listOfOlderPages[idx]);
     });
-    /*
-    document.getElementById('btn-img-6').addEventListener('click', function(){
-//        fetch('/api/user/2.json').then(function(response){
-//            response.text().then(function(text){
-//                document.getElementById('fetch-result').innerHTML = text;
-//            });
-//        });
-    });
-    document.getElementById('btn-7').addEventListener('click', function(){
-        fetch('/api/user/1.json').then(function(response){
-            response.text().then(function(text){
-                document.getElementById('test-5-iframe').innerHTML = text;
+    
+    setTimeout(_=>{
+        fetch('/api/bypass/log.js').then(_=>{
+            _.text().then(content=>{
+                console.log(content);
             });
         });
-    });
-    */
+        setTimeout(_=>{
+            fetch('/ignore/index.html').then(_=>{
+                _.text().then(content=>{
+                    console.log(content);
+                });
+            });
+        }, 1000);
+    }, 3000);
     
 });
