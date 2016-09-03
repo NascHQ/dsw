@@ -37,6 +37,10 @@ var _utils = require('./utils.js');
 
 var _utils2 = _interopRequireDefault(_utils);
 
+var _logger = require('./logger.js');
+
+var _logger2 = _interopRequireDefault(_logger);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DEFAULT_CACHE_NAME = 'defaultDSWCached';
@@ -74,7 +78,7 @@ var parseExpiration = function parseExpiration(rule, expires) {
         if (sizes[size]) {
             duration = val * sizes[size];
         } else {
-            console.warn('Invalid duration ' + duration, rule);
+            _logger2.default.warn('Invalid duration ' + duration, rule);
             duration = -1;
         }
     }
@@ -169,7 +173,7 @@ var cacheManager = {
                             cacheManager.setExpiringTime(request, rule || cacheId, rule.action.cache.expires);
                         }
                     }).catch(function (err) {
-                        console.error(err);
+                        _logger2.default.error(err);
                         resolve(response);
                     });
                 } else {
@@ -179,7 +183,7 @@ var cacheManager = {
 
             if (!response) {
                 fetch(goFetch(null, request)).then(addIt).catch(function (err) {
-                    console.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
+                    _logger2.default.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                     reject(response);
                 });
             } else {
@@ -247,13 +251,13 @@ var cacheManager = {
                         // it may be of type request
                         // and we will simple allow it to go ahead
                         // this also means we will NOT treat any result from it
-                        console.info('Bypassing request, going for the network for', request.url);
+                        _logger2.default.info('Bypassing request, going for the network for', request.url);
 
                         var treatResponse = function treatResponse(response) {
                             if (response.status >= 200 && response.status < 300) {
                                 return response;
                             } else {
-                                console.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
+                                _logger2.default.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
                                 return new Response(''); // ignored
                             }
                         };
@@ -266,7 +270,7 @@ var cacheManager = {
                         // request and response
                         actionType = 'output';
                         rule.action[actionType] = '';
-                        console.info('Bypassing request, outputing nothing out of it');
+                        _logger2.default.info('Bypassing request, outputing nothing out of it');
                     }
                 }
             case 'output':
@@ -333,7 +337,7 @@ var cacheManager = {
                             // in case it has expired, it resolves automatically
                             // with no results from cache
                             lookForCache = Promise.resolve();
-                            console.info('Cache expired for ', request.url);
+                            _logger2.default.info('Cache expired for ', request.url);
                         } else {
                             // if not expired, let's look for it!
                             lookForCache = caches.match(request);
@@ -416,7 +420,7 @@ var cacheManager = {
                                             // if it had expired, but could not be retrieved
                                             // from network, let's give its cache a chance!
                                             if (expired) {
-                                                console.warn('Cache for ', request.url || request, 'had expired, but the updated version could not be retrieved from the network!\n', 'Delivering the outdated cached data');
+                                                _logger2.default.warn('Cache for ', request.url || request, 'had expired, but the updated version could not be retrieved from the network!\n', 'Delivering the outdated cached data');
                                                 return cacheManager.get(rule, request, event, matching, true);
                                             }
                                             // otherwise...let's see if there is a fallback
@@ -442,7 +446,7 @@ var cacheManager = {
 
 exports.default = cacheManager;
 
-},{"./indexeddb-manager.js":4,"./utils.js":7}],3:[function(require,module,exports){
+},{"./indexeddb-manager.js":4,"./logger.js":5,"./utils.js":8}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -524,12 +528,18 @@ function goFetch(rule, request, event, matching) {
 
 exports.default = goFetch;
 
-},{"./utils.js":7}],4:[function(require,module,exports){
+},{"./utils.js":8}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _logger = require('./logger.js');
+
+var _logger2 = _interopRequireDefault(_logger);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DEFAULT_DB_NAME = 'defaultDSWDB';
 var INDEXEDDB_REQ_IDS = 'indexeddb-id-request';
@@ -556,7 +566,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    console.log('There is a new version of the database(IndexedDB) for ' + config.name);
+                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + config.name);
                 };
 
                 if (!dbs[dbName]) {
@@ -707,7 +717,7 @@ var indexedDBManager = {
                     reject('Failed saving to the indexedDB!', this.error);
                 };
             }).catch(function (err) {
-                console.error('Failed saving into indexedDB!\n', err.message, err);
+                _logger2.default.error('Failed saving into indexedDB!\n', err.message, err);
                 reject('Failed saving into indexedDB!');
             });
         });
@@ -716,13 +726,67 @@ var indexedDBManager = {
 
 exports.default = indexedDBManager;
 
-},{}],5:[function(require,module,exports){
+},{"./logger.js":5}],5:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var TYPES = {
+    log: '[  LG  ] :: ',
+    info: '[ INFO ] :: ',
+    warn: '[ WARN ] :: ',
+    error: '[ FAIL ] :: ',
+    track: '[ STEP ] :: '
+};
+
+var logger = {
+    info: function info() {
+        var args = [].slice.call(arguments);
+        args.unshift('color: blue');
+        args.unshift('%c ' + TYPES.info);
+        console.info.apply(console, args);
+    },
+    log: function log() {
+        var args = [].slice.call(arguments);
+        args.unshift('color: gray');
+        args.unshift('%c ' + TYPES.log);
+        console.log.apply(console, args);
+    },
+    warn: function warn() {
+        var args = [].slice.call(arguments);
+        args.unshift('font-weight: bold; color: yellow; text-shadow: 0 0 1px black;');
+        args.unshift('%c ' + TYPES.warn);
+        console.warn.apply(console, args);
+    },
+    error: function error() {
+        var args = [].slice.call(arguments);
+        args.unshift('font-weight: bold; color: red');
+        args.unshift('%c ' + TYPES.error);
+        console.error.apply(console, args);
+    },
+    track: function track() {
+        var args = [].slice.call(arguments);
+        args.unshift('font-weight: bold');
+        args.unshift('%c ' + TYPES.track);
+        console.error.apply(console, args);
+    }
+};
+
+exports.default = logger;
+
+},{}],6:[function(require,module,exports){
 (function (global){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _logger = require('./logger.js');
+
+var _logger2 = _interopRequireDefault(_logger);
 
 var _bestMatchingRx = require('./best-matching-rx.js');
 
@@ -788,14 +852,14 @@ if (isInSWScope) {
                         if (cur.action.fetch) {
                             // not found requisitions should
                             // fetch a different resource
-                            console.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            _logger2.default.info('Found fallback rule for ', pathName, '\nLooking for its result');
                             result = _cacheManager2.default.get(cur, new Request(cur.action.fetch), event, matching);
                             return true; // stopping the loop
                         }
                     }
                 });
                 if (!result) {
-                    console.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                    _logger2.default.info('No rules for failed request: ', pathName, '\nWill output the failure');
                 }
                 return result || response;
             },
@@ -936,6 +1000,9 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
+
+                    DSW.requestId = 1 + (DSW.requestId || 0);
+
                     // in case there are no rules (happens when chrome crashes, for example)
                     if (!Object.keys(DSWManager.rules).length) {
                         return DSWManager.setup(PWASettings).then(function (_) {
@@ -1027,7 +1094,7 @@ if (isInSWScope) {
                     // we will use the same script, already loaded, for our service worker
                     var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
                     navigator.serviceWorker.register(src).then(function (SW) {
-                        console.info('[ SW ] :: registered');
+                        _logger2.default.info('Registered service worker');
                         if (config && config.sync) {
                             if ('SyncManager' in window) {
                                 navigator.serviceWorker.ready.then(function (reg) {
@@ -1093,12 +1160,18 @@ if (isInSWScope) {
 exports.default = DSW;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./strategies.js":6}],6:[function(require,module,exports){
+},{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./logger.js":5,"./strategies.js":7}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _logger = require('./logger.js');
+
+var _logger2 = _interopRequireDefault(_logger);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DSWManager = void 0;
 var cacheManager = void 0;
@@ -1115,7 +1188,7 @@ var strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        console.info('offline first: Looking into cache for\n', request.url);
+        _logger2.default.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
@@ -1126,10 +1199,10 @@ var strategies = {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        console.info('Updated in cache: ', request.url);
+                        _logger2.default.info('Updated in cache: ', request.url);
                     });
                 }
-                console.info('From network: ', request.url);
+                _logger2.default.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching).then(function (result) {
@@ -1137,7 +1210,7 @@ var strategies = {
                 // for a fallback response
                 var pathName = new URL(event.request.url).pathname;
                 if (result) {
-                    console.info('From cache(after network failure): ', request.url);
+                    _logger2.default.info('From cache(after network failure): ', request.url);
                 }
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
@@ -1169,7 +1242,7 @@ var strategies = {
                     if (rule.action.cache) {
                         // we will update the cache, in background
                         cacheManager.put(rule, request, response).then(function (_) {
-                            console.info('Updated in cache (from fastest): ', request.url);
+                            _logger2.default.info('Updated in cache (from fastest): ', request.url);
                         });
                     }
                 }
@@ -1178,7 +1251,7 @@ var strategies = {
                 if (!cacheTreated) {
                     // if it downloaded well, we use it (probably the first access)
                     if (response.status == 200) {
-                        console.log('fastest strategy: loaded from network', request.url);
+                        _logger2.default.log('fastest strategy: loaded from network', request.url);
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
                         resolve(response);
@@ -1195,7 +1268,7 @@ var strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    console.log('fastest strategy: loaded from cache', request.url);
+                    _logger2.default.log('fastest strategy: loaded from cache', request.url);
                     resolve(result);
                     return result;
                 } else {
@@ -1225,7 +1298,7 @@ var strategies = {
 
 exports.default = strategies;
 
-},{}],7:[function(require,module,exports){
+},{"./logger.js":5}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1259,4 +1332,4 @@ var utils = {
 
 exports.default = utils;
 
-},{}]},{},[5]);
+},{}]},{},[6]);

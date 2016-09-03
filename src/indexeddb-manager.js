@@ -1,4 +1,4 @@
-
+import logger from './logger.js';
 const DEFAULT_DB_NAME = 'defaultDSWDB';
 const INDEXEDDB_REQ_IDS = 'indexeddb-id-request';
 const dbs = {};
@@ -23,7 +23,7 @@ const indexedDBManager = {
             function dataBaseReady (db, dbName, resolve) {
                 db.onversionchange = function(event) {
                     db.close();
-                    console.log('There is a new version of the database(IndexedDB) for '+
+                    logger.log('There is a new version of the database(IndexedDB) for '+
                                 config.name);
                 };
                 
@@ -185,7 +185,7 @@ const indexedDBManager = {
                     reject('Failed saving to the indexedDB!', this.error);
                 };
             }).catch(err=>{
-                console.error('Failed saving into indexedDB!\n', err.message, err);
+                logger.error('Failed saving into indexedDB!\n', err.message, err);
                 reject('Failed saving into indexedDB!');
             });
         });

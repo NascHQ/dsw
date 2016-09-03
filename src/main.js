@@ -3,6 +3,7 @@
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
+import logger from './logger.js';
 import getBestMatchingRX from './best-matching-rx.js';
 import cacheManager from './cache-manager.js';
 import goFetch from './go-fetch.js';
@@ -51,7 +52,7 @@ if (isInSWScope) {
                         if (cur.action.fetch) {
                             // not found requisitions should
                             // fetch a different resource
-                            console.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            logger.info('Found fallback rule for ', pathName, '\nLooking for its result');
                             result = cacheManager.get(cur,
                                                       new Request(cur.action.fetch),
                                                       event,
@@ -61,7 +62,7 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                console.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                logger.info('No rules for failed request: ', pathName, '\nWill output the failure');
             }
             return result || response;
         },
@@ -207,6 +208,9 @@ if (isInSWScope) {
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
+                
+                DSW.requestId = 1 + (DSW.requestId || 0);
+                
                 // in case there are no rules (happens when chrome crashes, for example)
                 if (!Object.keys(DSWManager.rules).length) {
                     return DSWManager.setup(PWASettings).then(_=>fetch(event));
@@ -309,7 +313,7 @@ if (isInSWScope) {
                     navigator.serviceWorker
                         .register(src)
                         .then(SW=>{
-                            console.info('[ SW ] :: registered');
+                            logger.info('Registered service worker');
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function(reg) {

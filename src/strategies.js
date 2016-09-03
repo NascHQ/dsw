@@ -3,6 +3,8 @@ let DSWManager;
 let cacheManager;
 let goFetch;
 
+import logger from './logger.js';
+
 const strategies = {
     setup: function (dswM, cacheM, gf) {
         DSWManager = dswM;
@@ -14,7 +16,7 @@ const strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        console.info('offline first: Looking into cache for\n', request.url);
+        logger.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(
             rule,
             request,
@@ -30,10 +32,10 @@ const strategies = {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(_=>{
-                        console.info('Updated in cache: ', request.url);
+                        logger.info('Updated in cache: ', request.url);
                     });
                 }
-                console.info('From network: ', request.url);
+                logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching)
@@ -42,7 +44,7 @@ const strategies = {
                     // for a fallback response
                     const pathName = (new URL(event.request.url)).pathname;
                     if(result){
-                        console.info('From cache(after network failure): ', request.url);
+                        logger.info('From cache(after network failure): ', request.url);
                     }
                     return result || DSWManager.treatBadPage(response, pathName, event);
                 });
@@ -76,7 +78,7 @@ const strategies = {
                     if (rule.action.cache) {
                         // we will update the cache, in background
                         cacheManager.put(rule, request, response).then(_=>{
-                            console.info('Updated in cache (from fastest): ', request.url);
+                            logger.info('Updated in cache (from fastest): ', request.url);
                         });
                     }
                 }
@@ -85,7 +87,7 @@ const strategies = {
                 if (!cacheTreated) {
                     // if it downloaded well, we use it (probably the first access)
                     if (response.status == 200) {
-                        console.log('fastest strategy: loaded from network', request.url);
+                        logger.log('fastest strategy: loaded from network', request.url);
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
                         resolve(response);
@@ -102,7 +104,7 @@ const strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    console.log('fastest strategy: loaded from cache', request.url);
+                    logger.log('fastest strategy: loaded from cache', request.url);
                     resolve(result);
                     return result;
                 } else {
