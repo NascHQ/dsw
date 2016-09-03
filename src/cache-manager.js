@@ -117,6 +117,7 @@ const cacheManager = {
 
         return caches.open(cacheManager.mountCacheId(rule))
             .then(function(cache) {
+                request = utils.createRequest(request, { mode: 'no-cors' });
                 if (request.method != 'POST') {
                     cache.put(request, cloned);
                 }
@@ -129,7 +130,8 @@ const cacheManager = {
             function addIt (response) {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
-                        // adding to cache`
+                        // adding to cache
+                        request = utils.createRequest(request, { mode: 'no-cors' });
                         if (request.method != 'POST') {
                             cache.put(request, response.clone());
                         }
@@ -387,7 +389,7 @@ const cacheManager = {
                                     if (response.type == 'opaque') {
                                         // if it is a opaque response, let it go!
                                         if (rule.action.cache !== false) {
-                                            return cacheManager.add(request,
+                                            return cacheManager.add(utils.createRequest(request, { mode: 'no-cors' }),
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
                                                                     rule);

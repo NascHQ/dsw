@@ -280,6 +280,7 @@ var cacheManager = {
         }
 
         return caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
+            request = _utils2.default.createRequest(request, { mode: 'no-cors' });
             if (request.method != 'POST') {
                 cache.put(request, cloned);
             }
@@ -292,7 +293,8 @@ var cacheManager = {
             function addIt(response) {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(function (cache) {
-                        // adding to cache`
+                        // adding to cache
+                        request = _utils2.default.createRequest(request, { mode: 'no-cors' });
                         if (request.method != 'POST') {
                             cache.put(request, response.clone());
                         }
@@ -528,7 +530,7 @@ var cacheManager = {
                                         if (response.type == 'opaque') {
                                             // if it is a opaque response, let it go!
                                             if (rule.action.cache !== false) {
-                                                return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
+                                                return cacheManager.add(_utils2.default.createRequest(request, { mode: 'no-cors' }), cacheManager.mountCacheId(rule), response, rule);
                                             }
                                             return response;
                                         }
@@ -638,11 +640,11 @@ function goFetch(rule, request, event, matching) {
     //    }
 
     // if the host is not the same
-    if (new URL(tmpUrl).hostname.indexOf(domain) >= 0) {
+    if (new URL(tmpUrl).hostname.indexOf(domain) < 0) {
         // we set it to an opaque request
-        //reqConfig.mode = 'no-cors';
-        request = new Request(tmpUrl || request.url, reqConfig);
+        reqConfig.mode = 'no-cors';
     }
+    request = new Request(tmpUrl || request.url, reqConfig);
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect
@@ -1070,13 +1072,12 @@ if (isInSWScope) {
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
-                    //                if (event) {
-                    //                    return fetch(event.request);
-                    //                }
                     // in case there are no rules (happens when chrome crashes, for example)
-                    //                if (!Object.keys(DSWManager.rules).length) {
-                    //                    return DSWManager.setup().then(_=>fetch(event));
-                    //                }
+                    if (!Object.keys(DSWManager.rules).length) {
+                        return DSWManager.setup(PWASettings).then(function (_) {
+                            return fetch(event);
+                        });
+                    }
 
                     var url = new URL(event.request.url);
                     var pathName = url.pathname;
@@ -1368,6 +1369,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 var utils = {
+    // Applies the matched patterns into strings (used to replace variables)
+
     applyMatch: function applyMatch(matching, text) {
         if (matching && matching.length > 1 && text) {
             // we apply the variables
@@ -1376,6 +1379,17 @@ var utils = {
             });
         }
         return text;
+    },
+    createRequest: function createRequest(request, reqData) {
+        var reqConfig = {
+            method: reqData.method || request.method || 'GET',
+            headers: reqData.headers || request.headers || new Headers(),
+            mode: reqData.mode || (reqData.redirect ? 'same-origin' : 'cors'),
+            redirect: reqData.redirect || 'manual',
+            cache: 'default'
+        };
+
+        return new Request(request.url || request, reqConfig);
     }
 };
 
