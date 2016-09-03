@@ -140,20 +140,25 @@ const PWASettings = {
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-function getBestMatchingRX(str) {
+function getBestMatchingRX(str, expressions) {
     var bestMatchingRX = void 0;
-    var bestMatchingGroup = Number.MAX_SAFE_INTEGER;
-    var rx = []; // list of regular expressions
-    rx.forEach(function (currentRX) {
-        var regex = new RegExp(currentRX);
-        var groups = regex.exec(str);
-        if (groups && groups.length < bestMatchingGroup) {
+    var bestMatchingGroupSize = Number.MAX_SAFE_INTEGER;
+    var bestMatchingGroup = void 0;
+
+    expressions.forEach(function (currentRX) {
+        var regex = new RegExp(currentRX.rx);
+        var groups = str.match(regex);
+        if (groups && groups.length < bestMatchingGroupSize) {
             bestMatchingRX = currentRX;
-            bestMatchingGroup = groups.length;
+            bestMatchingGroupSize = groups.length;
+            bestMatchingGroup = groups;
         }
-        console.log(groups);
     });
-    return bestMatchingRX;
+    debugger;
+    return {
+        rule: bestMatchingRX,
+        matching: bestMatchingGroup
+    };
 }
 
 exports.default = getBestMatchingRX;
@@ -1156,17 +1161,12 @@ if (isInSWScope) {
                         }
                     }
 
-                    var i = 0,
-                        l = (DSWManager.rules['*'] || []).length;
-
-                    for (; i < l; i++) {
-                        var rule = DSWManager.rules['*'][i];
-                        var matching = pathName.match(rule.rx);
-                        if (matching) {
-                            // if there is a rule that matches the url
-                            return event.respondWith(_strategies2.default[rule.strategy](rule, event.request, event, matching));
-                        }
+                    var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
+                    if (matchingRule) {
+                        // if there is a rule that matches the url
+                        return event.respondWith(_strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
                     }
+
                     // if no rule is applied, we will request it
                     // this is the function to deal with the resolt of this request
                     var defaultTreatment = function defaultTreatment(response) {

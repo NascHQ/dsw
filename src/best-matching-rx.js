@@ -1,17 +1,22 @@
-function getBestMatchingRX(str){
+function getBestMatchingRX(str, expressions){
     let bestMatchingRX;
-    let bestMatchingGroup = Number.MAX_SAFE_INTEGER;
-    let rx = []; // list of regular expressions
-    rx.forEach(function(currentRX){
-        const regex = new RegExp(currentRX);
-        const groups = regex.exec(str);
-        if (groups && groups.length < bestMatchingGroup){
+    let bestMatchingGroupSize = Number.MAX_SAFE_INTEGER;
+    let bestMatchingGroup;
+    
+    expressions.forEach(function(currentRX){
+        const regex = new RegExp(currentRX.rx);
+        const groups = str.match(regex);
+        if (groups && groups.length < bestMatchingGroupSize){
             bestMatchingRX = currentRX;
-            bestMatchingGroup = groups.length;
+            bestMatchingGroupSize = groups.length;
+            bestMatchingGroup = groups;
         }
-        console.log(groups);
     });
-    return bestMatchingRX;
+    debugger;
+    return {
+        rule: bestMatchingRX,
+        matching: bestMatchingGroup
+    };
 }
 
 export default getBestMatchingRX;

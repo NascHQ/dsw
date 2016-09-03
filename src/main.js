@@ -44,8 +44,8 @@ if (isInSWScope) {
         treatBadPage (response, pathName, event) {
             let result;
             (DSWManager.rules[
-                    response && response.status? response.status : 404
-                ] || [])
+                response && response.status? response.status : 404
+            ] || [])
                 .some((cur, idx)=>{
                     let matching = pathName.match(cur.rx);
                     if (matching) {
@@ -227,24 +227,20 @@ if (isInSWScope) {
                     }
                 }
                 
-                let i = 0,
-                    l = (DSWManager.rules['*'] || []).length;
-                
-                for (; i<l; i++) {
-                    let rule = DSWManager.rules['*'][i];
-                    let matching = pathName.match(rule.rx);
-                    if (matching) {
-                        // if there is a rule that matches the url
-                        return event.respondWith(
-                            strategies[rule.strategy](
-                                rule,
-                                event.request,
-                                event,
-                                matching
-                            )
-                        );
-                    }
+                let matchingRule = getBestMatchingRX(pathName,
+                                                 DSWManager.rules['*']);
+                if (matchingRule) {
+                    // if there is a rule that matches the url
+                    return event.respondWith(
+                        strategies[matchingRule.rule.strategy](
+                            matchingRule.rule,
+                            event.request,
+                            event,
+                            matchingRule.matching
+                        )
+                    );
                 }
+                
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {

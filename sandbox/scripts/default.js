@@ -39,7 +39,6 @@ window.addEventListener('load', function(){
             'contact.html'
         ];
         let idx = Math.ceil(Math.random() * 5) -1;
-        console.log(idx);
         set(document.getElementById('test-7-iframe'), 'src', '/old-site/' +
             listOfOlderPages[idx]);
     });
