@@ -76,7 +76,8 @@ And now, you will add this to your `index.html` file, like so, in the `head` ele
     </script>
 ```
 
-Done! Now, for any change in your Dynamic Service Worker configuration, just run again the `dsw` command line on your project.<br/>
+Done! Now, for any change in your Dynamic Service Worker configuration, just run the `dsw` command line on your project.<br/>
+For ever new change or version, you will have to run `dsw` again, so it will generate the updated service worker file.<br/>
 This will create the `manifest` (if not there, already) and the `dsw.js` file.
 
 To do so, if you installed it globally:
