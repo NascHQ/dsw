@@ -1025,10 +1025,14 @@ if (isInSWScope) {
                         }
                     }
 
+                    // get the best fiting rx for the path, to find the rule that
+                    // matches the most
                     var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     if (matchingRule) {
                         // if there is a rule that matches the url
-                        return event.respondWith(_strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
+                        return event.respondWith(
+                        // we apply the right strategy for the matching rule
+                        _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
                     }
 
                     // if no rule is applied, we will request it

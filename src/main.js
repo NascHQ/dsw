@@ -227,11 +227,14 @@ if (isInSWScope) {
                     }
                 }
                 
+                // get the best fiting rx for the path, to find the rule that
+                // matches the most
                 let matchingRule = getBestMatchingRX(pathName,
                                                  DSWManager.rules['*']);
                 if (matchingRule) {
                     // if there is a rule that matches the url
                     return event.respondWith(
+                        // we apply the right strategy for the matching rule
                         strategies[matchingRule.rule.strategy](
                             matchingRule.rule,
                             event.request,
