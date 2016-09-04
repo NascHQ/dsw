@@ -10,14 +10,14 @@
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
-If you are starting from scratch and want to see it working "out of nothing", you can use the content inside `/boilerplate`.
+If you are starting from scratch and want to see it working right away, you can use the content inside of `/boilerplate`.
 
 ## Live Demo
 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-jbzuwbkfeh.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-zrrauyeple.now.sh)
 
 ## Advantages
 
@@ -76,7 +76,8 @@ And now, you will add this to your `index.html` file, like so, in the `head` ele
     </script>
 ```
 
-Done! Now, for any change in your Dynamic Service Worker configuration, just run again the `dsw` command line on your project.<br/>
+Done! Now, for any change in your Dynamic Service Worker configuration, just run the `dsw` command line on your project.<br/>
+For ever new change or version, you will have to run `dsw` again, so it will generate the updated service worker file.<br/>
 This will create the `manifest` (if not there, already) and the `dsw.js` file.
 
 To do so, if you installed it globally:

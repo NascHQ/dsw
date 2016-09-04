@@ -1,5 +1,6 @@
 
 const utils = {
+    // Applies the matched patterns into strings (used to replace variables)
     applyMatch (matching, text) {
         if (matching && matching.length > 1 && text) {
             // we apply the variables
@@ -8,6 +9,18 @@ const utils = {
             });
         }
         return text;
+    },
+    
+    createRequest(request, reqData){
+        let reqConfig = {
+            method: reqData.method || request.method || 'GET',
+            headers: reqData.headers || request.headers || new Headers(),
+            mode: reqData.mode || (reqData.redirect? 'same-origin' : 'cors'),
+            redirect: reqData.redirect || 'manual',
+            cache: 'default'
+        };
+        
+        return new Request(request.url || request, reqConfig);
     }
 };
 

@@ -3,6 +3,7 @@
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
+import logger from './logger.js';
 import getBestMatchingRX from './best-matching-rx.js';
 import cacheManager from './cache-manager.js';
 import goFetch from './go-fetch.js';
@@ -43,15 +44,15 @@ if (isInSWScope) {
         treatBadPage (response, pathName, event) {
             let result;
             (DSWManager.rules[
-                    response && response.status? response.status : 404
-                ] || [])
+                response && response.status? response.status : 404
+            ] || [])
                 .some((cur, idx)=>{
                     let matching = pathName.match(cur.rx);
                     if (matching) {
                         if (cur.action.fetch) {
                             // not found requisitions should
                             // fetch a different resource
-                            console.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            logger.info('Found fallback rule for ', pathName, '\nLooking for its result');
                             result = cacheManager.get(cur,
                                                       new Request(cur.action.fetch),
                                                       event,
@@ -61,7 +62,7 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                console.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                logger.info('No rules for failed request: ', pathName, '\nWill output the failure');
             }
             return result || response;
         },
@@ -207,13 +208,13 @@ if (isInSWScope) {
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
-//                if (event) {
-//                    return fetch(event.request);
-//                }
+                
+                DSW.requestId = 1 + (DSW.requestId || 0);
+                
                 // in case there are no rules (happens when chrome crashes, for example)
-//                if (!Object.keys(DSWManager.rules).length) {
-//                    return DSWManager.setup().then(_=>fetch(event));
-//                }
+                if (!Object.keys(DSWManager.rules).length) {
+                    return DSWManager.setup(PWASettings).then(_=>fetch(event));
+                }
                 
                 const url = new URL(event.request.url);
                 const pathName = url.pathname;
@@ -226,24 +227,23 @@ if (isInSWScope) {
                     }
                 }
                 
-                let i = 0,
-                    l = (DSWManager.rules['*'] || []).length;
-                
-                for (; i<l; i++) {
-                    let rule = DSWManager.rules['*'][i];
-                    let matching = pathName.match(rule.rx);
-                    if (matching) {
-                        // if there is a rule that matches the url
-                        return event.respondWith(
-                            strategies[rule.strategy](
-                                rule,
-                                event.request,
-                                event,
-                                matching
-                            )
-                        );
-                    }
+                // get the best fiting rx for the path, to find the rule that
+                // matches the most
+                let matchingRule = getBestMatchingRX(pathName,
+                                                 DSWManager.rules['*']);
+                if (matchingRule) {
+                    // if there is a rule that matches the url
+                    return event.respondWith(
+                        // we apply the right strategy for the matching rule
+                        strategies[matchingRule.rule.strategy](
+                            matchingRule.rule,
+                            event.request,
+                            event,
+                            matchingRule.matching
+                        )
+                    );
                 }
+                
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
@@ -312,7 +312,7 @@ if (isInSWScope) {
                     navigator.serviceWorker
                         .register(src)
                         .then(SW=>{
-                            console.info('[ SW ] :: registered');
+                            logger.info('Registered service worker');
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function(reg) {

@@ -1,5 +1,6 @@
 import indexedDBManager from './indexeddb-manager.js';
 import utils from './utils.js';
+import logger from './logger.js';
 
 const DEFAULT_CACHE_NAME = 'defaultDSWCached';
 const CACHE_CREATED_DBNAME = 'cacheCreatedTime';
@@ -36,7 +37,7 @@ const parseExpiration= (rule, expires)=>{
         if (sizes[size]) {
             duration = val * sizes[size];
         } else {
-            console.warn('Invalid duration ' + duration, rule);
+            logger.warn('Invalid duration ' + duration, rule);
             duration = -1;
         }
     }
@@ -117,6 +118,7 @@ const cacheManager = {
 
         return caches.open(cacheManager.mountCacheId(rule))
             .then(function(cache) {
+                request = utils.createRequest(request, { mode: 'no-cors' });
                 if (request.method != 'POST') {
                     cache.put(request, cloned);
                 }
@@ -129,7 +131,8 @@ const cacheManager = {
             function addIt (response) {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
-                        // adding to cache`
+                        // adding to cache
+                        request = utils.createRequest(request, { mode: 'no-cors' });
                         if (request.method != 'POST') {
                             cache.put(request, response.clone());
                         }
@@ -145,7 +148,7 @@ const cacheManager = {
                             );
                         }
                     }).catch(err=>{
-                        console.error(err);
+                        logger.error(err);
                         resolve(response);
                     });
                 } else {
@@ -157,7 +160,7 @@ const cacheManager = {
                 fetch(goFetch(null, request))
                     .then(addIt)
                     .catch(err=>{
-                        console.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
+                        logger.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                         reject(response);
                     });
             } else {
@@ -229,14 +232,14 @@ const cacheManager = {
                 // it may be of type request
                 // and we will simple allow it to go ahead
                 // this also means we will NOT treat any result from it
-                console.info('Bypassing request, going for the network for',
+                logger.info('Bypassing request, going for the network for',
                              request.url);
                 
                 let treatResponse = function (response) {
                     if (response.status >= 200 && response.status < 300) {
                         return response;
                     } else {
-                        console.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
+                        logger.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
                         return new Response(''); // ignored
                     }
                 };
@@ -251,7 +254,7 @@ const cacheManager = {
                 // request and response
                 actionType = 'output';
                 rule.action[actionType] = '';
-                console.info('Bypassing request, outputing nothing out of it');
+                logger.info('Bypassing request, outputing nothing out of it');
             }
         }
         case 'output': {
@@ -324,7 +327,7 @@ const cacheManager = {
                     // in case it has expired, it resolves automatically
                     // with no results from cache
                     lookForCache = Promise.resolve();
-                    console.info('Cache expired for ', request.url);
+                    logger.info('Cache expired for ', request.url);
                 } else{
                     // if not expired, let's look for it!
                     lookForCache = caches.match(request);
@@ -387,7 +390,7 @@ const cacheManager = {
                                     if (response.type == 'opaque') {
                                         // if it is a opaque response, let it go!
                                         if (rule.action.cache !== false) {
-                                            return cacheManager.add(request,
+                                            return cacheManager.add(utils.createRequest(request, { mode: 'no-cors' }),
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
                                                                     rule);
@@ -415,7 +418,7 @@ const cacheManager = {
                                         // if it had expired, but could not be retrieved
                                         // from network, let's give its cache a chance!
                                         if (expired) {
-                                            console.warn('Cache for ',
+                                            logger.warn('Cache for ',
                                                         request.url || request,
                                                         'had expired, but the updated version could not be retrieved from the network!\n',
                                                         'Delivering the outdated cached data');
