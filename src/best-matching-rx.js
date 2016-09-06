@@ -12,11 +12,11 @@ function getBestMatchingRX(str, expressions){
             bestMatchingGroup = groups;
         }
     });
-    debugger;
-    return {
+    
+    return bestMatchingRX ? {
         rule: bestMatchingRX,
         matching: bestMatchingGroup
-    };
+    } : false;
 }
 
 export default getBestMatchingRX;

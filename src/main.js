@@ -11,6 +11,7 @@ import strategies from './strategies.js';
 
 const DSW = {};
 const REQUEST_TIME_LIMIT = 5000;
+const COMM_HAND_SHAKE = 'seting-dsw-communication-up';
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -23,6 +24,7 @@ try {
 if (isInSWScope) {
     
     const DSWManager = {
+        tracking: {},
         rules: {},
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];
@@ -198,11 +200,17 @@ if (isInSWScope) {
         },
         
         createRequest (request, event, matching) {
-            return goFetch(null, request.url || request, event, matching);
+            return goFetch(null, request, event, matching);
         },
         
         createRedirect (request, event, matching) {
-            return goFetch(null, request.url || request, event, matching);
+            return goFetch(null, request, event, matching);
+        },
+        
+        respondItWith (event, response) {
+            // respondWithThis
+            event.respondWith(response);
+            //DSWManager.tracking
         },
         
         startListening () {
@@ -222,7 +230,7 @@ if (isInSWScope) {
                 // in case we want to enforce https
                 if (PWASettings.enforceSSL) {
                     if (url.protocol != 'https:' && url.hostname != 'localhost') {
-                        return event.respondWith(Response.redirect(
+                        return DSWManager.respondItWith(event, Response.redirect(
                             event.request.url.replace('http:', 'https:'), 302));
                     }
                 }
@@ -233,7 +241,15 @@ if (isInSWScope) {
                                                  DSWManager.rules['*']);
                 if (matchingRule) {
                     // if there is a rule that matches the url
-                    return event.respondWith(
+//                    clients.matchAll().then(result=>{
+//                        debugger;
+//                        result.forEach(cur=>{
+//                            debugger;
+//                            cur.postMessage('EVENTO RESPONDIDO!!');
+//                        });
+//                    });
+                    return DSWManager.respondItWith(
+                        event,
                         // we apply the right strategy for the matching rule
                         strategies[matchingRule.rule.strategy](
                             matchingRule.rule,
@@ -247,7 +263,7 @@ if (isInSWScope) {
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
-                    if (response && response.status == 200) {
+                    if (response && (response.type == 'opaque' || response.status == 200)) {
                         return response;
                     } else {
                         return DSWManager.treatBadPage(response, pathName, event);
@@ -255,7 +271,8 @@ if (isInSWScope) {
                 };
                 
                 // once no rule matched, we simply respond the event with a fetch
-                return event.respondWith(
+                return DSWManager.respondItWith(
+                        event,
                         fetch(goFetch(null, event.request))
                             // but we will still treat the rules that use the status
                             .then(defaultTreatment)
@@ -290,8 +307,27 @@ if (isInSWScope) {
         }
     });
     
+    let comm = null;
     self.addEventListener('message', function(event) {
         // TODO: add support to message event
+        const ports = event.ports;
+        
+        if (event.data.trackPath) {
+            let tp = event.data.trackPath;
+            DSWManager.tracking[tp] = {
+                rx: new RegExp(tp, 'i'),
+                ports: ports
+            };
+            return;
+        }
+        if (event.data === COMM_HAND_SHAKE) {
+            logger.info('Commander Handshake enabled');
+            comm = event.ports[0];
+            setTimeout(_=>{
+                comm.postMessage('thanks');
+            }, 2000);
+            //comm.postMessage('thanks');
+        }
     });
     
     self.addEventListener('sync', function(event) {
@@ -302,6 +338,54 @@ if (isInSWScope) {
     DSWManager.startListening();
     
 }else{
+    
+    window.addEventListener('message', event=>{
+//        debugger;
+        console.log(event, 'CHEGOU ALGO');
+    });
+    
+    const comm = {
+        setup(){
+            if (comm.channel) {
+                return navigator.serviceWorker.controller;
+            }
+                
+            // during setup, we will stablish the communication between
+            // service worker and client scopes
+            var messageChannel = new MessageChannel();
+            messageChannel.port1.onmessage = function(event) {
+//                debugger;
+//                if (event.data.error) {
+//                    reject(event.data.error);
+//                } else {
+//                    resolve(event.data);
+//                }
+            };
+            //navigator.serviceWorker.controller.postMessage(COMM_HAND_SHAKE, [comm.channel.port2]);
+        }
+    };
+    
+    DSW.track = function (matchingRequest) {
+        var messageChannel = new MessageChannel();
+        messageChannel.port1.onmessage = function(event) {
+            debugger;
+//                if (event.data.error) {
+//                    reject(event.data.error);
+//                } else {
+//                    resolve(event.data);
+//                }
+        };
+        navigator.serviceWorker
+            .controller
+            .postMessage({ trackPath: matchingRequest }, [messageChannel.port2]);
+    };
+    
+    DSW.sendMessage = message=>{
+        //if (comm.channel && comm.channel.port2 && navigator.serviceWorker) {
+        //navigator.serviceWorker.controller.postMessage(message, [comm.channel.port2]);
+        //}
+    };
+    
     DSW.setup = config => {
         return new Promise((resolve, reject)=>{
             // opening on a page scope...let's install the worker
@@ -316,6 +400,7 @@ if (isInSWScope) {
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function(reg) {
+                                        comm.setup();
                                         return reg.sync.register('myFirstSync');
                                     })
                                     .then(_=>{
@@ -362,7 +447,10 @@ if (isInSWScope) {
                         });
 
                 }
-            }else{
+                navigator.serviceWorker.ready.then(function(reg) {
+                    comm.setup();
+                });
+            } else {
                 reject({
                     status: false,
                     sync: false,

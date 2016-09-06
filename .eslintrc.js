@@ -10,7 +10,8 @@ module.exports = {
     },
     "globals": {
         "ServiceWorkerGlobalScope": true,
-        "PWASettings": false
+        "PWASettings": false,
+        "clients": false
     },
     "rules": {
         "indent": [

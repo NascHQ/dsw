@@ -154,11 +154,11 @@ function getBestMatchingRX(str, expressions) {
             bestMatchingGroup = groups;
         }
     });
-    debugger;
-    return {
+
+    return bestMatchingRX ? {
         rule: bestMatchingRX,
         matching: bestMatchingGroup
-    };
+    } : false;
 }
 
 exports.default = getBestMatchingRX;
@@ -600,14 +600,18 @@ var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var domain = (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
+var origin = location.origin; // (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
 
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
+    if (typeof request == 'string') {
+        request = location.origin + request;
+    }
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
     var originalUrl = tmpUrl;
+    var sameOrigin = new URL(tmpUrl).origin == origin;
 
     // if there are group variables in the matching expression
     tmpUrl = _utils2.default.applyMatch(matching, tmpUrl);
@@ -618,7 +622,7 @@ function goFetch(rule, request, event, matching) {
         return new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: 'cors',
+            mode: sameOrigin ? 'cors' : 'no-cors',
             cache: 'default',
             redirect: 'manual'
         });
@@ -649,7 +653,7 @@ function goFetch(rule, request, event, matching) {
     //    }
 
     // if the host is not the same
-    if (new URL(tmpUrl).hostname.indexOf(domain) < 0) {
+    if (!sameOrigin) {
         // we set it to an opaque request
         reqConfig.mode = 'no-cors';
     }
@@ -911,7 +915,7 @@ var logger = {
         var args = [].slice.call(arguments);
         args.unshift('font-weight: bold');
         args.unshift('%c ' + TYPES.track);
-        console.error.apply(console, args);
+        console.debug.apply(console, args);
     }
 };
 
@@ -954,6 +958,7 @@ var isInTest = typeof global.it === 'function';
 
 var DSW = {};
 var REQUEST_TIME_LIMIT = 5000;
+var COMM_HAND_SHAKE = 'seting-dsw-communication-up';
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -967,6 +972,7 @@ if (isInSWScope) {
     (function () {
 
         var DSWManager = {
+            tracking: {},
             rules: {},
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
@@ -1133,10 +1139,15 @@ if (isInSWScope) {
                 return this.rules['*'] || false;
             },
             createRequest: function createRequest(request, event, matching) {
-                return (0, _goFetch2.default)(null, request.url || request, event, matching);
+                return (0, _goFetch2.default)(null, request, event, matching);
             },
             createRedirect: function createRedirect(request, event, matching) {
-                return (0, _goFetch2.default)(null, request.url || request, event, matching);
+                return (0, _goFetch2.default)(null, request, event, matching);
+            },
+            respondItWith: function respondItWith(event, response) {
+                // respondWithThis
+                event.respondWith(response);
+                //DSWManager.tracking
             },
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
@@ -1157,7 +1168,7 @@ if (isInSWScope) {
                     // in case we want to enforce https
                     if (PWASettings.enforceSSL) {
                         if (url.protocol != 'https:' && url.hostname != 'localhost') {
-                            return event.respondWith(Response.redirect(event.request.url.replace('http:', 'https:'), 302));
+                            return DSWManager.respondItWith(event, Response.redirect(event.request.url.replace('http:', 'https:'), 302));
                         }
                     }
 
@@ -1166,7 +1177,14 @@ if (isInSWScope) {
                     var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     if (matchingRule) {
                         // if there is a rule that matches the url
-                        return event.respondWith(
+                        //                    clients.matchAll().then(result=>{
+                        //                        debugger;
+                        //                        result.forEach(cur=>{
+                        //                            debugger;
+                        //                            cur.postMessage('EVENTO RESPONDIDO!!');
+                        //                        });
+                        //                    });
+                        return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
                     }
@@ -1174,7 +1192,7 @@ if (isInSWScope) {
                     // if no rule is applied, we will request it
                     // this is the function to deal with the resolt of this request
                     var defaultTreatment = function defaultTreatment(response) {
-                        if (response && response.status == 200) {
+                        if (response && (response.type == 'opaque' || response.status == 200)) {
                             return response;
                         } else {
                             return DSWManager.treatBadPage(response, pathName, event);
@@ -1182,7 +1200,7 @@ if (isInSWScope) {
                     };
 
                     // once no rule matched, we simply respond the event with a fetch
-                    return event.respondWith(fetch((0, _goFetch2.default)(null, event.request))
+                    return DSWManager.respondItWith(event, fetch((0, _goFetch2.default)(null, event.request))
                     // but we will still treat the rules that use the status
                     .then(defaultTreatment).catch(defaultTreatment));
                 });
@@ -1214,8 +1232,27 @@ if (isInSWScope) {
             }
         });
 
+        var comm = null;
         self.addEventListener('message', function (event) {
             // TODO: add support to message event
+            var ports = event.ports;
+
+            if (event.data.trackPath) {
+                var tp = event.data.trackPath;
+                DSWManager.tracking[tp] = {
+                    rx: new RegExp(tp, 'i'),
+                    ports: ports
+                };
+                return;
+            }
+            if (event.data === COMM_HAND_SHAKE) {
+                _logger2.default.info('Commander Handshake enabled');
+                comm = event.ports[0];
+                setTimeout(function (_) {
+                    comm.postMessage('thanks');
+                }, 2000);
+                //comm.postMessage('thanks');
+            }
         });
 
         self.addEventListener('sync', function (event) {
@@ -1226,75 +1263,127 @@ if (isInSWScope) {
         DSWManager.startListening();
     })();
 } else {
-    DSW.setup = function (config) {
-        return new Promise(function (resolve, reject) {
-            // opening on a page scope...let's install the worker
-            if (navigator.serviceWorker) {
-                if (!navigator.serviceWorker.controller) {
-                    // we will use the same script, already loaded, for our service worker
-                    var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                    navigator.serviceWorker.register(src).then(function (SW) {
-                        _logger2.default.info('Registered service worker');
-                        if (config && config.sync) {
-                            if ('SyncManager' in window) {
-                                navigator.serviceWorker.ready.then(function (reg) {
-                                    return reg.sync.register('myFirstSync');
-                                }).then(function (_) {
-                                    resolve({
-                                        status: true,
-                                        sync: true,
-                                        sw: true
+    (function () {
+
+        window.addEventListener('message', function (event) {
+            debugger;
+            console.log(event, 'CHEGOU ALGO');
+        });
+
+        var comm = {
+            setup: function setup() {
+                if (comm.channel) {
+                    return navigator.serviceWorker.controller;
+                }
+
+                // during setup, we will stablish the communication between
+                // service worker and client scopes
+                var messageChannel = new MessageChannel();
+                messageChannel.port1.onmessage = function (event) {
+                    debugger;
+                    //                if (event.data.error) {
+                    //                    reject(event.data.error);
+                    //                } else {
+                    //                    resolve(event.data);
+                    //                }
+                };
+                //navigator.serviceWorker.controller.postMessage(COMM_HAND_SHAKE, [comm.channel.port2]);
+            }
+        };
+
+        DSW.track = function (matchingRequest) {
+            var messageChannel = new MessageChannel();
+            messageChannel.port1.onmessage = function (event) {
+                debugger;
+                //                if (event.data.error) {
+                //                    reject(event.data.error);
+                //                } else {
+                //                    resolve(event.data);
+                //                }
+            };
+            navigator.serviceWorker.controller.postMessage({ trackPath: matchingRequest }, [messageChannel.port2]);
+        };
+
+        DSW.sendMessage = function (message) {
+            //if (comm.channel && comm.channel.port2 && navigator.serviceWorker) {
+            //navigator.serviceWorker.controller.postMessage(message, [comm.channel.port2]);
+            //}
+        };
+
+        DSW.setup = function (config) {
+            return new Promise(function (resolve, reject) {
+                // opening on a page scope...let's install the worker
+                if (navigator.serviceWorker) {
+                    if (!navigator.serviceWorker.controller) {
+                        // we will use the same script, already loaded, for our service worker
+                        var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                        navigator.serviceWorker.register(src).then(function (SW) {
+                            _logger2.default.info('Registered service worker');
+                            if (config && config.sync) {
+                                if ('SyncManager' in window) {
+                                    navigator.serviceWorker.ready.then(function (reg) {
+                                        comm.setup();
+                                        return reg.sync.register('myFirstSync');
+                                    }).then(function (_) {
+                                        resolve({
+                                            status: true,
+                                            sync: true,
+                                            sw: true
+                                        });
+                                    }).catch(function (err) {
+                                        reject({
+                                            status: false,
+                                            sync: false,
+                                            sw: true,
+                                            message: 'Registered Service worker, but was unable to activate sync',
+                                            error: err
+                                        });
                                     });
-                                }).catch(function (err) {
+                                } else {
                                     reject({
                                         status: false,
                                         sync: false,
                                         sw: true,
                                         message: 'Registered Service worker, but was unable to activate sync',
-                                        error: err
+                                        error: null
                                     });
-                                });
+                                }
                             } else {
-                                reject({
-                                    status: false,
+                                resolve({
+                                    status: true,
                                     sync: false,
-                                    sw: true,
-                                    message: 'Registered Service worker, but was unable to activate sync',
-                                    error: null
+                                    sw: true
                                 });
                             }
-                        } else {
-                            resolve({
-                                status: true,
+                        }).catch(function (err) {
+                            reject({
+                                status: false,
                                 sync: false,
-                                sw: true
+                                sw: false,
+                                message: 'Failed registering service worker',
+                                error: err
                             });
-                        }
-                    }).catch(function (err) {
-                        reject({
-                            status: false,
-                            sync: false,
-                            sw: false,
-                            message: 'Failed registering service worker',
-                            error: err
                         });
+                    }
+                    navigator.serviceWorker.ready.then(function (reg) {
+                        comm.setup();
+                    });
+                } else {
+                    reject({
+                        status: false,
+                        sync: false,
+                        sw: false,
+                        message: 'Service Worker not supported',
+                        error: null
                     });
                 }
-            } else {
-                reject({
-                    status: false,
-                    sync: false,
-                    sw: false,
-                    message: 'Service Worker not supported',
-                    error: null
-                });
-            }
-        });
-    };
+            });
+        };
 
-    if (typeof window !== 'undefined') {
-        window.DSW = DSW;
-    }
+        if (typeof window !== 'undefined') {
+            window.DSW = DSW;
+        }
+    })();
 }
 
 exports.default = DSW;

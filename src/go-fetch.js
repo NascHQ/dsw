@@ -1,14 +1,17 @@
 import utils from './utils.js';
 
-let domain = (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname])
-                .pop();
+let origin = location.origin; // (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
 
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
+    if (typeof request == 'string') {
+        request = location.origin + request;
+    }
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
     let originalUrl = tmpUrl;
+    let sameOrigin = (new URL(tmpUrl)).origin == origin;
     
     // if there are group variables in the matching expression
     tmpUrl = utils.applyMatch(matching, tmpUrl);
@@ -19,7 +22,7 @@ function goFetch (rule, request, event, matching) {
         return new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: 'cors',
+            mode: sameOrigin? 'cors': 'no-cors',
             cache: 'default',
             redirect: 'manual'
         });
@@ -50,7 +53,7 @@ function goFetch (rule, request, event, matching) {
 //    }
     
     // if the host is not the same
-    if ((new URL(tmpUrl)).hostname.indexOf(domain) < 0) {
+    if (!sameOrigin) {
         // we set it to an opaque request
         reqConfig.mode = 'no-cors';
     }
