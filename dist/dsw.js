@@ -143,22 +143,7 @@ var cacheManager = {
     },
     // just a different method signature, for .add
     put: function put(rule, request, response) {
-        cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response, rule);
-
-        var cloned = response.clone();
-        // if it expires...
-        if (rule.cache && rule.cache.expires) {
-            // saves the current time for further validation
-            cacheManager.setExpiringTime(request, rule, rule.cache.expires);
-        }
-
-        return caches.open(cacheManager.mountCacheId(rule)).then(function (cache) {
-            request = _utils2.default.createRequest(request, { mode: 'no-cors' });
-            if (request.method != 'POST') {
-                cache.put(request, cloned);
-            }
-            return response;
-        });
+        return cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response, rule);
     },
     add: function add(request, cacheId, response, rule) {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
@@ -167,7 +152,8 @@ var cacheManager = {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(function (cache) {
                         // adding to cache
-                        request = _utils2.default.createRequest(request, { mode: 'no-cors' });
+                        var opts = response.type == 'opaque' ? { mode: 'no-cors' } : {};
+                        request = _utils2.default.createRequest(request, opts);
                         if (request.method != 'POST') {
                             cache.put(request, response.clone());
                         }

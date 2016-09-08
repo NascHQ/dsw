@@ -99,31 +99,12 @@ const cacheManager = {
     },
     // just a different method signature, for .add
     put: (rule, request, response) => {
-        cacheManager.add(
+        return cacheManager.add(
             request,
             typeof rule == 'string'? rule: cacheManager.mountCacheId(rule),
             response,
             rule
         );
-        
-        let cloned = response.clone();
-        // if it expires...
-        if (rule.cache && rule.cache.expires) {
-            // saves the current time for further validation
-            cacheManager.setExpiringTime(request,
-                                         rule,
-                                         rule.cache.expires
-            );
-        }
-
-        return caches.open(cacheManager.mountCacheId(rule))
-            .then(function(cache) {
-                request = utils.createRequest(request, { mode: 'no-cors' });
-                if (request.method != 'POST') {
-                    cache.put(request, cloned);
-                }
-                return response;
-            });
     },
     add: (request, cacheId, response, rule) => {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
@@ -132,7 +113,8 @@ const cacheManager = {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
                         // adding to cache
-                        request = utils.createRequest(request, { mode: 'no-cors' });
+                        let opts = response.type == 'opaque'? { mode: 'no-cors' } : {};
+                        request = utils.createRequest(request, opts);
                         if (request.method != 'POST') {
                             cache.put(request, response.clone());
                         }
