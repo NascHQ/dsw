@@ -330,6 +330,50 @@ if (isInSWScope) {
         }
     });
     
+    self.addEventListener('push', function(event) {
+        console.log('Push message', event);
+
+        var title = 'Push message';
+
+        event.waitUntil(
+        self.registration.showNotification(title, {
+            'body': 'The Message',
+            'icon': 'images/icon.png'
+        }));
+    });
+    
+    // When user clicks/touches the notification, we shall close it and open
+    // or focus the web page
+    self.addEventListener('notificationclick', function(event) {
+        console.log('Notification click: tag', event.notification.tag);
+        event.notification.close();
+
+        var url = 'TODO';
+        
+        event.waitUntil(
+            // let's look for all windows(or frames) that are using our sw
+            clients.matchAll({
+                type: 'window'
+            }).then(function(windowClients) {
+                console.log('WindowClients', windowClients);
+                // and let's see if any of these is already our page
+                for (var i = 0; i < windowClients.length; i++) {
+                    var client = windowClients[i];
+                    console.log('WindowClient', client);
+                    // if it is, we simply focus it
+                    if (client.url === url && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // if it is not opened, we open it
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+            })
+        );
+    });
+
+    
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event
         //debugger;
@@ -384,6 +428,26 @@ if (isInSWScope) {
         //if (comm.channel && comm.channel.port2 && navigator.serviceWorker) {
         //navigator.serviceWorker.controller.postMessage(message, [comm.channel.port2]);
         //}
+    };
+    
+    DSW.onNetworkStatusChange = callback=>{
+        let cb = function () {
+            callback(navigator.onLine);
+        };
+        window.addEventListener('online',  cb);
+        window.addEventListener('offline', cb);
+        // in case we are already offline, we will trigger now, the callback
+        // this way, fevelopers will know right away that their app has loaded
+        // offline
+        if(!navigator.onLine) {
+            cb();
+        }
+    };
+    DSW.offline = callback=>{
+        return !navigator.onLine;
+    };
+    DSW.online = callback=>{
+        return navigator.onLine;
     };
     
     DSW.setup = config => {

@@ -6,6 +6,11 @@
         "/helmet.png",
         "/index.html?homescreen=1"
     ],
+    "notification": {
+        "server": "GCM",
+        "productId": "483627048705",
+        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
+    },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
@@ -71,7 +76,7 @@
                 "cache": {
                     "name": "cachedImages",
                     "version": "1",
-                    "expires": "1h" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y
+                    "expires": "1h"
                 }
             }
         },

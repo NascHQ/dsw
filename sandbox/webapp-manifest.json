@@ -28,9 +28,8 @@
     "display": "standalone",
     "background_color": "#47b74f",
     "theme_color": "#438948",
-
-    "gcm_sender_id": "your-gcm-sender-id",
-    "gcm_user_visible_only": true,
+    
+    "gcm_sender_id": "483627048705",
 
     "developer": {
         "name": "Felipe N. Moura",
