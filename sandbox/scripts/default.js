@@ -5,11 +5,17 @@ window.addEventListener('load', function(){
     // using the api to know when the browser connection status changes
     DSW.onNetworkStatusChange(function(connected){
         let projectStatusEl = document.querySelector('.project-status');
+        let statusLabelEl = geby('online-offline-status');
         if (connected) {
             projectStatusEl.style.display = 'block';
+            statusLabelEl.classList.add('green');
+            statusLabelEl.classList.remove('red');
         } else {
             projectStatusEl.style.display = 'none';
+            statusLabelEl.classList.add('red');
+            statusLabelEl.classList.remove('green');
         }
+        statusLabelEl.querySelector('.test-container span').innerHTML = connected? 'ONLINE': 'OFFLINE';
     });
     
     // this is just an alias for us to write less
@@ -21,6 +27,16 @@ window.addEventListener('load', function(){
     function geby (id) {
         return document.getElementById(id);
     }
+    
+    // the "ask for notification permission" button
+    geby('enable-notif-btn').addEventListener('click', function(event){
+        var el = this;
+        DSW.enableNotifications().then(function(subscriber){
+            el.value = 'ENABLED';
+        }).catch(reason=>{
+            el.value = 'DENIED';
+        });
+    });
     
     // adding the listeners for our tests
     geby('btn-img-1').addEventListener('click', function(){

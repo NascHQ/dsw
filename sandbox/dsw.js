@@ -7,6 +7,7 @@ const PWASettings = {
         "/index.html?homescreen=1"
     ],
     "notification": {
+        "auto": false,
         "server": "GCM",
         "productId": "483627048705",
         "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
@@ -1362,6 +1363,21 @@ if (isInSWScope) {
             return navigator.onLine;
         };
 
+        DSW.enableNotifications = function (_) {
+            return new Promise(function (resolve, reject) {
+                navigator.serviceWorker.ready.then(function (reg) {
+                    reg.pushManager.subscribe({
+                        userVisibleOnly: true
+                    }).then(function (sub) {
+                        _logger2.default.info('Subscribed to notification server:', sub.endpoint);
+                        resolve(sub);
+                    }).catch(function (reason) {
+                        reject(reason || 'Not allowed by user');
+                    });
+                });
+            });
+        };
+
         DSW.setup = function (config) {
             return new Promise(function (resolve, reject) {
                 // opening on a page scope...let's install the worker
@@ -1371,11 +1387,23 @@ if (isInSWScope) {
                         var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
                         navigator.serviceWorker.register(src).then(function (SW) {
                             _logger2.default.info('Registered service worker');
+
+                            // setting up notifications
+                            if (PWASettings.notification && PWASettings.notification.auto) {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    reg.pushManager.subscribe({
+                                        userVisibleOnly: true
+                                    }).then(function (sub) {
+                                        _logger2.default.info('Subscribed to notification server:', sub.endpoint);
+                                    });
+                                });
+                            }
+
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function (reg) {
                                         comm.setup();
-                                        return reg.sync.register('myFirstSync');
+                                        return reg.sync.register('syncr');
                                     }).then(function (_) {
                                         resolve({
                                             status: true,

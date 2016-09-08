@@ -450,6 +450,21 @@ if (isInSWScope) {
         return navigator.onLine;
     };
     
+    DSW.enableNotifications = _=>{
+        return new Promise((resolve, reject)=>{
+            navigator.serviceWorker.ready.then(function(reg) {
+                reg.pushManager.subscribe({
+                    userVisibleOnly: true
+                }).then(function(sub) {
+                    logger.info('Subscribed to notification server:', sub.endpoint);
+                    resolve(sub);
+                }).catch(reason=>{
+                    reject(reason || 'Not allowed by user');
+                });
+            });
+        });
+    };
+    
     DSW.setup = config => {
         return new Promise((resolve, reject)=>{
             // opening on a page scope...let's install the worker
@@ -461,11 +476,23 @@ if (isInSWScope) {
                         .register(src)
                         .then(SW=>{
                             logger.info('Registered service worker');
+                        
+                            // setting up notifications
+                            if (PWASettings.notification && PWASettings.notification.auto) {
+                                navigator.serviceWorker.ready.then(function(reg) {
+                                    reg.pushManager.subscribe({
+                                        userVisibleOnly: true
+                                    }).then(function(sub) {
+                                        logger.info('Subscribed to notification server:', sub.endpoint);
+                                    });
+                                });
+                            }
+
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function(reg) {
                                         comm.setup();
-                                        return reg.sync.register('myFirstSync');
+                                        return reg.sync.register('syncr');
                                     })
                                     .then(_=>{
                                         resolve({
