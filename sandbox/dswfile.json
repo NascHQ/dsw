@@ -103,6 +103,16 @@
                 }
             }
         },
+        "videos": {
+            "match": { "path": "/videos/" },
+            "strategy": "offline-first",
+            "apply": {
+                "cache": {
+                    "name": "cached-videos",
+                    "version": "1"
+                }
+            }
+        },
         "userData": {
             "match": { "path": "/api/user/.*" },
             "options": { "credentials": "same-origin"},

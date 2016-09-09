@@ -103,6 +103,16 @@ const PWASettings = {
                 }
             }
         },
+        "videos": {
+            "match": { "path": "/videos/" },
+            "strategy": "offline-first",
+            "apply": {
+                "cache": {
+                    "name": "cached-videos",
+                    "version": "1"
+                }
+            }
+        },
         "userData": {
             "match": { "path": "/api/user/.*" },
             "options": { "credentials": "same-origin"},
@@ -1356,10 +1366,10 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.offline = function (callback) {
+        DSW.offline = function (_) {
             return !navigator.onLine;
         };
-        DSW.online = function (callback) {
+        DSW.online = function (_) {
             return navigator.onLine;
         };
 
@@ -1386,15 +1396,15 @@ if (isInSWScope) {
                 DSW.enableNotifications().then(function (_) {
                     var opts = {
                         body: options.body || '',
-                        icon: options.icon || null
+                        icon: options.icon || false
                     };
                     var n = new Notification(title, opts);
                     if (options.duration) {
                         setTimeout(function (_) {
                             n.close();
-                        }, options.duration / 1000);
+                        }, options.duration * 1000);
                     }
-                    resolve();
+                    resolve(n);
                 }).catch(function (reason) {
                     reject(reason);
                 });
