@@ -31,11 +31,26 @@ window.addEventListener('load', function(){
     // the "ask for notification permission" button
     geby('enable-notif-btn').addEventListener('click', function(event){
         var el = this;
-        DSW.enableNotifications().then(function(subscriber){
-            el.value = 'ENABLED';
-        }).catch(reason=>{
-            el.value = 'DENIED';
-        });
+        var parentEl = el.parentNode.parentNode;
+        
+        if (DSW.online()) {
+            DSW.enableNotifications()
+                .then(function(subscriber){
+                    el.value = 'ENABLED';
+                    parentEl.classList.add('green');
+                    parentEl.classList.remove('red');
+                }).catch(reason=>{
+                    el.value = 'DENIED';
+                    parentEl.classList.add('red');
+                    parentEl.classList.remove('green');
+                });
+        } else {
+            el.value = 'MUST BE CONNECTED';
+            parentEl.classList.remove('red');
+            parentEl.classList.remove('blue');
+            parentEl.classList.remove('green');
+            parentEl.classList.add('orange');
+        }
     });
     
     // adding the listeners for our tests

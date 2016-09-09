@@ -1375,16 +1375,20 @@ if (isInSWScope) {
 
         DSW.enableNotifications = function (_) {
             return new Promise(function (resolve, reject) {
-                navigator.serviceWorker.ready.then(function (reg) {
-                    reg.pushManager.subscribe({
-                        userVisibleOnly: true
-                    }).then(function (sub) {
-                        _logger2.default.info('Subscribed to notification server:', sub.endpoint);
-                        resolve(sub);
-                    }).catch(function (reason) {
-                        reject(reason || 'Not allowed by user');
+                if (navigator.onLine) {
+                    navigator.serviceWorker.ready.then(function (reg) {
+                        var req = reg.pushManager.subscribe({
+                            userVisibleOnly: true
+                        });
+                        return req.then(function (sub) {
+                            resolve(sub);
+                        }).catch(function (reason) {
+                            reject(reason || 'Not allowed by user');
+                        });
                     });
-                });
+                } else {
+                    reject('Must be connected to enable notifications');
+                }
             });
         };
 
