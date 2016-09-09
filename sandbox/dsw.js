@@ -1378,6 +1378,29 @@ if (isInSWScope) {
             });
         };
 
+        DSW.notify = function () {
+            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
+            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+            return new Promise(function (resolve, reject) {
+                DSW.enableNotifications().then(function (_) {
+                    var opts = {
+                        body: options.body || '',
+                        icon: options.icon || null
+                    };
+                    var n = new Notification(title, opts);
+                    if (options.duration) {
+                        setTimeout(function (_) {
+                            n.close();
+                        }, options.duration / 1000);
+                    }
+                    resolve();
+                }).catch(function (reason) {
+                    reject(reason);
+                });
+            });
+        };
+
         DSW.setup = function (config) {
             return new Promise(function (resolve, reject) {
                 // opening on a page scope...let's install the worker

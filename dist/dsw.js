@@ -1214,10 +1214,10 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.offline = function (callback) {
+        DSW.offline = function (_) {
             return !navigator.onLine;
         };
-        DSW.online = function (callback) {
+        DSW.online = function (_) {
             return navigator.onLine;
         };
 
@@ -1232,6 +1232,29 @@ if (isInSWScope) {
                     }).catch(function (reason) {
                         reject(reason || 'Not allowed by user');
                     });
+                });
+            });
+        };
+
+        DSW.notify = function () {
+            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
+            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+            return new Promise(function (resolve, reject) {
+                DSW.enableNotifications().then(function (_) {
+                    var opts = {
+                        body: options.body || '',
+                        icon: options.icon || false
+                    };
+                    var n = new Notification(title, opts);
+                    if (options.duration) {
+                        setTimeout(function (_) {
+                            n.close();
+                        }, options.duration * 1000);
+                    }
+                    resolve(n);
+                }).catch(function (reason) {
+                    reject(reason);
                 });
             });
         };

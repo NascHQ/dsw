@@ -443,10 +443,10 @@ if (isInSWScope) {
             cb();
         }
     };
-    DSW.offline = callback=>{
+    DSW.offline = _=>{
         return !navigator.onLine;
     };
-    DSW.online = callback=>{
+    DSW.online = _=>{
         return navigator.onLine;
     };
     
@@ -461,6 +461,26 @@ if (isInSWScope) {
                 }).catch(reason=>{
                     reject(reason || 'Not allowed by user');
                 });
+            });
+        });
+    };
+    
+    DSW.notify = (title='Untitled', options={})=>{
+        return new Promise((resolve, reject)=>{
+            DSW.enableNotifications().then(_=>{
+                const opts = {
+                    body: options.body || '',
+                    icon: options.icon || false
+                };
+                let n = new Notification(title, opts);
+                if (options.duration) {
+                    setTimeout(_=>{
+                        n.close();
+                    }, options.duration * 1000);
+                }
+                resolve(n);
+            }).catch(reason=>{
+                reject(reason);
             });
         });
     };

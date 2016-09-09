@@ -80,6 +80,12 @@ window.addEventListener('load', function(){
             .setAttribute('src', 'https://www.youtube.com/embed/AgZJQT1-ixg?autoplay=1');
     });
     
+    geby('btn-9-video').addEventListener('click', function(){
+        var videoEl = geby('video-test');
+        videoEl.setAttribute('src', 'videos/dsw-video-sandbox.mp4');
+        videoEl.play();
+    });
+    
     // some requests that should bypass...you will only see them on your console
     setTimeout(_=>{
         fetch('/api/bypass/log.js').then(_=>{
