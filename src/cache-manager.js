@@ -126,8 +126,7 @@ const cacheManager = {
                             // saves the current time for further validation
                             cacheManager.setExpiringTime(request,
                                                          rule||cacheId,
-                                                         rule.action.cache.expires
-                            );
+                                                         rule.action.cache.expires);
                         }
                     }).catch(err=>{
                         logger.error(err);

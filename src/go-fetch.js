@@ -1,6 +1,6 @@
 import utils from './utils.js';
 
-let origin = location.origin; // (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
+let origin = location.origin;
 
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';

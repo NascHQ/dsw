@@ -450,7 +450,7 @@ var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var origin = location.origin; // (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname]).pop();
+var origin = location.origin;
 
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
@@ -799,6 +799,10 @@ var _strategies = require('./strategies.js');
 
 var _strategies2 = _interopRequireDefault(_strategies);
 
+var _utils = require('./utils.js');
+
+var _utils2 = _interopRequireDefault(_utils);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
@@ -808,7 +812,6 @@ var isInTest = typeof global.it === 'function';
 
 var DSW = {};
 var REQUEST_TIME_LIMIT = 5000;
-var COMM_HAND_SHAKE = 'seting-dsw-communication-up';
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -822,6 +825,7 @@ if (isInSWScope) {
     (function () {
 
         var DSWManager = {
+            requestId: 0,
             tracking: {},
             rules: {},
             addRule: function addRule(sts, rule, rx) {
@@ -867,6 +871,7 @@ if (isInSWScope) {
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
+                _utils2.default.setup(DSWManager, PWASettings);
                 _cacheManager2.default.setup(DSWManager, PWASettings, _goFetch2.default);
                 _strategies2.default.setup(DSWManager, _cacheManager2.default, _goFetch2.default);
 
@@ -994,16 +999,83 @@ if (isInSWScope) {
             createRedirect: function createRedirect(request, event, matching) {
                 return (0, _goFetch2.default)(null, request, event, matching);
             },
+            traceStep: function traceStep(request, step, data) {
+                var fill = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
+
+                // if there are no tracking listeners, this request will not be tracked
+                if (DSWManager.tracking) {
+                    var id = request.requestId;
+                    request.traceSteps = request.traceSteps || [];
+                    data = data || {};
+                    if (fill) {
+                        data.url = request.url;
+                        data.type = request.type;
+                        data.method = request.method;
+                        data.redirect = request.redirect;
+                        data.referrer = request.referrer;
+                    }
+                    request.traceSteps.push({ step: step, data: data });
+                }
+            },
             respondItWith: function respondItWith(event, response) {
-                // respondWithThis
-                event.respondWith(response);
-                //DSWManager.tracking
+                // respond With This
+                // first of all...we respond the event
+                event.respondWith(new Promise(function (resolve, reject) {
+                    if (typeof response.then == 'function') {
+                        response.then(function (result) {
+                            var response = result.clone();
+
+                            // then, if it has been tracked, let's tell the listeners
+                            if (DSWManager.tracking) {
+                                response.text().then(function (result) {
+                                    // if the result is a string (text, html, etc)
+                                    // we will preview only a small part of it
+                                    if ((result[0] || '').charCodeAt(0) < 128) {
+                                        result = result.substring(0, 180) + (result.length > 180 ? '...' : '');
+                                    }
+                                    DSWManager.traceStep(event.request, 'Responded', {
+                                        response: {
+                                            status: response.status,
+                                            statusText: response.statusText,
+                                            type: response.type,
+                                            url: response.url
+                                        },
+                                        preview: result
+                                    }, true);
+                                    var tracker = void 0;
+                                    var traceBack = function traceBack(port, key) {
+                                        port.postMessage(event.request.traceSteps);
+                                    };
+                                    for (tracker in DSWManager.tracking) {
+                                        if (event.request.url.match(tracker)) {
+                                            DSWManager.tracking[tracker].ports.forEach(traceBack);
+                                            break;
+                                        }
+                                    }
+                                });
+                            }
+                            resolve(result);
+                        });
+                    } else {
+                        resolve(response);
+                    }
+                }));
+            },
+            broadcast: function broadcast(message) {
+                return clients.matchAll().then(function (result) {
+                    result.forEach(function (cur) {
+                        cur.postMessage(message);
+                    });
+                });
             },
             startListening: function startListening() {
                 // and from now on, we listen for any request and treat it
                 self.addEventListener('fetch', function (event) {
 
-                    DSW.requestId = 1 + (DSW.requestId || 0);
+                    DSWManager.requestId = 1 + (DSWManager.requestId || 0);
+                    event.request.requestId = DSWManager.requestId;
+
+                    DSWManager.traceStep(event.request, 'Arived in Service Worker', true);
 
                     // in case there are no rules (happens when chrome crashes, for example)
                     if (!Object.keys(DSWManager.rules).length) {
@@ -1018,6 +1090,7 @@ if (isInSWScope) {
                     // in case we want to enforce https
                     if (PWASettings.enforceSSL) {
                         if (url.protocol != 'https:' && url.hostname != 'localhost') {
+                            DSWManager.traceStep(event.request, 'Redirected from http to https');
                             return DSWManager.respondItWith(event, Response.redirect(event.request.url.replace('http:', 'https:'), 302));
                         }
                     }
@@ -1027,13 +1100,7 @@ if (isInSWScope) {
                     var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     if (matchingRule) {
                         // if there is a rule that matches the url
-                        //                    clients.matchAll().then(result=>{
-                        //                        debugger;
-                        //                        result.forEach(cur=>{
-                        //                            debugger;
-                        //                            cur.postMessage('EVENTO RESPONDIDO!!');
-                        //                        });
-                        //                    });
+                        DSWManager.traceStep(event.request, 'Matched with rule ' + matchingRule.rule.name, { rule: matchingRule.rule });
                         return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
@@ -1082,7 +1149,6 @@ if (isInSWScope) {
             }
         });
 
-        var comm = null;
         self.addEventListener('message', function (event) {
             // TODO: add support to message event
             var ports = event.ports;
@@ -1094,14 +1160,6 @@ if (isInSWScope) {
                     ports: ports
                 };
                 return;
-            }
-            if (event.data === COMM_HAND_SHAKE) {
-                _logger2.default.info('Commander Handshake enabled');
-                comm = event.ports[0];
-                setTimeout(function (_) {
-                    comm.postMessage('thanks');
-                }, 2000);
-                //comm.postMessage('thanks');
             }
         });
 
@@ -1154,207 +1212,201 @@ if (isInSWScope) {
         DSWManager.startListening();
     })();
 } else {
-    (function () {
 
-        window.addEventListener('message', function (event) {
-            //        debugger;
-            console.log(event, 'CHEGOU ALGO');
-        });
+    window.addEventListener('message', function (event) {
+        //        debugger;
+        console.log(event, 'something arrived');
+    });
 
-        var comm = {
-            setup: function setup() {
-                if (comm.channel) {
-                    return navigator.serviceWorker.controller;
-                }
+    DSW.trace = function (match, options, callback) {
 
-                // during setup, we will stablish the communication between
-                // service worker and client scopes
-                var messageChannel = new MessageChannel();
-                messageChannel.port1.onmessage = function (event) {
-                    //                debugger;
-                    //                if (event.data.error) {
-                    //                    reject(event.data.error);
-                    //                } else {
-                    //                    resolve(event.data);
-                    //                }
-                };
-                //navigator.serviceWorker.controller.postMessage(COMM_HAND_SHAKE, [comm.channel.port2]);
-            }
+        if (!callback && typeof options == 'function') {
+            callback = options;
+            options = {};
+        }
+
+        var messageChannel = new MessageChannel();
+        messageChannel.port1.onmessage = function (event) {
+            callback(event.data);
         };
+        navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
+    };
 
-        DSW.track = function (matchingRequest) {
+    DSW.sendMessage = function (message) {
+        var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+        return new Promise(function (resolve, reject) {
             var messageChannel = new MessageChannel();
-            messageChannel.port1.onmessage = function (event) {
-                debugger;
-                //                if (event.data.error) {
-                //                    reject(event.data.error);
-                //                } else {
-                //                    resolve(event.data);
-                //                }
-            };
-            navigator.serviceWorker.controller.postMessage({ trackPath: matchingRequest }, [messageChannel.port2]);
-        };
 
-        DSW.sendMessage = function (message) {
-            //if (comm.channel && comm.channel.port2 && navigator.serviceWorker) {
-            //navigator.serviceWorker.controller.postMessage(message, [comm.channel.port2]);
-            //}
-        };
-
-        DSW.onNetworkStatusChange = function (callback) {
-            var cb = function cb() {
-                callback(navigator.onLine);
-            };
-            window.addEventListener('online', cb);
-            window.addEventListener('offline', cb);
-            // in case we are already offline, we will trigger now, the callback
-            // this way, fevelopers will know right away that their app has loaded
-            // offline
-            if (!navigator.onLine) {
-                cb();
-            }
-        };
-        DSW.offline = function (_) {
-            return !navigator.onLine;
-        };
-        DSW.online = function (_) {
-            return navigator.onLine;
-        };
-
-        DSW.enableNotifications = function (_) {
-            return new Promise(function (resolve, reject) {
-                if (navigator.onLine) {
-                    navigator.serviceWorker.ready.then(function (reg) {
-                        var req = reg.pushManager.subscribe({
-                            userVisibleOnly: true
-                        });
-                        return req.then(function (sub) {
-                            resolve(sub);
-                        }).catch(function (reason) {
-                            reject(reason || 'Not allowed by user');
-                        });
-                    });
-                } else {
-                    reject('Must be connected to enable notifications');
-                }
-            });
-        };
-
-        DSW.notify = function () {
-            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
-            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
-
-            return new Promise(function (resolve, reject) {
-                DSW.enableNotifications().then(function (_) {
-                    var opts = {
-                        body: options.body || '',
-                        icon: options.icon || false
-                    };
-                    var n = new Notification(title, opts);
-                    if (options.duration) {
-                        setTimeout(function (_) {
-                            n.close();
-                        }, options.duration * 1000);
+            // in case the user expects an answer from the SW after sending
+            // this message...
+            if (waitForAnswer) {
+                // we will wait for it, and then resolve or reject only when
+                // the SW has answered
+                messageChannel.port1.onmessage = function (event) {
+                    if (event.data.error) {
+                        reject(event.data.error);
+                    } else {
+                        resolve(event.data);
                     }
-                    resolve(n);
-                }).catch(function (reason) {
-                    reject(reason);
-                });
-            });
+                };
+            } else {
+                // otherwise, we simply resolve it, after 10ms (just to use another flow)
+                setTimeout(resolve, 10);
+            }
+            navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
+        });
+    };
+
+    DSW.onNetworkStatusChange = function (callback) {
+        var cb = function cb() {
+            callback(navigator.onLine);
         };
+        window.addEventListener('online', cb);
+        window.addEventListener('offline', cb);
+        // in case we are already offline, we will trigger now, the callback
+        // this way, fevelopers will know right away that their app has loaded
+        // offline
+        if (!navigator.onLine) {
+            cb();
+        }
+    };
+    DSW.offline = function (_) {
+        return !navigator.onLine;
+    };
+    DSW.online = function (_) {
+        return navigator.onLine;
+    };
 
-        DSW.setup = function (config) {
-            return new Promise(function (resolve, reject) {
-                // opening on a page scope...let's install the worker
-                if (navigator.serviceWorker) {
-                    if (!navigator.serviceWorker.controller) {
-                        // we will use the same script, already loaded, for our service worker
-                        var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                        navigator.serviceWorker.register(src).then(function (SW) {
-                            _logger2.default.info('Registered service worker');
+    DSW.enableNotifications = function (_) {
+        return new Promise(function (resolve, reject) {
+            if (navigator.onLine) {
+                navigator.serviceWorker.ready.then(function (reg) {
+                    var req = reg.pushManager.subscribe({
+                        userVisibleOnly: true
+                    });
+                    return req.then(function (sub) {
+                        resolve(sub);
+                    }).catch(function (reason) {
+                        reject(reason || 'Not allowed by user');
+                    });
+                });
+            } else {
+                reject('Must be connected to enable notifications');
+            }
+        });
+    };
 
-                            // setting up notifications
-                            if (PWASettings.notification && PWASettings.notification.auto) {
-                                navigator.serviceWorker.ready.then(function (reg) {
-                                    reg.pushManager.subscribe({
-                                        userVisibleOnly: true
-                                    }).then(function (sub) {
-                                        _logger2.default.info('Subscribed to notification server:', sub.endpoint);
-                                    });
+    DSW.notify = function () {
+        var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
+        var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+        return new Promise(function (resolve, reject) {
+            DSW.enableNotifications().then(function (_) {
+                var opts = {
+                    body: options.body || '',
+                    icon: options.icon || false
+                };
+                var n = new Notification(title, opts);
+                if (options.duration) {
+                    setTimeout(function (_) {
+                        n.close();
+                    }, options.duration * 1000);
+                }
+                resolve(n);
+            }).catch(function (reason) {
+                reject(reason);
+            });
+        });
+    };
+
+    DSW.setup = function (config) {
+        return new Promise(function (resolve, reject) {
+            // opening on a page scope...let's install the worker
+            if (navigator.serviceWorker) {
+                if (!navigator.serviceWorker.controller) {
+                    // we will use the same script, already loaded, for our service worker
+                    var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                    navigator.serviceWorker.register(src).then(function (SW) {
+                        _logger2.default.info('Registered service worker');
+
+                        // setting up notifications
+                        if (PWASettings.notification && PWASettings.notification.auto) {
+                            navigator.serviceWorker.ready.then(function (reg) {
+                                reg.pushManager.subscribe({
+                                    userVisibleOnly: true
+                                }).then(function (sub) {
+                                    _logger2.default.info('Subscribed to notification server:', sub.endpoint);
                                 });
-                            }
+                            });
+                        }
 
-                            if (config && config.sync) {
-                                if ('SyncManager' in window) {
-                                    navigator.serviceWorker.ready.then(function (reg) {
-                                        comm.setup();
-                                        return reg.sync.register('syncr');
-                                    }).then(function (_) {
-                                        resolve({
-                                            status: true,
-                                            sync: true,
-                                            sw: true
-                                        });
-                                    }).catch(function (err) {
-                                        reject({
-                                            status: false,
-                                            sync: false,
-                                            sw: true,
-                                            message: 'Registered Service worker, but was unable to activate sync',
-                                            error: err
-                                        });
+                        if (config && config.sync) {
+                            if ('SyncManager' in window) {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    return reg.sync.register('syncr');
+                                }).then(function (_) {
+                                    resolve({
+                                        status: true,
+                                        sync: true,
+                                        sw: true
                                     });
-                                } else {
+                                }).catch(function (err) {
                                     reject({
                                         status: false,
                                         sync: false,
                                         sw: true,
                                         message: 'Registered Service worker, but was unable to activate sync',
-                                        error: null
+                                        error: err
                                     });
-                                }
+                                });
                             } else {
-                                resolve({
-                                    status: true,
+                                reject({
+                                    status: false,
                                     sync: false,
-                                    sw: true
+                                    sw: true,
+                                    message: 'Registered Service worker, but was unable to activate sync',
+                                    error: null
                                 });
                             }
-                        }).catch(function (err) {
-                            reject({
-                                status: false,
+                        } else {
+                            resolve({
+                                status: true,
                                 sync: false,
-                                sw: false,
-                                message: 'Failed registering service worker',
-                                error: err
+                                sw: true
                             });
+                        }
+                    }).catch(function (err) {
+                        reject({
+                            status: false,
+                            sync: false,
+                            sw: false,
+                            message: 'Failed registering service worker',
+                            error: err
                         });
-                    }
-                    navigator.serviceWorker.ready.then(function (reg) {
-                        comm.setup();
-                    });
-                } else {
-                    reject({
-                        status: false,
-                        sync: false,
-                        sw: false,
-                        message: 'Service Worker not supported',
-                        error: null
                     });
                 }
-            });
-        };
+            } else {
+                reject({
+                    status: false,
+                    sync: false,
+                    sw: false,
+                    message: 'Service Worker not supported',
+                    error: null
+                });
+            }
+        });
+    };
 
-        if (typeof window !== 'undefined') {
-            window.DSW = DSW;
-        }
-    })();
+    if (typeof window !== 'undefined') {
+        window.DSW = DSW;
+    }
 }
 
 exports.default = DSW;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./logger.js":5,"./strategies.js":7}],7:[function(require,module,exports){
+},{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./logger.js":5,"./strategies.js":7,"./utils.js":8}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1500,8 +1552,9 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 var utils = {
+    DSWManager: null,
+    PWASettings: null,
     // Applies the matched patterns into strings (used to replace variables)
-
     applyMatch: function applyMatch(matching, text) {
         if (matching && matching.length > 1 && text) {
             // we apply the variables
@@ -1520,7 +1573,13 @@ var utils = {
             cache: 'default'
         };
 
-        return new Request(request.url || request, reqConfig);
+        var req = new Request(request.url || request, reqConfig);
+        req.requestId = request.requestId;
+        return req;
+    },
+    setup: function setup(DSWManager) {
+        utils.DSWManager = DSWManager;
+        utils.PWASettings = PWASettings;
     }
 };
 
