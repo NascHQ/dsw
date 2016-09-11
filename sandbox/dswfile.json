@@ -6,6 +6,12 @@
         "/helmet.png",
         "/index.html?homescreen=1"
     ],
+    "notification": {
+        "auto": false,
+        "server": "GCM",
+        "productId": "483627048705",
+        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
+    },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
@@ -71,7 +77,7 @@
                 "cache": {
                     "name": "cachedImages",
                     "version": "1",
-                    "expires": "1h" // use 1s, 1m, 1h, 1d, 1w, 1M, 1y
+                    "expires": "1h"
                 }
             }
         },
@@ -93,6 +99,16 @@
             "apply": {
                 "cache": {
                     "name": "static-html-files",
+                    "version": "1"
+                }
+            }
+        },
+        "videos": {
+            "match": { "path": "/videos/" },
+            "strategy": "offline-first",
+            "apply": {
+                "cache": {
+                    "name": "cached-videos",
                     "version": "1"
                 }
             }

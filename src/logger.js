@@ -36,7 +36,7 @@ const logger = {
         let args = [].slice.call(arguments);
         args.unshift('font-weight: bold');
         args.unshift('%c ' + TYPES.track);
-        console.error.apply(console, args);
+        console.debug.apply(console, args);
     }
 };
 

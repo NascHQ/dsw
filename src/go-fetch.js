@@ -1,14 +1,17 @@
 import utils from './utils.js';
 
-let domain = (location.hostname.match(/(.+\.)?(.+)\./) || [location.hostname])
-                .pop();
+let origin = location.origin;
 
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
+    if (typeof request == 'string') {
+        request = location.origin + request;
+    }
     if (!tmpUrl) {
         tmpUrl = request.url || request;
     }
     let originalUrl = tmpUrl;
+    let sameOrigin = (new URL(tmpUrl)).origin == origin;
     
     // if there are group variables in the matching expression
     tmpUrl = utils.applyMatch(matching, tmpUrl);
@@ -16,13 +19,18 @@ function goFetch (rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        return new Request(tmpUrl, {
+        let req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: 'cors',
+            mode: sameOrigin? 'cors': 'no-cors',
             cache: 'default',
             redirect: 'manual'
         });
+        
+        req.requestId = (event? event.request: request).requestId;
+        req.traceSteps = (event? event.request: request).traceSteps;
+        
+        return req;
     }
     
     let actionType = Object.keys(rule.action)[0];
@@ -50,11 +58,14 @@ function goFetch (rule, request, event, matching) {
 //    }
     
     // if the host is not the same
-    if ((new URL(tmpUrl)).hostname.indexOf(domain) < 0) {
+    if (!sameOrigin) {
         // we set it to an opaque request
         reqConfig.mode = 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
+    
+    request.requestId = (event? event.request: request).requestId;
+    request.traceSteps = (event? event.request: request).traceSteps;
     
     if (actionType == 'redirect') {
         // if this is supposed to redirect

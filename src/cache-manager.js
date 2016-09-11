@@ -99,31 +99,12 @@ const cacheManager = {
     },
     // just a different method signature, for .add
     put: (rule, request, response) => {
-        cacheManager.add(
+        return cacheManager.add(
             request,
             typeof rule == 'string'? rule: cacheManager.mountCacheId(rule),
             response,
             rule
         );
-        
-        let cloned = response.clone();
-        // if it expires...
-        if (rule.cache && rule.cache.expires) {
-            // saves the current time for further validation
-            cacheManager.setExpiringTime(request,
-                                         rule,
-                                         rule.cache.expires
-            );
-        }
-
-        return caches.open(cacheManager.mountCacheId(rule))
-            .then(function(cache) {
-                request = utils.createRequest(request, { mode: 'no-cors' });
-                if (request.method != 'POST') {
-                    cache.put(request, cloned);
-                }
-                return response;
-            });
     },
     add: (request, cacheId, response, rule) => {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
@@ -132,8 +113,23 @@ const cacheManager = {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
                         // adding to cache
-                        request = utils.createRequest(request, { mode: 'no-cors' });
+                        let opts = response.type == 'opaque'? { mode: 'no-cors' } : {};
+                        request = utils.createRequest(request, opts);
                         if (request.method != 'POST') {
+                            let cacheData = {};
+                            if (rule && rule.action && rule.action.cache) {
+                                cacheData = rule.action.cache;
+                            } else {
+                                cacheData = {
+                                    name: cacheId,
+                                    version: cacheId.split('::')[1]
+                                };
+                            }
+                            DSWManager.traceStep(
+                                request,
+                                'Added to cache',
+                                { cacheData }
+                            );
                             cache.put(request, response.clone());
                         }
                         resolve(response);
@@ -144,8 +140,7 @@ const cacheManager = {
                             // saves the current time for further validation
                             cacheManager.setExpiringTime(request,
                                                          rule||cacheId,
-                                                         rule.action.cache.expires
-                            );
+                                                         rule.action.cache.expires);
                         }
                     }).catch(err=>{
                         logger.error(err);
@@ -160,6 +155,7 @@ const cacheManager = {
                 fetch(goFetch(null, request))
                     .then(addIt)
                     .catch(err=>{
+                        DSWManager.traceStep(event.request, 'Fetch failed');
                         logger.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                         reject(response);
                     });
@@ -237,27 +233,30 @@ const cacheManager = {
                 
                 let treatResponse = function (response) {
                     if (response.status >= 200 && response.status < 300) {
+                        DSWManager.traceStep(request, 'Request bypassed');
                         return response;
                     } else {
-                        logger.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
-                        return new Response(''); // ignored
+                        DSWManager.traceStep(request, 'Bypassed request failed and was ignored');
+                        let resp = new Response(''); // ignored
+                        return resp;
                     }
                 };
                 // here we will use a "raw" fetch, instead of goFetch, which would
                 // create a new Request and define propreties to it
-                return fetch(event.request)
+                return fetch(goFetch(null, event.request))
                         .then(treatResponse)
                         .catch(treatResponse);
             } else {
                 // or of type 'ignore' (or anything else, actually)
                 // and we will simply output nothing, as if ignoring both the
                 // request and response
+                DSWManager.traceStep(request, 'Bypassed request');
                 actionType = 'output';
                 rule.action[actionType] = '';
-                logger.info('Bypassing request, outputing nothing out of it');
             }
         }
         case 'output': {
+            DSWManager.traceStep(request, 'Responding with string output', { output: (rule.action[actionType]+'').substring(0, 180) });
             return new Response(
                 utils.applyMatch(matching,
                                  rule.action[actionType])
@@ -269,10 +268,14 @@ const cacheManager = {
                 function treatFetch (response) {
                     if (response && response.status == 200) {
                         // with success or not(saving it), we resolve it
-                        let done = _=>{
+                        let done = err=>{
+                            if (err) {
+                                DSWManager.traceStep(request, 'Could not save response into IndexedDB', { err });
+                            } else {
+                                DSWManager.traceStep(request, 'Response object saved into IndexedDB');
+                            }
                             resolve(response);
                         };
-
                         // store it in the indexedDB
                         indexedDBManager.save(rule.name, response.clone(), request, rule)
                             .then(done)
@@ -281,6 +284,11 @@ const cacheManager = {
                         // if it failed, we can look for a fallback
                         url = request.url;
                         pathName = new URL(url).pathname;
+                        DSWManager.traceStep(request, 'Fetch failed', {
+                            url: request.url,
+                            status: response.status,
+                            statusText: response.statusText
+                        });
                         return DSWManager.treatBadPage(response, pathName, event);
                     }
                 }
@@ -326,6 +334,7 @@ const cacheManager = {
                 if (expired && !forceFromCache) {
                     // in case it has expired, it resolves automatically
                     // with no results from cache
+                    DSWManager.traceStep(event.request, 'Cache was expired');
                     lookForCache = Promise.resolve();
                     logger.info('Cache expired for ', request.url);
                 } else{
@@ -338,10 +347,21 @@ const cacheManager = {
                     .then(result=>{
                         // if it does not exist (cache could not be verified)
                         if (result && result.status != 200) {
+                            DSWManager.traceStep(event.request,
+                                'Fetch failed',
+                                {
+                                    url: request.url,
+                                    status: result.status,
+                                    statusText: result.statusText
+                                });
                             // if it has expired in cache, failed requests for
                             // updates should return the previously cached data
                             // even if it has expired
                             if (expired) {
+                                DSWManager.traceStep(
+                                    request,
+                                    'Forcing '+ (expired? 'expired ': '') +'result from cache'
+                                );
                                 // the true argument flag means it should come from cache, anyways
                                 return cacheManager.get(rule, request, event, matching, true);
                             }
@@ -351,6 +371,14 @@ const cacheManager = {
                                     // if a rule matched for the status and request
                                     // and it tries to fetch a different source
                                     if (cur.action.fetch || cur.action.redirect) {
+                                        DSWManager.traceStep(
+                                            event.request,
+                                            'Found fallback for failure',
+                                            {
+                                                rule: cur,
+                                                url: request.url
+                                            }
+                                        );
                                         // problematic requests should
                                         result = goFetch(rule, request, event, matching);
                                         return true; // stopping the loop
@@ -360,7 +388,7 @@ const cacheManager = {
                             // we, then, return the promise of the failed result(for it
                             // could not be loaded and was not in cache)
                             return result;
-                        }else{
+                        } else {
                             // We will return the result, if successful, or
                             // fetch an anternative resource(or redirect)
                             // and treat both success and failure with the
@@ -371,14 +399,37 @@ const cacheManager = {
                                 // when it comes from a redirect, we let the browser know about it
                                 // or else...we simply return the result itself
                                 if (request.url == event.request.url) {
+                                    DSWManager.traceStep(
+                                        event.request,
+                                        'Result from cache',
+                                        {
+                                            url: event.request.url
+                                        });
                                     return result;
                                 } else {
                                     // coming from a redirect
+                                    DSWManager.traceStep(
+                                        event.request,
+                                        'Must redirect',
+                                        {
+                                            from: event.request.url,
+                                            to: request.url
+                                        },
+                                        false,
+                                        {
+                                            url: request.url,
+                                            id: request.requestId,
+                                            steps: request.traceSteps
+                                        });
                                     return Response.redirect(request.url, 302);
                                 }
 
                             } else if (actionType == 'redirect') {
                                 // if this is supposed to redirect
+                                DSWManager.traceStep(event.request, 'Must redirect', {
+                                    from: event.request.url,
+                                    to: request.url
+                                });
                                 return Response.redirect(request.url, 302);
                             } else {
                                 // this is a "normal" request, let's deliver it
@@ -386,10 +437,10 @@ const cacheManager = {
                                 // to allow browsers to understand redirects in case
                                 // it must be redirected later on
                                 let treatFetch = function (response) {
-                                    
                                     if (response.type == 'opaque') {
                                         // if it is a opaque response, let it go!
                                         if (rule.action.cache !== false) {
+                                            DSWManager.traceStep(event.request, 'Added to cache (opaque)');
                                             return cacheManager.add(utils.createRequest(request, { mode: 'no-cors' }),
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
@@ -404,9 +455,11 @@ const cacheManager = {
                                     // after retrieving it, we cache it
                                     // if it was ok
                                     if (response.status == 200) {
+                                        DSWManager.traceStep(event.request, 'Received result OK (200)');
                                         // if cache is not false, it will be added to cache
                                         if (rule.action.cache !== false) {
-                                            // and if it shall expire, let's schedule it!
+                                            // let's save it into cache
+                                            DSWManager.traceStep(event.request, 'Saving into cache');
                                             return cacheManager.add(request,
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
@@ -417,11 +470,13 @@ const cacheManager = {
                                     } else {
                                         // if it had expired, but could not be retrieved
                                         // from network, let's give its cache a chance!
+                                        DSWManager.traceStep(event.request, 'Failed fetching');
                                         if (expired) {
                                             logger.warn('Cache for ',
                                                         request.url || request,
                                                         'had expired, but the updated version could not be retrieved from the network!\n',
                                                         'Delivering the outdated cached data');
+                                            DSWManager.traceStep(event.request, 'Used expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
                                             return cacheManager.get(rule, request, event, matching, true);
                                         }
                                         // otherwise...let's see if there is a fallback
@@ -429,7 +484,11 @@ const cacheManager = {
                                         return DSWManager.treatBadPage(response, pathName, event);
                                     }
                                 };
-                                return goFetch(rule, request, event, matching) // fetch(req, opts)
+                                DSWManager.traceStep(event.request, 'Must fetch', {
+                                    url: request.url,
+                                    method: request.method
+                                });
+                                return goFetch(rule, request, event, matching)
                                         .then(treatFetch)
                                         .catch(treatFetch);
                             }

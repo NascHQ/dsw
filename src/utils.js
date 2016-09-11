@@ -1,5 +1,7 @@
 
 const utils = {
+    DSWManager: null,
+    PWASettings: null,
     // Applies the matched patterns into strings (used to replace variables)
     applyMatch (matching, text) {
         if (matching && matching.length > 1 && text) {
@@ -20,7 +22,14 @@ const utils = {
             cache: 'default'
         };
         
-        return new Request(request.url || request, reqConfig);
+        let req = new Request(request.url || request, reqConfig);
+        req.requestId = request.requestId;
+        return req;
+    },
+    
+    setup (DSWManager) {
+        utils.DSWManager = DSWManager;
+        utils.PWASettings = PWASettings;
     }
 };
 

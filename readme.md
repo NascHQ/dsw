@@ -472,7 +472,7 @@ In case you want to send credentials or other settings to fetch, you can use the
 }
 ```
 
-### Use it programatically
+### Using it programatically
 
 You can also use it programatically, specially if you intend to use or create a tool to build, like `grunt` or `gulp`.
 
@@ -481,6 +481,55 @@ const options = {};
 let dsw = requier('dsw');
 dsw.generate('./path-to-project', options);
 ```
+
+### Using the API
+
+There is a client API as well, so you can use some features with aliases and shortcuts with the DSW client API.
+
+#### Notifications
+
+You can enable notifications (the user will be asked to give permissions).<br/>
+To do that, you can use the `DSW.enableNotifications()` method, which will return a promise that resolves when the user enables it, and rejects if the user denies the permission.
+
+```js
+DSW.enableNotifications().then(function(){
+    console.log('notification was shown');
+}).catch(function(reason){
+    console.log('Did not show the notification:', reason);
+});
+```
+
+You can also show a notification using the `DSW.notify` method.<br/>
+This method will ask for permissions in case the user hasn't enabled it yet.
+
+```js
+DSW.notify('The title', {
+    body: 'The message content',
+    icon: 'https://raw.githubusercontent.com/NascHQ/dsw/master/docs/images/worker-person.png',
+    duration: 5
+}).then(function(){
+    console.log('notification was shown');
+}).catch(function(reason){
+    console.log('Did not show the notification:', reason);
+});
+```
+
+#### Connection status
+
+You can use the methods `DSW.online` and `DSW.offline` to know if the device has internet connection*.<br/>
+Also, you can use the method `DSW.onNetworkStatusChange` to know WHEN the connection status changes.
+
+```js
+DSW.onNetworkStatusChange(function(connected){
+    if (connected) {
+        console.log('Was offline and is now online');
+    } else {
+        console.log('Was online and is now offline');
+    }
+});
+```
+
+* This depends on browser support...some browser will say the device is online even though there is no internet connection, just because the device is connected to a private network(with a rounter).
 
 # Contributing
 

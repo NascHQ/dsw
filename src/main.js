@@ -8,6 +8,7 @@ import getBestMatchingRX from './best-matching-rx.js';
 import cacheManager from './cache-manager.js';
 import goFetch from './go-fetch.js';
 import strategies from './strategies.js';
+import utils from './utils.js';
 
 const DSW = {};
 const REQUEST_TIME_LIMIT = 5000;
@@ -23,6 +24,9 @@ try {
 if (isInSWScope) {
     
     const DSWManager = {
+        requestId: 0,
+        tracking: {},
+        trackMoved: {},
         rules: {},
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];
@@ -49,12 +53,20 @@ if (isInSWScope) {
                 .some((cur, idx)=>{
                     let matching = pathName.match(cur.rx);
                     if (matching) {
+                        if (cur.action.redirect && !cur.action.fetch) {
+                            cur.action.fetch = cur.action.fetch;
+                        }
                         if (cur.action.fetch) {
+                            DSWManager.traceStep(event.request, 'Found fallback rule', {
+                                rule: cur
+                            });
                             // not found requisitions should
                             // fetch a different resource
-                            logger.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            let req = new Request(cur.action.fetch);
+                            req.requestId = event.request.requestId;
+                            req.traceSteps = event.request.traceSteps;
                             result = cacheManager.get(cur,
-                                                      new Request(cur.action.fetch),
+                                                      req,
                                                       event,
                                                       matching);
                             return true; // stopping the loop
@@ -62,13 +74,14 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                logger.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
             }
             return result || response;
         },
         setup (dswConfig={}) {
             // let's prepare both cacheManager and strategies with the
             // current referencies
+            utils.setup(DSWManager, PWASettings);
             cacheManager.setup(DSWManager, PWASettings, goFetch);
             strategies.setup(DSWManager, cacheManager, goFetch);
             
@@ -198,18 +211,105 @@ if (isInSWScope) {
         },
         
         createRequest (request, event, matching) {
-            return goFetch(null, request.url || request, event, matching);
+            return goFetch(null, request, event, matching);
         },
         
         createRedirect (request, event, matching) {
-            return goFetch(null, request.url || request, event, matching);
+            return goFetch(null, request, event, matching);
+        },
+        
+        traceStep (request, step, data, fill=false, moved=false) {
+            // if there are no tracking listeners, this request will not be tracked
+            if (DSWManager.tracking) {
+                let id = request.requestId;
+                request.traceSteps = request.traceSteps || [];
+                data = data || {};
+                if (fill) {
+                    data.url = request.url;
+                    data.type = request.type;
+                    data.method = request.method;
+                    data.redirect = request.redirect;
+                    data.referrer = request.referrer;
+                }
+                request.traceSteps.push({ step, data });
+                if (moved) {
+                    DSWManager.trackMoved[moved.url] = moved;
+                }
+            }
+        },
+        
+        respondItWith (event, response) {
+            // respond With This
+            // first of all...we respond the event
+            event.respondWith(new Promise((resolve, reject)=>{
+                if (typeof response.then == 'function') {
+                    response.then(result=>{
+                        let response = result.clone();
+
+                        // then, if it has been tracked, let's tell the listeners
+                        if (DSWManager.tracking && response.status != 302) {
+                            response.text().then(result=>{
+                                // if the result is a string (text, html, etc)
+                                // we will preview only a small part of it
+                                if ((result[0] || '').charCodeAt(0) < 128) {
+                                    result = result.substring(0, 180) +
+                                             (result.length > 180? '...': '');
+                                }
+                                DSWManager.traceStep(
+                                    event.request,
+                                    'Responded',
+                                    {
+                                        response: {
+                                            status: response.status,
+                                            statusText: response.statusText,
+                                            type: response.type,
+                                            url: response.url,
+                                        },
+                                        preview: result
+                                    }, true);
+                                let tracker;
+                                let traceBack = (port, key)=>{
+                                    port.postMessage(event.request.traceSteps);
+                                };
+                                for(tracker in DSWManager.tracking) {
+                                    if (event.request.url.match(tracker)) {
+                                        DSWManager.tracking[tracker].ports.forEach(traceBack);
+                                        break;
+                                    }
+                                }
+                            });
+                        }
+                        resolve(result);
+                    });
+                } else {
+                    resolve(response);
+                }
+            }));
+        },
+        
+        broadcast (message) {
+            return clients.matchAll().then(result=>{
+                result.forEach(cur=>{
+                    cur.postMessage(message);
+                });
+            });
         },
         
         startListening () {
             // and from now on, we listen for any request and treat it
             self.addEventListener('fetch', event=>{
                 
-                DSW.requestId = 1 + (DSW.requestId || 0);
+                DSWManager.requestId = 1 + (DSWManager.requestId || 0);
+                
+                if (DSWManager.trackMoved[event.request.url]) {
+                    let movedInfo = DSWManager.trackMoved[event.request.url];
+                    event.request.requestId = movedInfo.id;
+                    event.request.traceSteps = movedInfo.steps;
+                    delete DSWManager.trackMoved[event.request.url];
+                } else {
+                    event.request.requestId = DSWManager.requestId;
+                    DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
+                }
                 
                 // in case there are no rules (happens when chrome crashes, for example)
                 if (!Object.keys(DSWManager.rules).length) {
@@ -222,7 +322,8 @@ if (isInSWScope) {
                 // in case we want to enforce https
                 if (PWASettings.enforceSSL) {
                     if (url.protocol != 'https:' && url.hostname != 'localhost') {
-                        return event.respondWith(Response.redirect(
+                        DSWManager.traceStep(event.request, 'Redirected from http to https');
+                        return DSWManager.respondItWith(event, Response.redirect(
                             event.request.url.replace('http:', 'https:'), 302));
                     }
                 }
@@ -233,7 +334,15 @@ if (isInSWScope) {
                                                  DSWManager.rules['*']);
                 if (matchingRule) {
                     // if there is a rule that matches the url
-                    return event.respondWith(
+                    DSWManager.traceStep(
+                        event.request,
+                        'Best matching rule found: "' + matchingRule.rule.name + '"',
+                        {
+                            rule: matchingRule.rule,
+                            url: event.request.url
+                        });
+                    return DSWManager.respondItWith(
+                        event,
                         // we apply the right strategy for the matching rule
                         strategies[matchingRule.rule.strategy](
                             matchingRule.rule,
@@ -247,7 +356,7 @@ if (isInSWScope) {
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
-                    if (response && response.status == 200) {
+                    if (response && (response.type == 'opaque' || response.status == 200)) {
                         return response;
                     } else {
                         return DSWManager.treatBadPage(response, pathName, event);
@@ -255,7 +364,8 @@ if (isInSWScope) {
                 };
                 
                 // once no rule matched, we simply respond the event with a fetch
-                return event.respondWith(
+                return DSWManager.respondItWith(
+                        event,
                         fetch(goFetch(null, event.request))
                             // but we will still treat the rules that use the status
                             .then(defaultTreatment)
@@ -292,7 +402,61 @@ if (isInSWScope) {
     
     self.addEventListener('message', function(event) {
         // TODO: add support to message event
+        const ports = event.ports;
+        
+        if (event.data.trackPath) {
+            let tp = event.data.trackPath;
+            DSWManager.tracking[tp] = {
+                rx: new RegExp(tp, 'i'),
+                ports: ports
+            };
+            return;
+        }
     });
+    
+    self.addEventListener('push', function(event) {
+        console.log('Push message', event);
+
+        var title = 'Push message';
+
+        event.waitUntil(
+        self.registration.showNotification(title, {
+            'body': 'The Message',
+            'icon': 'images/icon.png'
+        }));
+    });
+    
+    // When user clicks/touches the notification, we shall close it and open
+    // or focus the web page
+    self.addEventListener('notificationclick', function(event) {
+        console.log('Notification click: tag', event.notification.tag);
+        event.notification.close();
+
+        var url = 'TODO';
+        
+        event.waitUntil(
+            // let's look for all windows(or frames) that are using our sw
+            clients.matchAll({
+                type: 'window'
+            }).then(function(windowClients) {
+                console.log('WindowClients', windowClients);
+                // and let's see if any of these is already our page
+                for (var i = 0; i < windowClients.length; i++) {
+                    var client = windowClients[i];
+                    console.log('WindowClient', client);
+                    // if it is, we simply focus it
+                    if (client.url === url && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // if it is not opened, we open it
+                if (clients.openWindow) {
+                    return clients.openWindow(url);
+                }
+            })
+        );
+    });
+
     
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event
@@ -302,6 +466,113 @@ if (isInSWScope) {
     DSWManager.startListening();
     
 }else{
+    
+    window.addEventListener('message', event=>{
+//        debugger;
+        console.log(event, 'something arrived');
+    });
+
+    DSW.trace = function (match, options, callback) {
+        
+        if (!callback && typeof options == 'function') {
+            callback = options;
+            options = {};
+        }
+        
+        var messageChannel = new MessageChannel();
+        messageChannel.port1.onmessage = function(event) {
+            callback(event.data);
+        };
+        navigator.serviceWorker
+            .controller
+            .postMessage({ trackPath: match }, [messageChannel.port2]);
+    };
+    
+    DSW.sendMessage = (message, waitForAnswer=false)=>{
+        return new Promise((resolve, reject)=>{
+            var messageChannel = new MessageChannel();
+            
+            // in case the user expects an answer from the SW after sending
+            // this message...
+            if (waitForAnswer) {
+                // we will wait for it, and then resolve or reject only when
+                // the SW has answered
+                messageChannel.port1.onmessage = function(event) {
+                    if (event.data.error) {
+                        reject(event.data.error);
+                    } else {
+                        resolve(event.data);
+                    }
+                };
+            } else {
+                // otherwise, we simply resolve it, after 10ms (just to use another flow)
+                setTimeout(resolve, 10);
+            }
+            navigator.serviceWorker
+                .controller
+                .postMessage(message, [messageChannel.channel.port2]);
+        });
+    };
+    
+    DSW.onNetworkStatusChange = callback=>{
+        let cb = function () {
+            callback(navigator.onLine);
+        };
+        window.addEventListener('online',  cb);
+        window.addEventListener('offline', cb);
+        // in case we are already offline, we will trigger now, the callback
+        // this way, fevelopers will know right away that their app has loaded
+        // offline
+        if(!navigator.onLine) {
+            cb();
+        }
+    };
+    DSW.offline = _=>{
+        return !navigator.onLine;
+    };
+    DSW.online = _=>{
+        return navigator.onLine;
+    };
+    
+    DSW.enableNotifications = _=>{
+        return new Promise((resolve, reject)=>{
+            if (navigator.onLine) {
+                navigator.serviceWorker.ready.then(function(reg) {
+                    let req = reg.pushManager.subscribe({
+                        userVisibleOnly: true
+                    });
+                    return req.then(function(sub) {
+                        resolve(sub);
+                    }).catch(reason=>{
+                        reject(reason || 'Not allowed by user');
+                    });
+                });
+            } else {
+                reject('Must be connected to enable notifications');
+            }
+        });
+    };
+    
+    DSW.notify = (title='Untitled', options={})=>{
+        return new Promise((resolve, reject)=>{
+            DSW.enableNotifications().then(_=>{
+                const opts = {
+                    body: options.body || '',
+                    icon: options.icon || false
+                };
+                let n = new Notification(title, opts);
+                if (options.duration) {
+                    setTimeout(_=>{
+                        n.close();
+                    }, options.duration * 1000);
+                }
+                resolve(n);
+            }).catch(reason=>{
+                reject(reason);
+            });
+        });
+    };
+    
     DSW.setup = config => {
         return new Promise((resolve, reject)=>{
             // opening on a page scope...let's install the worker
@@ -313,10 +584,22 @@ if (isInSWScope) {
                         .register(src)
                         .then(SW=>{
                             logger.info('Registered service worker');
+                        
+                            // setting up notifications
+                            if (PWASettings.notification && PWASettings.notification.auto) {
+                                navigator.serviceWorker.ready.then(function(reg) {
+                                    reg.pushManager.subscribe({
+                                        userVisibleOnly: true
+                                    }).then(function(sub) {
+                                        logger.info('Subscribed to notification server:', sub.endpoint);
+                                    });
+                                });
+                            }
+
                             if (config && config.sync) {
                                 if ('SyncManager' in window) {
                                     navigator.serviceWorker.ready.then(function(reg) {
-                                        return reg.sync.register('myFirstSync');
+                                        return reg.sync.register('syncr');
                                     })
                                     .then(_=>{
                                         resolve({
@@ -362,7 +645,7 @@ if (isInSWScope) {
                         });
 
                 }
-            }else{
+            } else {
                 reject({
                     status: false,
                     sync: false,
