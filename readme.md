@@ -17,7 +17,7 @@ If you are starting from scratch and want to see it working right away, you can 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-zrrauyeple.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-jmfnlolzjo.now.sh)
 
 ## Advantages
 
@@ -42,14 +42,10 @@ Or locally:
 
 ```npm install dsw --save-dev```
 
-## TL;DR
-
-Want to just see it working as fast as possible?<br/>
-Clone the project, go to its directory, install it and run `npm run try`
 
 ## Using it
 
-DSW will look for a file called `dswfile.json`. So:
+DSW will look for a file called `dswfile.json`, just like gulp or grunt. So:
 
 ```
 cd path-to-your-project
@@ -530,6 +526,11 @@ DSW.onNetworkStatusChange(function(connected){
 ```
 
 * This depends on browser support...some browser will say the device is online even though there is no internet connection, just because the device is connected to a private network(with a rounter).
+
+## Sandbox
+
+Want to just see it working as fast as possible?<br/>
+Clone the project, go to its directory, install it and run `npm run try`
 
 # Contributing
 
