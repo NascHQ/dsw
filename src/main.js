@@ -26,6 +26,7 @@ if (isInSWScope) {
     const DSWManager = {
         requestId: 0,
         tracking: {},
+        trackMoved: {},
         rules: {},
         addRule (sts, rule, rx) {
             this.rules[sts] = this.rules[sts] || [];
@@ -52,12 +53,20 @@ if (isInSWScope) {
                 .some((cur, idx)=>{
                     let matching = pathName.match(cur.rx);
                     if (matching) {
+                        if (cur.action.redirect && !cur.action.fetch) {
+                            cur.action.fetch = cur.action.fetch;
+                        }
                         if (cur.action.fetch) {
+                            DSWManager.traceStep(event.request, 'Found fallback rule', {
+                                rule: cur
+                            });
                             // not found requisitions should
                             // fetch a different resource
-                            logger.info('Found fallback rule for ', pathName, '\nLooking for its result');
+                            let req = new Request(cur.action.fetch);
+                            req.requestId = event.request.requestId;
+                            req.traceSteps = event.request.traceSteps;
                             result = cacheManager.get(cur,
-                                                      new Request(cur.action.fetch),
+                                                      req,
                                                       event,
                                                       matching);
                             return true; // stopping the loop
@@ -65,7 +74,7 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                logger.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
             }
             return result || response;
         },
@@ -209,7 +218,7 @@ if (isInSWScope) {
             return goFetch(null, request, event, matching);
         },
         
-        traceStep (request, step, data, fill=false) {
+        traceStep (request, step, data, fill=false, moved=false) {
             // if there are no tracking listeners, this request will not be tracked
             if (DSWManager.tracking) {
                 let id = request.requestId;
@@ -223,6 +232,9 @@ if (isInSWScope) {
                     data.referrer = request.referrer;
                 }
                 request.traceSteps.push({ step, data });
+                if (moved) {
+                    DSWManager.trackMoved[moved.url] = moved;
+                }
             }
         },
         
@@ -235,7 +247,7 @@ if (isInSWScope) {
                         let response = result.clone();
 
                         // then, if it has been tracked, let's tell the listeners
-                        if (DSWManager.tracking) {
+                        if (DSWManager.tracking && response.status != 302) {
                             response.text().then(result=>{
                                 // if the result is a string (text, html, etc)
                                 // we will preview only a small part of it
@@ -288,9 +300,16 @@ if (isInSWScope) {
             self.addEventListener('fetch', event=>{
                 
                 DSWManager.requestId = 1 + (DSWManager.requestId || 0);
-                event.request.requestId = DSWManager.requestId;
                 
-                DSWManager.traceStep(event.request, 'Arived in Service Worker', true);
+                if (DSWManager.trackMoved[event.request.url]) {
+                    let movedInfo = DSWManager.trackMoved[event.request.url];
+                    event.request.requestId = movedInfo.id;
+                    event.request.traceSteps = movedInfo.steps;
+                    delete DSWManager.trackMoved[event.request.url];
+                } else {
+                    event.request.requestId = DSWManager.requestId;
+                    DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
+                }
                 
                 // in case there are no rules (happens when chrome crashes, for example)
                 if (!Object.keys(DSWManager.rules).length) {
@@ -315,9 +334,13 @@ if (isInSWScope) {
                                                  DSWManager.rules['*']);
                 if (matchingRule) {
                     // if there is a rule that matches the url
-                    DSWManager.traceStep(event.request,
-                                         'Matched with rule ' + matchingRule.rule.name,
-                                         { rule: matchingRule.rule });
+                    DSWManager.traceStep(
+                        event.request,
+                        'Best matching rule found: "' + matchingRule.rule.name + '"',
+                        {
+                            rule: matchingRule.rule,
+                            url: event.request.url
+                        });
                     return DSWManager.respondItWith(
                         event,
                         // we apply the right strategy for the matching rule

@@ -155,6 +155,16 @@ var cacheManager = {
                         var opts = response.type == 'opaque' ? { mode: 'no-cors' } : {};
                         request = _utils2.default.createRequest(request, opts);
                         if (request.method != 'POST') {
+                            var cacheData = {};
+                            if (rule && rule.action && rule.action.cache) {
+                                cacheData = rule.action.cache;
+                            } else {
+                                cacheData = {
+                                    name: cacheId,
+                                    version: cacheId.split('::')[1]
+                                };
+                            }
+                            DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
                             cache.put(request, response.clone());
                         }
                         resolve(response);
@@ -174,6 +184,7 @@ var cacheManager = {
 
             if (!response) {
                 fetch(goFetch(null, request)).then(addIt).catch(function (err) {
+                    DSWManager.traceStep(event.request, 'Fetch failed');
                     _logger2.default.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                     reject(response);
                 });
@@ -246,26 +257,29 @@ var cacheManager = {
 
                         var treatResponse = function treatResponse(response) {
                             if (response.status >= 200 && response.status < 300) {
+                                DSWManager.traceStep(request, 'Request bypassed');
                                 return response;
                             } else {
-                                _logger2.default.info('Bypassed request for ', request.url, 'failed and was, therefore, ignored');
-                                return new Response(''); // ignored
+                                DSWManager.traceStep(request, 'Bypassed request failed and was ignored');
+                                var resp = new Response(''); // ignored
+                                return resp;
                             }
                         };
                         // here we will use a "raw" fetch, instead of goFetch, which would
                         // create a new Request and define propreties to it
-                        return fetch(event.request).then(treatResponse).catch(treatResponse);
+                        return fetch(goFetch(null, event.request)).then(treatResponse).catch(treatResponse);
                     } else {
                         // or of type 'ignore' (or anything else, actually)
                         // and we will simply output nothing, as if ignoring both the
                         // request and response
+                        DSWManager.traceStep(request, 'Bypassed request');
                         actionType = 'output';
                         rule.action[actionType] = '';
-                        _logger2.default.info('Bypassing request, outputing nothing out of it');
                     }
                 }
             case 'output':
                 {
+                    DSWManager.traceStep(request, 'Responding with string output', { output: (rule.action[actionType] + '').substring(0, 180) });
                     return new Response(_utils2.default.applyMatch(matching, rule.action[actionType]));
                 }
             case 'indexeddb':
@@ -275,16 +289,25 @@ var cacheManager = {
                         function treatFetch(response) {
                             if (response && response.status == 200) {
                                 // with success or not(saving it), we resolve it
-                                var done = function done(_) {
+                                var done = function done(err) {
+                                    if (err) {
+                                        DSWManager.traceStep(request, 'Could not save response into IndexedDB', { err: err });
+                                    } else {
+                                        DSWManager.traceStep(request, 'Response object saved into IndexedDB');
+                                    }
                                     resolve(response);
                                 };
-
                                 // store it in the indexedDB
                                 _indexeddbManager2.default.save(rule.name, response.clone(), request, rule).then(done).catch(done); // if failed saving, we still have the reponse to deliver
                             } else {
                                 // if it failed, we can look for a fallback
                                 url = request.url;
                                 pathName = new URL(url).pathname;
+                                DSWManager.traceStep(request, 'Fetch failed', {
+                                    url: request.url,
+                                    status: response.status,
+                                    statusText: response.statusText
+                                });
                                 return DSWManager.treatBadPage(response, pathName, event);
                             }
                         }
@@ -327,6 +350,7 @@ var cacheManager = {
                         if (expired && !forceFromCache) {
                             // in case it has expired, it resolves automatically
                             // with no results from cache
+                            DSWManager.traceStep(event.request, 'Cache was expired');
                             lookForCache = Promise.resolve();
                             _logger2.default.info('Cache expired for ', request.url);
                         } else {
@@ -338,10 +362,16 @@ var cacheManager = {
                         return lookForCache.then(function (result) {
                             // if it does not exist (cache could not be verified)
                             if (result && result.status != 200) {
+                                DSWManager.traceStep(event.request, 'Fetch failed', {
+                                    url: request.url,
+                                    status: result.status,
+                                    statusText: result.statusText
+                                });
                                 // if it has expired in cache, failed requests for
                                 // updates should return the previously cached data
                                 // even if it has expired
                                 if (expired) {
+                                    DSWManager.traceStep(request, 'Forcing ' + (expired ? 'expired ' : '') + 'result from cache');
                                     // the true argument flag means it should come from cache, anyways
                                     return cacheManager.get(rule, request, event, matching, true);
                                 }
@@ -351,6 +381,10 @@ var cacheManager = {
                                         // if a rule matched for the status and request
                                         // and it tries to fetch a different source
                                         if (cur.action.fetch || cur.action.redirect) {
+                                            DSWManager.traceStep(event.request, 'Found fallback for failure', {
+                                                rule: cur,
+                                                url: request.url
+                                            });
                                             // problematic requests should
                                             result = goFetch(rule, request, event, matching);
                                             return true; // stopping the loop
@@ -371,13 +405,28 @@ var cacheManager = {
                                     // when it comes from a redirect, we let the browser know about it
                                     // or else...we simply return the result itself
                                     if (request.url == event.request.url) {
+                                        DSWManager.traceStep(event.request, 'Result from cache', {
+                                            url: event.request.url
+                                        });
                                         return result;
                                     } else {
                                         // coming from a redirect
+                                        DSWManager.traceStep(event.request, 'Must redirect', {
+                                            from: event.request.url,
+                                            to: request.url
+                                        }, false, {
+                                            url: request.url,
+                                            id: request.requestId,
+                                            steps: request.traceSteps
+                                        });
                                         return Response.redirect(request.url, 302);
                                     }
                                 } else if (actionType == 'redirect') {
                                     // if this is supposed to redirect
+                                    DSWManager.traceStep(event.request, 'Must redirect', {
+                                        from: event.request.url,
+                                        to: request.url
+                                    });
                                     return Response.redirect(request.url, 302);
                                 } else {
                                     // this is a "normal" request, let's deliver it
@@ -385,10 +434,10 @@ var cacheManager = {
                                     // to allow browsers to understand redirects in case
                                     // it must be redirected later on
                                     var treatFetch = function treatFetch(response) {
-
                                         if (response.type == 'opaque') {
                                             // if it is a opaque response, let it go!
                                             if (rule.action.cache !== false) {
+                                                DSWManager.traceStep(event.request, 'Added to cache (opaque)');
                                                 return cacheManager.add(_utils2.default.createRequest(request, { mode: 'no-cors' }), cacheManager.mountCacheId(rule), response, rule);
                                             }
                                             return response;
@@ -400,9 +449,11 @@ var cacheManager = {
                                         // after retrieving it, we cache it
                                         // if it was ok
                                         if (response.status == 200) {
+                                            DSWManager.traceStep(event.request, 'Received result OK (200)');
                                             // if cache is not false, it will be added to cache
                                             if (rule.action.cache !== false) {
-                                                // and if it shall expire, let's schedule it!
+                                                // let's save it into cache
+                                                DSWManager.traceStep(event.request, 'Saving into cache');
                                                 return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
                                             } else {
                                                 return response;
@@ -410,8 +461,10 @@ var cacheManager = {
                                         } else {
                                             // if it had expired, but could not be retrieved
                                             // from network, let's give its cache a chance!
+                                            DSWManager.traceStep(event.request, 'Failed fetching');
                                             if (expired) {
                                                 _logger2.default.warn('Cache for ', request.url || request, 'had expired, but the updated version could not be retrieved from the network!\n', 'Delivering the outdated cached data');
+                                                DSWManager.traceStep(event.request, 'Used expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
                                                 return cacheManager.get(rule, request, event, matching, true);
                                             }
                                             // otherwise...let's see if there is a fallback
@@ -419,8 +472,11 @@ var cacheManager = {
                                             return DSWManager.treatBadPage(response, pathName, event);
                                         }
                                     };
-                                    return goFetch(rule, request, event, matching) // fetch(req, opts)
-                                    .then(treatFetch).catch(treatFetch);
+                                    DSWManager.traceStep(event.request, 'Must fetch', {
+                                        url: request.url,
+                                        method: request.method
+                                    });
+                                    return goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch);
                                 }
                             }
                         }); // end lookForCache
@@ -469,13 +525,18 @@ function goFetch(rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        return new Request(tmpUrl, {
+        var req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
             mode: sameOrigin ? 'cors' : 'no-cors',
             cache: 'default',
             redirect: 'manual'
         });
+
+        req.requestId = (event ? event.request : request).requestId;
+        req.traceSteps = (event ? event.request : request).traceSteps;
+
+        return req;
     }
 
     var actionType = Object.keys(rule.action)[0];
@@ -508,6 +569,9 @@ function goFetch(rule, request, event, matching) {
         reqConfig.mode = 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
+
+    request.requestId = (event ? event.request : request).requestId;
+    request.traceSteps = (event ? event.request : request).traceSteps;
 
     if (actionType == 'redirect') {
         // if this is supposed to redirect
@@ -827,6 +891,7 @@ if (isInSWScope) {
         var DSWManager = {
             requestId: 0,
             tracking: {},
+            trackMoved: {},
             rules: {},
             addRule: function addRule(sts, rule, rx) {
                 this.rules[sts] = this.rules[sts] || [];
@@ -850,17 +915,25 @@ if (isInSWScope) {
                 (DSWManager.rules[response && response.status ? response.status : 404] || []).some(function (cur, idx) {
                     var matching = pathName.match(cur.rx);
                     if (matching) {
+                        if (cur.action.redirect && !cur.action.fetch) {
+                            cur.action.fetch = cur.action.fetch;
+                        }
                         if (cur.action.fetch) {
+                            DSWManager.traceStep(event.request, 'Found fallback rule', {
+                                rule: cur
+                            });
                             // not found requisitions should
                             // fetch a different resource
-                            _logger2.default.info('Found fallback rule for ', pathName, '\nLooking for its result');
-                            result = _cacheManager2.default.get(cur, new Request(cur.action.fetch), event, matching);
+                            var req = new Request(cur.action.fetch);
+                            req.requestId = event.request.requestId;
+                            req.traceSteps = event.request.traceSteps;
+                            result = _cacheManager2.default.get(cur, req, event, matching);
                             return true; // stopping the loop
                         }
                     }
                 });
                 if (!result) {
-                    _logger2.default.info('No rules for failed request: ', pathName, '\nWill output the failure');
+                    _logger2.default.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
                 }
                 return result || response;
             },
@@ -1001,6 +1074,7 @@ if (isInSWScope) {
             },
             traceStep: function traceStep(request, step, data) {
                 var fill = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
+                var moved = arguments.length <= 4 || arguments[4] === undefined ? false : arguments[4];
 
                 // if there are no tracking listeners, this request will not be tracked
                 if (DSWManager.tracking) {
@@ -1015,6 +1089,9 @@ if (isInSWScope) {
                         data.referrer = request.referrer;
                     }
                     request.traceSteps.push({ step: step, data: data });
+                    if (moved) {
+                        DSWManager.trackMoved[moved.url] = moved;
+                    }
                 }
             },
             respondItWith: function respondItWith(event, response) {
@@ -1026,7 +1103,7 @@ if (isInSWScope) {
                             var response = result.clone();
 
                             // then, if it has been tracked, let's tell the listeners
-                            if (DSWManager.tracking) {
+                            if (DSWManager.tracking && response.status != 302) {
                                 response.text().then(function (result) {
                                     // if the result is a string (text, html, etc)
                                     // we will preview only a small part of it
@@ -1073,9 +1150,16 @@ if (isInSWScope) {
                 self.addEventListener('fetch', function (event) {
 
                     DSWManager.requestId = 1 + (DSWManager.requestId || 0);
-                    event.request.requestId = DSWManager.requestId;
 
-                    DSWManager.traceStep(event.request, 'Arived in Service Worker', true);
+                    if (DSWManager.trackMoved[event.request.url]) {
+                        var movedInfo = DSWManager.trackMoved[event.request.url];
+                        event.request.requestId = movedInfo.id;
+                        event.request.traceSteps = movedInfo.steps;
+                        delete DSWManager.trackMoved[event.request.url];
+                    } else {
+                        event.request.requestId = DSWManager.requestId;
+                        DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
+                    }
 
                     // in case there are no rules (happens when chrome crashes, for example)
                     if (!Object.keys(DSWManager.rules).length) {
@@ -1100,7 +1184,10 @@ if (isInSWScope) {
                     var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     if (matchingRule) {
                         // if there is a rule that matches the url
-                        DSWManager.traceStep(event.request, 'Matched with rule ' + matchingRule.rule.name, { rule: matchingRule.rule });
+                        DSWManager.traceStep(event.request, 'Best matching rule found: "' + matchingRule.rule.name + '"', {
+                            rule: matchingRule.rule,
+                            url: event.request.url
+                        });
                         return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));

@@ -19,13 +19,18 @@ function goFetch (rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        return new Request(tmpUrl, {
+        let req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
             mode: sameOrigin? 'cors': 'no-cors',
             cache: 'default',
             redirect: 'manual'
         });
+        
+        req.requestId = (event? event.request: request).requestId;
+        req.traceSteps = (event? event.request: request).traceSteps;
+        
+        return req;
     }
     
     let actionType = Object.keys(rule.action)[0];
@@ -58,6 +63,9 @@ function goFetch (rule, request, event, matching) {
         reqConfig.mode = 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
+    
+    request.requestId = (event? event.request: request).requestId;
+    request.traceSteps = (event? event.request: request).traceSteps;
     
     if (actionType == 'redirect') {
         // if this is supposed to redirect
