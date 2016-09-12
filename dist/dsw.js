@@ -253,7 +253,7 @@ var cacheManager = {
                         // it may be of type request
                         // and we will simple allow it to go ahead
                         // this also means we will NOT treat any result from it
-                        _logger2.default.info('Bypassing request, going for the network for', request.url);
+                        //logger.info('Bypassing request, going for the network for', request.url);
 
                         var treatResponse = function treatResponse(response) {
                             if (response.status >= 200 && response.status < 300) {
@@ -352,7 +352,7 @@ var cacheManager = {
                             // with no results from cache
                             DSWManager.traceStep(event.request, 'Cache was expired');
                             lookForCache = Promise.resolve();
-                            _logger2.default.info('Cache expired for ', request.url);
+                            //logger.info('Cache expired for ', request.url);
                         } else {
                             // if not expired, let's look for it!
                             lookForCache = caches.match(request);
@@ -907,6 +907,11 @@ if (isInSWScope) {
                 if (newRule.action.cache) {
                     // we will register it in the cacheManager
                     _cacheManager2.default.register(newRule);
+                } else {
+                    // if it is supposed NOT to cache
+                    if (newRule.action.cache === false) {
+                        newRule.strategy = 'online-first';
+                    }
                 }
                 return newRule;
             },
@@ -933,7 +938,8 @@ if (isInSWScope) {
                     }
                 });
                 if (!result) {
-                    _logger2.default.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
+                    DSWManager.traceStep(event.request, 'No fallback found. Request failed');
+                    //logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
                 }
                 return result || response;
             },
@@ -1521,36 +1527,40 @@ var strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        _logger2.default.info('offline first: Looking into cache for\n', request.url);
+        DSWManager.traceStep(request, 'Info: Using offline first strategy');
+        //logger.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
         // Will fetch it, and if there is a problem
         // will look for it in cache
+        DSWManager.traceStep(request, 'Info: Using online first strategy');
         function treatIt(response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        _logger2.default.info('Updated in cache: ', request.url);
+                        //logger.info('Updated in cache: ', request.url);
+                        DSWManager.traceStep(request, 'Updated cache');
                     });
                 }
-                _logger2.default.info('From network: ', request.url);
+                //logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching).then(function (result) {
                 // if failed to fetch and was not in cache, we look
                 // for a fallback response
                 var pathName = new URL(event.request.url).pathname;
-                if (result) {
-                    _logger2.default.info('From cache(after network failure): ', request.url);
-                }
+                //                    if(result){
+                //                        logger.info('From cache(after network failure): ', request.url);
+                //                    }
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
         }
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
+        DSWManager.traceStep(request, 'Info: Using fastest strategy');
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates
@@ -1575,7 +1585,7 @@ var strategies = {
                     if (rule.action.cache) {
                         // we will update the cache, in background
                         cacheManager.put(rule, request, response).then(function (_) {
-                            _logger2.default.info('Updated in cache (from fastest): ', request.url);
+                            //logger.info('Updated in cache (from fastest): ', request.url);
                         });
                     }
                 }

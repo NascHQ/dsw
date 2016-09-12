@@ -228,8 +228,7 @@ const cacheManager = {
                 // it may be of type request
                 // and we will simple allow it to go ahead
                 // this also means we will NOT treat any result from it
-                logger.info('Bypassing request, going for the network for',
-                             request.url);
+                //logger.info('Bypassing request, going for the network for', request.url);
                 
                 let treatResponse = function (response) {
                     if (response.status >= 200 && response.status < 300) {
@@ -336,7 +335,7 @@ const cacheManager = {
                     // with no results from cache
                     DSWManager.traceStep(event.request, 'Cache was expired');
                     lookForCache = Promise.resolve();
-                    logger.info('Cache expired for ', request.url);
+                    //logger.info('Cache expired for ', request.url);
                 } else{
                     // if not expired, let's look for it!
                     lookForCache = caches.match(request);
