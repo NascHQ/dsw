@@ -51,7 +51,7 @@ So:
 
 1) Go to your project's root directory and create the `dswfile.json`.
 
-```
+```bash
 cd path-to-your-project
 touch dswfile.json
 ```
@@ -61,19 +61,19 @@ You will use your prefered editor to make changes to this file later.
 2) Add this to your `index.html` file, in the `head` element:
 
 ```html
-    <link rel="manifest" href="/webapp-manifest.json" />
-    <meta name="theme-color" content="#color">
-    <script src="dsw.js"></script>
-    <script>
-        DSW.setup()
-            .then(function(){
-                // inform the user your page works offline, now!
-            })
-            .catch(function(){
-                // do something if the page will not work offline
-                // or if the current browser does not support it
-            });
-    </script>
+<link rel="manifest" href="/webapp-manifest.json" />
+<meta name="theme-color" content="#color">
+<script src="dsw.js"></script>
+<script>
+  DSW.setup()
+    .then(() => {
+      // inform the user your page works offline, now!
+    })
+    .catch(() => {
+      // do something if the page will not work offline
+      // or if the current browser does not support it
+    });
+</script>
 ```
 
 3) Now, for any change in your Dynamic Service Worker configuration, just run(in your project's root directory):
