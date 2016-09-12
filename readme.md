@@ -21,9 +21,10 @@ You can then go offline and reload the page to validate it.
 
 ## Advantages
 
-- Use of variables
+- Use of variables to build URLs and redirects
 - Different strategies (offline-first, online-first or fastest)
 - Easy-to-set rules for 404 pages, redirects, cache or use indexedDB, or outpus
+- Trace requests to debug your configuration, rules and filters
 - Decision over cache naming and versioning for each matching request
 - Many named rules (for future debugging tooling...I imagine we can have a lighthouse-like page for debugging your service workers and your rules)
 - Support for indexedDB
@@ -45,7 +46,10 @@ Or locally:
 
 ## Using it
 
-DSW will look for a file called `dswfile.json`, just like gulp or grunt. So:
+DSW will look for a file called `dswfile.json`, just like gulp or grunt do.<br/>
+So:
+
+1) Go to your project's root directory and create the `dswfile.json`.
 
 ```
 cd path-to-your-project
@@ -54,7 +58,7 @@ touch dswfile.json
 
 You will use your prefered editor to make changes to this file later.
 
-And now, you will add this to your `index.html` file, like so, in the `head` element:
+2) Add this to your `index.html` file, in the `head` element:
 
 ```html
     <link rel="manifest" href="/webapp-manifest.json" />
@@ -72,13 +76,19 @@ And now, you will add this to your `index.html` file, like so, in the `head` ele
     </script>
 ```
 
-Done! Now, for any change in your Dynamic Service Worker configuration, just run the `dsw` command line on your project.<br/>
-For ever new change or version, you will have to run `dsw` again, so it will generate the updated service worker file.<br/>
+3) Now, for any change in your Dynamic Service Worker configuration, just run(in your project's root directory):
+
+```dsw```
+
+You can also use `dsw path-to-your/project`.<br/>
+This will generate the `webapp.manifest` and `dsw.js` files in your project's root directory.
+
+4) For every new change or version, you will have to run `dsw` again, so it will generate the updated service worker file.<br/>
 This will create the `manifest` (if not there, already) and the `dsw.js` file.
 
 To do so, if you installed it globally:
 
-```dsw path-to-your-project```
+```dsw path-to-your/project```
 
 If you installed locally, though:
 
@@ -87,8 +97,6 @@ If you installed locally, though:
 This second example is specially useful if you intend to run it in a stand alone project or want to trigger it using a script in your `package.json` file.
 
 From now on, let's work as if you had installed it globally in our examples.
-
-You will notice a `dsw.js` file that has been created in your project's root path.
 
 Now, let's set up your project's offline configuration.
 
@@ -246,6 +254,19 @@ Well, it uses the `cacheApi` to store as requests, only your keys. When you try 
 
 This way, you can access the information in your IndexedDB by yourself, while your requests will automatically deal with it, too.
 
+### Tracing and debugging
+
+Yes, you can debug your configuration and trace requests!<br/>
+The API for that is quite simple and very powerful.
+
+```js
+DSW.trace('/some/matching-pattern', function(data){
+    console.log(data);
+});
+```
+
+This is it. Now, any request that matches `/some/matching-pattern` will be sent to your callback function with all the trace information.<br/>
+This data includes all the steps and different states your requests have been through. This way you validate and debug your rules.
 
 # Examples
 
