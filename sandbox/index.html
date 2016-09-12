@@ -23,7 +23,7 @@
                     el.classList.add('offline-support');
                     el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
                     setTimeout(function(){
-                        //history.go(0);
+                        history.go(0);
                     }, 6000);
                 })
                 .catch(function(error){
