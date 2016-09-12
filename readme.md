@@ -33,6 +33,32 @@ You can then go offline and reload the page to validate it.
 - Client API with many possibilities
 - Support for opaque requests
 
+## Learning it
+
+Read the commented json configuration file: https://naschq.github.io/dsw/config-example.html
+- [How to install](https://github.com/NascHQ/dsw#installing-it)
+- [How to use it](https://github.com/NascHQ/dsw#using-it)
+ - [Matching requests](https://github.com/NascHQ/dsw#matching)
+ - [Request Strategies](https://github.com/NascHQ/dsw#strategy)
+ - [Possible actions for each request](https://github.com/NascHQ/dsw#applying)
+    - [Caching requests](https://github.com/NascHQ/dsw#cache)
+    - [Storing in IndexedDB](https://github.com/NascHQ/dsw#indexeddb)
+    - [Tracing and debugging requests](https://github.com/NascHQ/dsw#tracing-and-debugging)
+- [Drops/examples](https://github.com/NascHQ/dsw#examples)
+  - [Treating 404 pages](https://github.com/NascHQ/dsw#treating-not-found-pages-404)
+  - [Treating 404 images](https://github.com/NascHQ/dsw#treating-not-found-images-404)
+  - [Caching requests](https://github.com/NascHQ/dsw#caching-data)
+  - [Uncacheable rules](https://github.com/NascHQ/dsw#dealing-with-cache-exceptionscache-false)
+  - [Redirecting requests](https://github.com/NascHQ/dsw#redirecting-an-url)
+  - [Using variables in redirects](https://github.com/NascHQ/dsw#using-variables)
+  - [Caching everything](https://github.com/NascHQ/dsw#caching-everything)
+  - [Caching static files](https://github.com/NascHQ/dsw#caching-your-static-files)
+  - [Bypassing requests](https://github.com/NascHQ/dsw#bypassing-requests)
+  - [Sending credentials](https://github.com/NascHQ/dsw#sending-credentials)
+  - [Using it programatically (require('dsw'))](https://github.com/NascHQ/dsw#using-it-programatically)
+  - [Client API](https://github.com/NascHQ/dsw#using-the-api)
+  - [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
+
 ## Installing it
 
 It's a Node.js program that you may install globally:
@@ -294,6 +320,27 @@ Add this to your `dswfile.js`:
 }
 ```
 
+#### Treating not found images (404)
+
+Add this to your `dswfile.js`:
+
+```js
+{
+    "dswVersion": 2.2,
+    "dswRules": {
+        "notFoundPages": {
+            "match": {
+                "status": [404],
+                "extension": ["png", "jpg", "jpeg", "gif"]
+            },
+            "apply": {
+            	"fetch": "/my-404-page.html"
+            }
+        }
+    }
+}
+```
+
 Create a `my-404-page.html` with any content.
 
 Now, access in your browser, first, the `index.html` file(so the service worker will be installed), then any url replacing the `index.html` string, and you will see your `my-404-page.html` instead.
@@ -438,19 +485,27 @@ Most of times you will want to cache all your static files, like _javascript_ fi
 }
 ```
 
-#### Sending credentials
+#### Bypassing requests
 
-In case you want to send credentials or other settings to fetch, you can use the `options` property.
+Some times you want to bypass some requests...this will cause DSW not to treat it even if it fails.
+When you use "request" for bypass value, it will execute the request and will not treat it.
+When you use "ignor" as the bypass value, it will not even request it...nothing will happen.
 
 ```js
 {
     "dswVersion": 2.2,
     "dswRules": {
-	"userData": {
-        "match": { "path": "\/api\/user\/.*" },
-        "options": { "credentials": "same-origin"},
-        "apply": {
-            // apply somethig
+        "byPassable": {
+            "match": { "path": "/bypass/" },
+            "apply": {
+                "bypass": "request"
+            }
+        },
+        "ignorable": {
+            "match": { "path": "/ignore/" },
+            "apply": {
+                "bypass": "ignore"
+            }
         }
     }
 }

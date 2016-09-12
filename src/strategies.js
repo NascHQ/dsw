@@ -16,7 +16,8 @@ const strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        logger.info('offline first: Looking into cache for\n', request.url);
+        DSWManager.traceStep(request, 'Info: Using offline first strategy');
+        //logger.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(
             rule,
             request,
@@ -27,15 +28,17 @@ const strategies = {
     'online-first': function onlineFirstStrategy (rule, request, event, matching) {
         // Will fetch it, and if there is a problem
         // will look for it in cache
+        DSWManager.traceStep(request, 'Info: Using online first strategy');
         function treatIt (response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(_=>{
-                        logger.info('Updated in cache: ', request.url);
+                        //logger.info('Updated in cache: ', request.url);
+                        DSWManager.traceStep(request, 'Updated cache');
                     });
                 }
-                logger.info('From network: ', request.url);
+                //logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching)
@@ -43,9 +46,9 @@ const strategies = {
                     // if failed to fetch and was not in cache, we look
                     // for a fallback response
                     const pathName = (new URL(event.request.url)).pathname;
-                    if(result){
-                        logger.info('From cache(after network failure): ', request.url);
-                    }
+//                    if(result){
+//                        logger.info('From cache(after network failure): ', request.url);
+//                    }
                     return result || DSWManager.treatBadPage(response, pathName, event);
                 });
         }
@@ -54,6 +57,7 @@ const strategies = {
             .catch(treatIt);
     },
     'fastest': function fastestStrategy (rule, request, event, matching) {
+        DSWManager.traceStep(request, 'Info: Using fastest strategy');
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates
@@ -78,7 +82,7 @@ const strategies = {
                     if (rule.action.cache) {
                         // we will update the cache, in background
                         cacheManager.put(rule, request, response).then(_=>{
-                            logger.info('Updated in cache (from fastest): ', request.url);
+                            //logger.info('Updated in cache (from fastest): ', request.url);
                         });
                     }
                 }

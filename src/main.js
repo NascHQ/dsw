@@ -42,6 +42,11 @@ if (isInSWScope) {
             if (newRule.action.cache) {
                 // we will register it in the cacheManager
                 cacheManager.register(newRule);
+            } else {
+                // if it is supposed NOT to cache
+                if (newRule.action.cache === false) {
+                    newRule.strategy = 'online-first';
+                }
             }
             return newRule;
         },
@@ -74,7 +79,8 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
+                DSWManager.traceStep(event.request, 'No fallback found. Request failed');
+                //logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
             }
             return result || response;
         },
