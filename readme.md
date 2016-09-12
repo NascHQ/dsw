@@ -17,7 +17,7 @@ If you are starting from scratch and want to see it working right away, you can 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-jmfnlolzjo.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-jxhxbuvhpi.now.sh)
 
 ## Advantages
 
@@ -43,7 +43,6 @@ Or locally:
 
 ```npm install dsw --save-dev```
 
-
 ## Using it
 
 DSW will look for a file called `dswfile.json`, just like gulp or grunt do.<br/>
@@ -68,6 +67,7 @@ You will use your prefered editor to make changes to this file later.
   DSW.setup()
     .then(() => {
       // inform the user your page works offline, now!
+      // maybe, consider reloading the page automaticaly
     })
     .catch(() => {
       // do something if the page will not work offline
