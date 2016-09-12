@@ -51,7 +51,7 @@ Clone the project, go to its directory, install it and run `npm run try`
 
 DSW will look for a file called `dswfile.json`. So:
 
-```
+```bash
 cd path-to-your-project
 touch dswfile.json
 ```
@@ -61,19 +61,19 @@ You will use your prefered editor to make changes to this file later.
 And now, you will add this to your `index.html` file, like so, in the `head` element:
 
 ```html
-    <link rel="manifest" href="/webapp-manifest.json" />
-    <meta name="theme-color" content="#color">
-    <script src="dsw.js"></script>
-    <script>
-        DSW.setup()
-            .then(function(){
-                // inform the user your page works offline, now!
-            })
-            .catch(function(){
-                // do something if the page will not work offline
-                // or if the current browser does not support it
-            });
-    </script>
+<link rel="manifest" href="/webapp-manifest.json" />
+<meta name="theme-color" content="#color">
+<script src="dsw.js"></script>
+<script>
+  DSW.setup()
+    .then(() => {
+      // inform the user your page works offline, now!
+    })
+    .catch(() => {
+      // do something if the page will not work offline
+      // or if the current browser does not support it
+    });
+</script>
 ```
 
 Done! Now, for any change in your Dynamic Service Worker configuration, just run the `dsw` command line on your project.<br/>
