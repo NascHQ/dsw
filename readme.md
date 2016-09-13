@@ -67,7 +67,7 @@ It's a Node.js program that you may install globally:
 
 Or locally:
 
-```npm install dsw --save-dev```
+```npm install dsw --save```
 
 ## Using it
 
@@ -104,7 +104,9 @@ You will use your prefered editor to make changes to this file later.
 
 3) Now, for any change in your Dynamic Service Worker configuration, just run(in your project's root directory):
 
-```dsw```
+```
+dsw
+```
 
 You can also use `dsw path-to-your/project`.<br/>
 This will generate the `webapp.manifest` and `dsw.js` files in your project's root directory.
