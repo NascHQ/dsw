@@ -269,13 +269,20 @@ if (isInSWScope) {
                                             status: response.status,
                                             statusText: response.statusText,
                                             type: response.type,
+                                            method: response.method,
                                             url: response.url,
                                         },
                                         preview: result
                                     }, true);
                                 let tracker;
                                 let traceBack = (port, key)=>{
-                                    port.postMessage(event.request.traceSteps);
+                                    // sending the trace information back to client
+                                    port.postMessage({
+                                        id: event.request.requestId,
+                                        src: event.request.traceSteps[0].data.url,
+                                        method: event.request.traceSteps[0].data.method,
+                                        steps: event.request.traceSteps
+                                    });
                                 };
                                 for(tracker in DSWManager.tracking) {
                                     if (event.request.url.match(tracker)) {
@@ -650,6 +657,17 @@ if (isInSWScope) {
                             });
                         });
 
+                } else {
+                    // service worker was already registered and is active
+                    // setting up traceable requests
+                    if (config.trace) {
+                        navigator.serviceWorker.ready.then(function(reg) {
+                            let match;
+                            for(match in config.trace){
+                                DSW.trace(match, config.trace[match]);
+                            }
+                        });
+                    }
                 }
             } else {
                 reject({

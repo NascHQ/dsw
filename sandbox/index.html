@@ -16,24 +16,30 @@
 
         <script src="dsw.js"></script>
         <script>
-            DSW.setup()
-                .then(function(result){
-                    var el = document.getElementById('offline-support-message');
-                    el.classList.add('offline-support');
-                    el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
-                    setTimeout(function(){
-                        history.go(0);
-                    }, 6000);
-                })
-                .catch(function(error){
-                    var el = document.getElementById('offline-support-message');
-                    el.innerHTML = 'Offline is not supported in this browser!';
-                    el.classList.add('no-offline-support');
-                    setTimeout(function(){
-                        el.classList.remove('no-offline-support');
-                    }, 6000);
-                    console.warn(error);
-                });
+            DSW.setup({
+                trace: {
+                    "\/image\/": function (traceData) {
+                        console.log(traceData);
+                    }
+                }
+            })
+            .then(function(result){
+                var el = document.getElementById('offline-support-message');
+                el.classList.add('offline-support');
+                el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
+                setTimeout(function(){
+                    history.go(0);
+                }, 6000);
+            })
+            .catch(function(error){
+                var el = document.getElementById('offline-support-message');
+                el.innerHTML = 'Offline is not supported in this browser!';
+                el.classList.add('no-offline-support');
+                setTimeout(function(){
+                    el.classList.remove('no-offline-support');
+                }, 6000);
+                console.warn(error);
+            });
         </script>
 
     </head>
@@ -109,6 +115,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-img-1">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L74-L83"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card left blue">
@@ -135,6 +144,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-img-2">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L43-L51"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card right red">
@@ -160,6 +172,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-img-3">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L52-L59"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card left green">
@@ -185,6 +200,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-img-4">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L68-L73"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             <div class="card right orange">
                 <div class="test-container">
@@ -209,6 +227,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-5-page">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L60-L67"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card left blue">
@@ -236,6 +257,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-6-data">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L116-L137"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card right red">
@@ -264,6 +288,9 @@
                     </div>
                 </div>
                 <div class="run-test-btn" id="btn-7-page">➤ Run test</div>
+                <a href="https://github.com/NascHQ/dsw/blob/master/sandbox/dswfile.json#L37-L42"
+                   class="run-test-btn see-rule-btn"
+                   target="dsw-rule">≡ See rule</a>
             </div>
             
             <div class="card left green">
