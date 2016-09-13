@@ -55,6 +55,7 @@
   "dependencies": {
     "commander": "^2.9.0",
     "eslint": "^3.0.1",
-    "http-server": "latest"
+    "http-server": "latest",
+    "node-fetch": "^1.6.1"
   }
 }
