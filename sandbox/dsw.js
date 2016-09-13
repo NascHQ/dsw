@@ -1072,7 +1072,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = {};
+var DSW = { version: '1.9.3' };
 var REQUEST_TIME_LIMIT = 5000;
 
 // this try/catch is used simply to figure out the current scope

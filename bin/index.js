@@ -21,3 +21,8 @@ program
     .parse(process.argv);
 
 dsw.generate(program.args[0], program);
+
+setTimeout(_=>{
+    // let's just show a line saying we have finished it
+    console.log('\n', (new Array(68)).join('-'), '\n');
+}, 1000);

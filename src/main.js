@@ -10,7 +10,7 @@ import goFetch from './go-fetch.js';
 import strategies from './strategies.js';
 import utils from './utils.js';
 
-const DSW = {};
+const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 const REQUEST_TIME_LIMIT = 5000;
 
 // this try/catch is used simply to figure out the current scope
