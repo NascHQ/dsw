@@ -103,6 +103,12 @@
                 }
             }
         },
+        
+        
+     
+        
+        
+        
         "videos": {
             "match": { "path": "/videos/" },
             "strategy": "offline-first",

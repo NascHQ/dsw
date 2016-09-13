@@ -103,6 +103,12 @@ const PWASettings = {
                 }
             }
         },
+        
+        
+     
+        
+        
+        
         "videos": {
             "match": { "path": "/videos/" },
             "strategy": "offline-first",
@@ -306,18 +312,36 @@ var cacheManager = {
                         // adding to cache
                         var opts = response.type == 'opaque' ? { mode: 'no-cors' } : {};
                         request = _utils2.default.createRequest(request, opts);
+
                         if (request.method != 'POST') {
-                            var cacheData = {};
-                            if (rule && rule.action && rule.action.cache) {
-                                cacheData = rule.action.cache;
-                            } else {
-                                cacheData = {
-                                    name: cacheId,
-                                    version: cacheId.split('::')[1]
-                                };
-                            }
-                            DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
-                            cache.put(request, response.clone());
+                            (function () {
+                                var cacheData = {};
+                                if (rule && rule.action && rule.action.cache) {
+                                    cacheData = rule.action.cache;
+                                } else {
+                                    cacheData = {
+                                        name: cacheId,
+                                        version: cacheId.split('::')[1]
+                                    };
+                                }
+
+                                var clonedResponse = void 0;
+                                if (response.bodyUsed) {
+                                    // sometimes, due to different flows, the
+                                    // request body may have been already used
+                                    // In this case, we use cache.add instead
+                                    // of cache.put
+                                    cache.add(request).then(function (cached) {
+                                        DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
+                                    }).catch(function (err) {
+                                        _logger2.default.error('Could not save into cache', err);
+                                    });
+                                } else {
+                                    clonedResponse = response.clone();
+                                    DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
+                                    cache.put(request, clonedResponse);
+                                }
+                            })();
                         }
                         resolve(response);
                         // in case it is supposed to expire
@@ -326,7 +350,7 @@ var cacheManager = {
                             cacheManager.setExpiringTime(request, rule || cacheId, rule.action.cache.expires);
                         }
                     }).catch(function (err) {
-                        _logger2.default.error(err);
+                        _logger2.default.error('Could not save into cache', err);
                         resolve(response);
                     });
                 } else {
@@ -761,8 +785,12 @@ function getObjectStore(dbName) {
     var mode = arguments.length <= 1 || arguments[1] === undefined ? 'readwrite' : arguments[1];
 
     var db = dbs[dbName],
+        tx = void 0;
+    if (db) {
         tx = db.transaction(dbName, mode);
-    return tx.objectStore(dbName);
+        return tx.objectStore(dbName);
+    }
+    return false;
 }
 
 var indexedDBManager = {
@@ -841,7 +869,6 @@ var indexedDBManager = {
     },
     get: function get(dbName, request) {
         return new Promise(function (resolve, reject) {
-            var store = getObjectStore(dbName);
             // We will actuallly look for its IDs in cache, to use them to find
             // the real, complete object in the indexedDB
             caches.match(request).then(function (result) {
@@ -851,20 +878,26 @@ var indexedDBManager = {
                         // the id=value for the indexes(keys) to look for,
                         // in the indexedDB!
                         var store = getObjectStore(dbName),
-                            index = store.index(obj.key),
-                            getter = index.get(obj.value);
+                            index = store ? store.index(obj.key) : false,
+                            getter = index ? index.get(obj.value) : false;
                         // in case we did get the content from indexedDB
                         // let's create a new Response out of it!
-                        getter.onsuccess = function (event) {
-                            resolve(new Response(JSON.stringify(event.target.result), {
-                                headers: { 'Content-Type': 'application/json' }
-                            }));
-                        };
-                        getter.onerror = function (event) {
-                            // if we did not find it (or faced a problem) in
-                            // indexeddb, we leave it to the network
+                        if (getter) {
+                            getter.onsuccess = function (event) {
+                                resolve(new Response(JSON.stringify(event.target.result), {
+                                    headers: { 'Content-Type': 'application/json' }
+                                }));
+                            };
+                            getter.onerror = function (event) {
+                                // if we did not find it (or faced a problem) in
+                                // indexeddb, we leave it to the network
+                                resolve();
+                            };
+                        } else {
+                            // in case it failed for some reason
+                            // we leave it and allow it to be requested
                             resolve();
-                        };
+                        }
                     });
                 } else {
                     resolve();
@@ -876,29 +909,38 @@ var indexedDBManager = {
 
     find: function find(dbName, key, value) {
         return new Promise(function (resolve, reject) {
-            var store = getObjectStore(dbName),
-                index = store.index(key),
-                getter = index.get(value);
+            var store = getObjectStore(dbName);
 
-            getter.onsuccess = function (event) {
-                resolve(event.target.result);
-            };
-            getter.onerror = function (event) {
-                reject();
-            };
+            if (store) {
+                var index = store.index(key),
+                    getter = index.get(value);
+
+                getter.onsuccess = function (event) {
+                    resolve(event.target.result);
+                };
+                getter.onerror = function (event) {
+                    reject();
+                };
+            } else {
+                resolve();
+            }
         });
     },
 
     addOrUpdate: function addOrUpdate(obj, dbName) {
         return new Promise(function (resolve, reject) {
             var store = getObjectStore(dbName);
-            var req = store.put(obj);
-            req.onsuccess = function addOrUpdateSuccess() {
-                resolve(obj);
-            };
-            req.onerror = function addOrUpdateError(err) {
-                resolve(obj);
-            };
+            if (store) {
+                var req = store.put(obj);
+                req.onsuccess = function addOrUpdateSuccess() {
+                    resolve(obj);
+                };
+                req.onerror = function addOrUpdateError(err) {
+                    resolve(obj);
+                };
+            } else {
+                resolve({});
+            }
         });
     },
     save: function save(dbName, data, request, rule) {
@@ -909,24 +951,28 @@ var indexedDBManager = {
                 var store = getObjectStore(dbName),
                     req = void 0;
 
-                req = store.add(obj);
+                if (store) {
+                    req = store.add(obj);
 
-                // We will use the CacheAPI to store, in cache, only the IDs for
-                // the given object
-                req.onsuccess = function () {
-                    var tmp = {};
-                    var key = rule.action.indexedDB.key || 'id';
-                    tmp.key = key;
-                    tmp.value = obj[key];
+                    // We will use the CacheAPI to store, in cache, only the IDs for
+                    // the given object
+                    req.onsuccess = function () {
+                        var tmp = {};
+                        var key = rule.action.indexedDB.key || 'id';
+                        tmp.key = key;
+                        tmp.value = obj[key];
 
-                    cacheManager.put(INDEXEDDB_REQ_IDS, request, new Response(JSON.stringify(tmp), {
-                        headers: { 'Content-Type': 'application/json' }
-                    }));
-                    resolve();
-                };
-                req.onerror = function (event) {
-                    reject('Failed saving to the indexedDB!', this.error);
-                };
+                        cacheManager.put(INDEXEDDB_REQ_IDS, request, new Response(JSON.stringify(tmp), {
+                            headers: { 'Content-Type': 'application/json' }
+                        }));
+                        resolve();
+                    };
+                    req.onerror = function (event) {
+                        reject('Failed saving to the indexedDB!', this.error);
+                    };
+                } else {
+                    reject('Failed saving into indexedDB!');
+                }
             }).catch(function (err) {
                 _logger2.default.error('Failed saving into indexedDB!\n', err.message, err);
                 reject('Failed saving into indexedDB!');
@@ -1273,13 +1319,20 @@ if (isInSWScope) {
                                             status: response.status,
                                             statusText: response.statusText,
                                             type: response.type,
+                                            method: response.method,
                                             url: response.url
                                         },
                                         preview: result
                                     }, true);
                                     var tracker = void 0;
                                     var traceBack = function traceBack(port, key) {
-                                        port.postMessage(event.request.traceSteps);
+                                        // sending the trace information back to client
+                                        port.postMessage({
+                                            id: event.request.requestId,
+                                            src: event.request.traceSteps[0].data.url,
+                                            method: event.request.traceSteps[0].data.method,
+                                            steps: event.request.traceSteps
+                                        });
                                     };
                                     for (tracker in DSWManager.tracking) {
                                         if (event.request.url.match(tracker)) {
@@ -1630,6 +1683,17 @@ if (isInSWScope) {
                             error: err
                         });
                     });
+                } else {
+                    // service worker was already registered and is active
+                    // setting up traceable requests
+                    if (config.trace) {
+                        navigator.serviceWorker.ready.then(function (reg) {
+                            var match = void 0;
+                            for (match in config.trace) {
+                                DSW.trace(match, config.trace[match]);
+                            }
+                        });
+                    }
                 }
             } else {
                 reject({
@@ -1746,7 +1810,6 @@ var strategies = {
                 if (!cacheTreated) {
                     // if it downloaded well, we use it (probably the first access)
                     if (response.status == 200) {
-                        _logger2.default.log('fastest strategy: loaded from network', request.url);
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
                         resolve(response);
@@ -1763,7 +1826,6 @@ var strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    _logger2.default.log('fastest strategy: loaded from cache', request.url);
                     resolve(result);
                     return result;
                 } else {

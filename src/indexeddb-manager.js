@@ -6,8 +6,12 @@ var cacheManager;
 
 function getObjectStore(dbName, mode='readwrite') {
     let db = dbs[dbName],
+        tx;
+    if (db) {
         tx = db.transaction(dbName, mode);
-    return tx.objectStore(dbName);
+        return tx.objectStore(dbName);
+    }
+    return false;
 }
 
 const indexedDBManager = {
@@ -91,7 +95,6 @@ const indexedDBManager = {
     
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
-            let store = getObjectStore(dbName);
             // We will actuallly look for its IDs in cache, to use them to find
             // the real, complete object in the indexedDB
             caches.match(request)
@@ -102,22 +105,28 @@ const indexedDBManager = {
                             // the id=value for the indexes(keys) to look for,
                             // in the indexedDB!
                             let store = getObjectStore(dbName),
-                                index = store.index(obj.key),
-                                getter = index.get(obj.value);
+                                index = store? store.index(obj.key) : false,
+                                getter = index? index.get(obj.value) : false;
                             // in case we did get the content from indexedDB
                             // let's create a new Response out of it!
-                            getter.onsuccess = event=>{
-                                resolve(new Response(JSON.stringify(event.target.result),
-                                    {
-                                        headers: { 'Content-Type' : 'application/json' }
-                                    })
-                                );
-                            };
-                            getter.onerror = event=>{
-                                // if we did not find it (or faced a problem) in
-                                // indexeddb, we leave it to the network
+                            if (getter) {
+                                getter.onsuccess = event=>{
+                                    resolve(new Response(JSON.stringify(event.target.result),
+                                        {
+                                            headers: { 'Content-Type' : 'application/json' }
+                                        })
+                                    );
+                                };
+                                getter.onerror = event=>{
+                                    // if we did not find it (or faced a problem) in
+                                    // indexeddb, we leave it to the network
+                                    resolve();
+                                };
+                            }else{
+                                // in case it failed for some reason
+                                // we leave it and allow it to be requested
                                 resolve();
-                            };
+                            }
                         });
                     }else{
                         resolve();
@@ -128,29 +137,38 @@ const indexedDBManager = {
     
     find: (dbName, key, value)=>{
         return new Promise((resolve, reject)=>{
-            let store = getObjectStore(dbName),
-                index = store.index(key),
-                getter = index.get(value);
+            let store = getObjectStore(dbName);
             
-            getter.onsuccess = event=>{
-                resolve(event.target.result);
-            };
-            getter.onerror = event=>{
-                reject();
-            };
+            if (store) {
+                let index = store.index(key),
+                    getter = index.get(value);
+
+                getter.onsuccess = event=>{
+                    resolve(event.target.result);
+                };
+                getter.onerror = event=>{
+                    reject();
+                };
+            }else{
+                resolve();
+            }
         });
     },
     
     addOrUpdate (obj, dbName) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            let req = store.put(obj);
-            req.onsuccess = function addOrUpdateSuccess () {
-                resolve(obj);
-            };
-            req.onerror = function addOrUpdateError (err) {
-                resolve(obj);
-            };
+            if (store) {
+                let req = store.put(obj);
+                req.onsuccess = function addOrUpdateSuccess () {
+                    resolve(obj);
+                };
+                req.onerror = function addOrUpdateError (err) {
+                    resolve(obj);
+                };
+            } else {
+                resolve({});
+            }
         });
     },
     
@@ -162,28 +180,32 @@ const indexedDBManager = {
                 let store = getObjectStore(dbName),
                     req;
                 
-                req = store.add(obj);
-                
-                // We will use the CacheAPI to store, in cache, only the IDs for
-                // the given object
-                req.onsuccess = function () {
-                    let tmp = {};
-                    let key = rule.action.indexedDB.key || 'id';
-                    tmp.key = key;
-                    tmp.value = obj[key];
-                    
-                    cacheManager.put(INDEXEDDB_REQ_IDS,
-                        request,
-                        new Response(JSON.stringify(tmp),
-                            {
-                                headers: { 'Content-Type' : 'application/json' }
-                            })
-                    );
-                    resolve();
-                };
-                req.onerror = function(event) {
-                    reject('Failed saving to the indexedDB!', this.error);
-                };
+                if (store) {
+                    req = store.add(obj);
+
+                    // We will use the CacheAPI to store, in cache, only the IDs for
+                    // the given object
+                    req.onsuccess = function () {
+                        let tmp = {};
+                        let key = rule.action.indexedDB.key || 'id';
+                        tmp.key = key;
+                        tmp.value = obj[key];
+
+                        cacheManager.put(INDEXEDDB_REQ_IDS,
+                            request,
+                            new Response(JSON.stringify(tmp),
+                                {
+                                    headers: { 'Content-Type' : 'application/json' }
+                                })
+                        );
+                        resolve();
+                    };
+                    req.onerror = function(event) {
+                        reject('Failed saving to the indexedDB!', this.error);
+                    };
+                } else {
+                    reject('Failed saving into indexedDB!');
+                }
             }).catch(err=>{
                 logger.error('Failed saving into indexedDB!\n', err.message, err);
                 reject('Failed saving into indexedDB!');

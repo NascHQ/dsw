@@ -91,7 +91,6 @@ const strategies = {
                 if (!cacheTreated) {
                     // if it downloaded well, we use it (probably the first access)
                     if (response.status == 200) {
-                        logger.log('fastest strategy: loaded from network', request.url);
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
                         resolve(response);
@@ -108,7 +107,6 @@ const strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    logger.log('fastest strategy: loaded from cache', request.url);
                     resolve(result);
                     return result;
                 } else {

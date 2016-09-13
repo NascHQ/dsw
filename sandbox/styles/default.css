@@ -41,9 +41,17 @@ a {
     cursor: pointer;
 }
 
+.card .see-rule-btn {
+    margin: 0 0 0 100px;
+}
+
 .card.left .run-test-btn {
     left: auto;
     right: 1rem;
+}
+
+.card.left .see-rule-btn {
+    margin: 0 100px 0 0;
 }
 
 #offline-support-message {

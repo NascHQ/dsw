@@ -115,6 +115,7 @@ const cacheManager = {
                         // adding to cache
                         let opts = response.type == 'opaque'? { mode: 'no-cors' } : {};
                         request = utils.createRequest(request, opts);
+                        
                         if (request.method != 'POST') {
                             let cacheData = {};
                             if (rule && rule.action && rule.action.cache) {
@@ -125,12 +126,31 @@ const cacheManager = {
                                     version: cacheId.split('::')[1]
                                 };
                             }
-                            DSWManager.traceStep(
-                                request,
-                                'Added to cache',
-                                { cacheData }
-                            );
-                            cache.put(request, response.clone());
+                            
+                            let clonedResponse;
+                            if (response.bodyUsed) {
+                                // sometimes, due to different flows, the
+                                // request body may have been already used
+                                // In this case, we use cache.add instead
+                                // of cache.put
+                                cache.add(request).then(cached=>{
+                                    DSWManager.traceStep(
+                                        request,
+                                        'Added to cache',
+                                        { cacheData }
+                                    );
+                                }).catch(err=>{
+                                    logger.error('Could not save into cache', err);
+                                });
+                            } else {
+                                clonedResponse = response.clone();
+                                DSWManager.traceStep(
+                                    request,
+                                    'Added to cache',
+                                    { cacheData }
+                                );
+                                cache.put(request, clonedResponse);
+                            }
                         }
                         resolve(response);
                         // in case it is supposed to expire
@@ -143,7 +163,7 @@ const cacheManager = {
                                                          rule.action.cache.expires);
                         }
                     }).catch(err=>{
-                        logger.error(err);
+                        logger.error('Could not save into cache', err);
                         resolve(response);
                     });
                 } else {

@@ -170,7 +170,7 @@ While:
 ```js
 match: [
     { extension: ['html', 'htm'] },
-    { patch: 'some-dir\/' }
+    { path: 'some-dir\/' }
 ]
 ```
 
