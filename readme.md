@@ -67,7 +67,7 @@ It's a Node.js program that you may install globally:
 
 Or locally:
 
-```npm install dsw --save-dev```
+```npm install dsw --save```
 
 ## Using it
 
