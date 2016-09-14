@@ -1066,7 +1066,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.9.3' };
+var DSW = { version: '1.9.4' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 
@@ -1166,6 +1166,16 @@ if (isInSWScope) {
 
                         // in case "match" is an array
                         // we will treat it as an "OR"
+
+                        if (!heuristic.match.length || !Object.keys(heuristic.match).length) {
+                            // if there is nothing to match...we do nothing
+                            return;
+                        }
+                        if (!Object.keys(heuristic.match).length) {
+                            // if there is nothing to apply, we do nothing with it, either
+                            return;
+                        }
+
                         if (Array.isArray(heuristic.match)) {
                             extensions = [];
                             path = [];
@@ -1305,6 +1315,9 @@ if (isInSWScope) {
                 event.respondWith(new Promise(function (resolve, reject) {
                     if (typeof response.then == 'function') {
                         response.then(function (result) {
+                            if (typeof result.clone != 'function') {
+                                return resolve(result);
+                            }
                             var response = result.clone();
 
                             // then, if it has been tracked, let's tell the listeners

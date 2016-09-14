@@ -1014,6 +1014,16 @@ if (isInSWScope) {
 
                         // in case "match" is an array
                         // we will treat it as an "OR"
+
+                        if (!heuristic.match.length || !Object.keys(heuristic.match).length) {
+                            // if there is nothing to match...we do nothing
+                            return;
+                        }
+                        if (!Object.keys(heuristic.match).length) {
+                            // if there is nothing to apply, we do nothing with it, either
+                            return;
+                        }
+
                         if (Array.isArray(heuristic.match)) {
                             extensions = [];
                             path = [];
@@ -1153,6 +1163,9 @@ if (isInSWScope) {
                 event.respondWith(new Promise(function (resolve, reject) {
                     if (typeof response.then == 'function') {
                         response.then(function (result) {
+                            if (typeof result.clone != 'function') {
+                                return resolve(result);
+                            }
                             var response = result.clone();
 
                             // then, if it has been tracked, let's tell the listeners
