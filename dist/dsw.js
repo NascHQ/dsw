@@ -916,6 +916,7 @@ var isInTest = typeof global.it === 'function';
 
 var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 var REQUEST_TIME_LIMIT = 5000;
+var REGISTRATION_TIMEOUT = 12000;
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -1102,7 +1103,13 @@ if (isInSWScope) {
                             return _cacheManager2.default.add(cur.url || cur, null, null, cur.rule);
                         }).concat(dbs.map(function (cur) {
                             return _cacheManager2.default.createDB(cur);
-                        }))).then(resolve);
+                        }))).then(function (_) {
+                            resolve();
+                        }).catch(function (err) {
+                            console.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
+                            //throw new Error('Aborting service worker installation');
+                            reject();
+                        });
                     } else {
                         resolve();
                     }
@@ -1264,6 +1271,7 @@ if (isInSWScope) {
             }
         };
 
+        var DSWStatus = false;
         self.addEventListener('activate', function (event) {
             event.waitUntil(function (_) {
                 var promises = [];
@@ -1271,8 +1279,12 @@ if (isInSWScope) {
                     promises.push(self.clients.claim());
                 }
                 promises.push(_cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches));
-                return Promise.all(promises);
-            });
+                return Promise.all(promises).then(function (_) {
+                    DSWManager.broadcast({ DSWStatus: DSWStatus });
+                }).catch(function (err) {
+                    DSWManager.broadcast({ DSWStatus: DSWStatus });
+                });
+            }());
         });
 
         self.addEventListener('install', function (event) {
@@ -1281,11 +1293,14 @@ if (isInSWScope) {
             PWASettings.dswVersion = PWASettings.version || PWASettings.dswVersion || '1';
 
             if (PWASettings.applyImmediately) {
-                event.waitUntil(self.skipWaiting().then(function (_) {
-                    return DSWManager.setup(PWASettings);
+                return event.waitUntil(DSWManager.setup(PWASettings).then(function (_) {
+                    DSWStatus = true;
+                    self.skipWaiting();
+                }).catch(function (_) {
+                    self.skipWaiting();
                 }));
             } else {
-                event.waitUntil(DSWManager.setup(PWASettings));
+                return event.waitUntil(DSWManager.setup(PWASettings));
             }
         });
 
@@ -1352,206 +1367,249 @@ if (isInSWScope) {
         DSWManager.startListening();
     })();
 } else {
+    (function () {
 
-    window.addEventListener('message', function (event) {
-        //        debugger;
-        console.log(event, 'something arrived');
-    });
-
-    DSW.trace = function (match, options, callback) {
-
-        if (!callback && typeof options == 'function') {
-            callback = options;
-            options = {};
-        }
-
-        var messageChannel = new MessageChannel();
-        messageChannel.port1.onmessage = function (event) {
-            callback(event.data);
+        DSW.status = {
+            registered: false,
+            sync: false,
+            appShell: false,
+            notification: false
         };
-        navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
-    };
 
-    DSW.sendMessage = function (message) {
-        var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+        var pendingResolve = void 0,
+            pendingReject = void 0,
+            registeredServiceWorker = void 0;
 
-        return new Promise(function (resolve, reject) {
-            var messageChannel = new MessageChannel();
-
-            // in case the user expects an answer from the SW after sending
-            // this message...
-            if (waitForAnswer) {
-                // we will wait for it, and then resolve or reject only when
-                // the SW has answered
-                messageChannel.port1.onmessage = function (event) {
-                    if (event.data.error) {
-                        reject(event.data.error);
+        navigator.serviceWorker.addEventListener('message', function (event) {
+            if (pendingResolve && event.data.DSWStatus !== void 0) {
+                if (registeredServiceWorker) {
+                    if (event.data.DSWStatus) {
+                        DSW.status.appShell = true;
+                        pendingResolve(DSW.status);
                     } else {
-                        resolve(event.data);
+                        DSW.status.appShell = false;
+                        pendingReject(DSW.status);
+                        registeredServiceWorker.unregister();
                     }
-                };
-            } else {
-                // otherwise, we simply resolve it, after 10ms (just to use another flow)
-                setTimeout(resolve, 10);
-            }
-            navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
-        });
-    };
-
-    DSW.onNetworkStatusChange = function (callback) {
-        var cb = function cb() {
-            callback(navigator.onLine);
-        };
-        window.addEventListener('online', cb);
-        window.addEventListener('offline', cb);
-        // in case we are already offline, we will trigger now, the callback
-        // this way, fevelopers will know right away that their app has loaded
-        // offline
-        if (!navigator.onLine) {
-            cb();
-        }
-    };
-    DSW.offline = function (_) {
-        return !navigator.onLine;
-    };
-    DSW.online = function (_) {
-        return navigator.onLine;
-    };
-
-    DSW.enableNotifications = function (_) {
-        return new Promise(function (resolve, reject) {
-            if (navigator.onLine) {
-                navigator.serviceWorker.ready.then(function (reg) {
-                    var req = reg.pushManager.subscribe({
-                        userVisibleOnly: true
-                    });
-                    return req.then(function (sub) {
-                        resolve(sub);
-                    }).catch(function (reason) {
-                        reject(reason || 'Not allowed by user');
-                    });
-                });
-            } else {
-                reject('Must be connected to enable notifications');
-            }
-        });
-    };
-
-    DSW.notify = function () {
-        var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
-        var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
-
-        return new Promise(function (resolve, reject) {
-            DSW.enableNotifications().then(function (_) {
-                var opts = {
-                    body: options.body || '',
-                    icon: options.icon || false
-                };
-                var n = new Notification(title, opts);
-                if (options.duration) {
-                    setTimeout(function (_) {
-                        n.close();
-                    }, options.duration * 1000);
                 }
-                resolve(n);
-            }).catch(function (reason) {
-                reject(reason);
-            });
+                pendingResolve = false;
+                pendingReject = false;
+            }
+            //console.log(event.data);
         });
-    };
 
-    DSW.setup = function (config) {
-        return new Promise(function (resolve, reject) {
-            // opening on a page scope...let's install the worker
-            if (navigator.serviceWorker) {
-                if (!navigator.serviceWorker.controller) {
-                    // we will use the same script, already loaded, for our service worker
-                    var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                    navigator.serviceWorker.register(src).then(function (SW) {
-                        _logger2.default.info('Registered service worker');
+        DSW.trace = function (match, options, callback) {
 
-                        // setting up notifications
-                        if (PWASettings.notification && PWASettings.notification.auto) {
-                            navigator.serviceWorker.ready.then(function (reg) {
-                                reg.pushManager.subscribe({
-                                    userVisibleOnly: true
-                                }).then(function (sub) {
-                                    _logger2.default.info('Subscribed to notification server:', sub.endpoint);
-                                });
-                            });
-                        }
+            if (!callback && typeof options == 'function') {
+                callback = options;
+                options = {};
+            }
 
-                        if (config && config.sync) {
-                            if ('SyncManager' in window) {
-                                navigator.serviceWorker.ready.then(function (reg) {
-                                    return reg.sync.register('syncr');
-                                }).then(function (_) {
-                                    resolve({
-                                        status: true,
-                                        sync: true,
-                                        sw: true
-                                    });
-                                }).catch(function (err) {
-                                    reject({
-                                        status: false,
-                                        sync: false,
-                                        sw: true,
-                                        message: 'Registered Service worker, but was unable to activate sync',
-                                        error: err
-                                    });
-                                });
-                            } else {
-                                reject({
-                                    status: false,
-                                    sync: false,
-                                    sw: true,
-                                    message: 'Registered Service worker, but was unable to activate sync',
-                                    error: null
-                                });
-                            }
+            var messageChannel = new MessageChannel();
+            messageChannel.port1.onmessage = function (event) {
+                callback(event.data);
+            };
+            navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
+        };
+
+        DSW.sendMessage = function (message) {
+            var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+            return new Promise(function (resolve, reject) {
+                var messageChannel = new MessageChannel();
+
+                // in case the user expects an answer from the SW after sending
+                // this message...
+                if (waitForAnswer) {
+                    // we will wait for it, and then resolve or reject only when
+                    // the SW has answered
+                    messageChannel.port1.onmessage = function (event) {
+                        if (event.data.error) {
+                            reject(event.data.error);
                         } else {
-                            resolve({
-                                status: true,
-                                sync: false,
-                                sw: true
-                            });
+                            resolve(event.data);
                         }
-                    }).catch(function (err) {
-                        reject({
-                            status: false,
-                            sync: false,
-                            sw: false,
-                            message: 'Failed registering service worker',
-                            error: err
+                    };
+                } else {
+                    // otherwise, we simply resolve it, after 10ms (just to use another flow)
+                    setTimeout(resolve, 10);
+                }
+                navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
+            });
+        };
+
+        DSW.onNetworkStatusChange = function (callback) {
+            var cb = function cb() {
+                callback(navigator.onLine);
+            };
+            window.addEventListener('online', cb);
+            window.addEventListener('offline', cb);
+            // in case we are already offline, we will trigger now, the callback
+            // this way, fevelopers will know right away that their app has loaded
+            // offline
+            if (!navigator.onLine) {
+                cb();
+            }
+        };
+        DSW.offline = function (_) {
+            return !navigator.onLine;
+        };
+        DSW.online = function (_) {
+            return navigator.onLine;
+        };
+
+        DSW.enableNotifications = function (_) {
+            return new Promise(function (resolve, reject) {
+                if (navigator.onLine) {
+                    navigator.serviceWorker.ready.then(function (reg) {
+                        var req = reg.pushManager.subscribe({
+                            userVisibleOnly: true
+                        });
+                        return req.then(function (sub) {
+                            resolve(sub);
+                        }).catch(function (reason) {
+                            reject(reason || 'Not allowed by user');
                         });
                     });
                 } else {
-                    // service worker was already registered and is active
-                    // setting up traceable requests
-                    if (config.trace) {
-                        navigator.serviceWorker.ready.then(function (reg) {
-                            var match = void 0;
-                            for (match in config.trace) {
-                                DSW.trace(match, config.trace[match]);
-                            }
-                        });
-                    }
+                    reject('Must be connected to enable notifications');
                 }
-            } else {
-                reject({
-                    status: false,
-                    sync: false,
-                    sw: false,
-                    message: 'Service Worker not supported',
-                    error: null
-                });
-            }
-        });
-    };
+            });
+        };
 
-    if (typeof window !== 'undefined') {
-        window.DSW = DSW;
-    }
+        DSW.notify = function () {
+            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
+            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+            return new Promise(function (resolve, reject) {
+                DSW.enableNotifications().then(function (_) {
+                    var opts = {
+                        body: options.body || '',
+                        icon: options.icon || false
+                    };
+                    var n = new Notification(title, opts);
+                    if (options.duration) {
+                        setTimeout(function (_) {
+                            n.close();
+                        }, options.duration * 1000);
+                    }
+                    resolve(n);
+                }).catch(function (reason) {
+                    reject(reason);
+                });
+            });
+        };
+
+        DSW.setup = function () {
+            var config = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+
+            return new Promise(function (resolve, reject) {
+                pendingResolve = resolve;
+                pendingReject = reject;
+
+                // opening on a page scope...let's install the worker
+                if (navigator.serviceWorker) {
+                    if (!navigator.serviceWorker.controller) {
+                        // rejects the registration after some time, if not resolved by then
+                        setTimeout(reject, config.timeout || REGISTRATION_TIMEOUT);
+
+                        // we will use the same script, already loaded, for our service worker
+                        var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                        navigator.serviceWorker.register(src).then(function (SW) {
+                            registeredServiceWorker = SW;
+                            DSW.status.registered = true;
+                            _logger2.default.info('Registered service worker');
+
+                            navigator.serviceWorker.ready.then(function (reg) {
+                                // setting up notifications
+                                if (PWASettings.notification && PWASettings.notification.auto) {
+                                    reg.pushManager.subscribe({
+                                        userVisibleOnly: true
+                                    }).then(function (sub) {
+                                        _logger2.default.info('Subscribed to notification server:', sub.endpoint);
+                                        DSW.status.notification = true;
+                                    });
+                                }
+
+                                if (config && config.sync) {
+                                    if ('SyncManager' in window) {
+                                        navigator.serviceWorker.ready.then(function (reg) {
+                                            return reg.sync.register('syncr');
+                                        }).then(function (_) {
+                                            DSW.status.sync = true;
+                                            //                                            resolve({
+                                            //                                                status: true,
+                                            //                                                sync: true,
+                                            //                                                sw: true
+                                            //                                            });
+                                        });
+                                        //                                        .catch(function(err) {
+                                        //                                            reject({
+                                        //                                                status: false,
+                                        //                                                sync: false,
+                                        //                                                sw: true,
+                                        //                                                message: 'Registered Service worker, but was unable to activate sync',
+                                        //                                                error: err
+                                        //                                            });
+                                        //                                        });
+                                    } else {
+                                        DSW.status.sync = 'Failed enabling sync';
+                                        //                                        reject({
+                                        //                                            status: false,
+                                        //                                            sync: false,
+                                        //                                            sw: true,
+                                        //                                            message: 'Registered Service worker, but was unable to activate sync',
+                                        //                                            error: null
+                                        //                                        });
+                                    }
+                                }
+                                //                                else {
+                                //                                    resolve({
+                                //                                        status: true,
+                                //                                        sync: false,
+                                //                                        sw: true
+                                //                                    });
+                                //                                }
+                            });
+                        }).catch(function (err) {
+                            reject({
+                                status: false,
+                                sync: false,
+                                sw: false,
+                                message: 'Failed registering service worker',
+                                error: err
+                            });
+                        });
+                    } else {
+                        // todo: remove it from the else statement and see if it works
+                        // service worker was already registered and is active
+                        // setting up traceable requests
+                        if (config.trace) {
+                            navigator.serviceWorker.ready.then(function (reg) {
+                                var match = void 0;
+                                for (match in config.trace) {
+                                    DSW.trace(match, config.trace[match]);
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    DSW.status.appShell = 'Service worker not supported';
+                    //                reject({
+                    //                    status: false,
+                    //                    sync: false,
+                    //                    sw: false,
+                    //                    message: 'Service Worker not supported',
+                    //                    error: null
+                    //                });
+                }
+            });
+        };
+
+        if (typeof window !== 'undefined') {
+            window.DSW = DSW;
+        }
+    })();
 }
 
 exports.default = DSW;
