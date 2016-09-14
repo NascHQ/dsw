@@ -62,7 +62,7 @@
                 "status": [404]
             },
             "apply": {
-                "fetch": "/404.html"
+                "fetch": "/not-found.html"
             }
         },
         "imageNotCached": {
@@ -103,12 +103,6 @@
                 }
             }
         },
-        
-        
-     
-        
-        
-        
         "videos": {
             "match": { "path": "/videos/" },
             "strategy": "offline-first",

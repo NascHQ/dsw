@@ -17,6 +17,7 @@
         <script src="dsw.js"></script>
         <script>
             DSW.setup({
+                timeout: 15000,
                 trace: {
                     "\/image\/": function (traceData) {
                         console.log(traceData);
@@ -26,19 +27,15 @@
             .then(function(result){
                 var el = document.getElementById('offline-support-message');
                 el.classList.add('offline-support');
-                el.innerHTML = 'Offline enabled<br/><sub>(Reloading the page)</sub>';
-                setTimeout(function(){
-                    history.go(0);
-                }, 6000);
+                el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
             })
-            .catch(function(error){
+            .catch(function(){
                 var el = document.getElementById('offline-support-message');
-                el.innerHTML = 'Offline is not supported in this browser!';
+                el.innerHTML = 'Offline support<br/>not installed';
                 el.classList.add('no-offline-support');
                 setTimeout(function(){
                     el.classList.remove('no-offline-support');
                 }, 6000);
-                console.warn(error);
             });
         </script>
 

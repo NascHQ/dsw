@@ -6,6 +6,6 @@
     "http-server": "*"
   },
   "scripts": {
-    "start": "http-server -p 80"
+    "start": "http-server"
   }
 }
