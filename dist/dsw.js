@@ -1015,7 +1015,7 @@ if (isInSWScope) {
                         // in case "match" is an array
                         // we will treat it as an "OR"
 
-                        if (!heuristic.match.length || !Object.keys(heuristic.match).length) {
+                        if (!heuristic.match.length && !Object.keys(heuristic.match).length) {
                             // if there is nothing to match...we do nothing
                             return;
                         }
