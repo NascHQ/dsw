@@ -1,161 +1,13 @@
 const PWASettings = {
     "dswVersion": 2.2,
     "applyImmediately": true,
-    "appShell": [
-        "/dsw.js",
-        "/helmet.png",
-        "/index.html?homescreen=1"
-    ],
-    "notification": {
-        "auto": false,
-        "server": "GCM",
-        "productId": "483627048705",
-        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
-    },
-    "enforceSSL": false,
-    "requestTimeLimit": 6000,
-    "keepUnusedCaches": false,
     "dswRules": {
-        "byPassable": {
-            "match": { "path": "/bypass/" },
-            "apply": {
-                "bypass": "request"
-            }
-        },
-        "ignorable": {
-            "match": { "path": "/ignore/" },
-            "apply": {
-                "bypass": "ignore"
-            }
-        },
-        "easterEgg": {
-            "match": { "path": "/easter-egg" },
-            "apply": {
-                "output": "You found an easter egg!!!"
-            }
-        },
-        "moved-pages": {
-            "match": { "path": "/old-site/(.*)" },
-            "apply": {
-                "redirect": "/redirected.html?$1"
-            }
-        },
-        "imageNotFound": {
-            "match": {
-                "status": [404, 500],
-                "extension": ["jpg", "gif", "png", "jpeg", "webp"]
-            },
-            "apply": {
-                "fetch": "/images/public/404.jpg"
-            }
-        },
-        "redirectOlderPage": {
-            "match": {
-                "path": "/legacy-images/.*"
-            },
-            "apply": {
-                "fetch": "/images/public/gizmo.jpg"
-            }
-        },
-        "pageNotFound": {
-            "match": {
-                "status": [404]
-            },
-            "apply": {
-                "fetch": "/404.html"
-            }
-        },
-        "imageNotCached": {
-            "match": { "path": "/images/not-cached" },
-            "apply": {
-                "cache": false
-            }
-        },
-        "images": {
-            "match": { "extension": ["jpg", "gif", "png", "jpeg", "webp"] },
-            "apply": {
-                "cache": {
-                    "name": "cachedImages",
-                    "version": "1",
-                    "expires": "1h"
-                }
-            }
-        },
-        "statics": {
-            "match": { "extension": ["js", "css"] },
-            "apply": {
-                "cache": {
-                    "name": "static-files",
-                    "version": "2"
-                }
-            }
-        },
-        "static-html": {
-            "match": [
-                { "extension": ["html"] },
-                { "path": "/$" }
-            ],
-            "strategy": "fastest",
-            "apply": {
-                "cache": {
-                    "name": "static-html-files",
-                    "version": "1"
-                }
-            }
-        },
-        
-        
-     
-        
-        
-        
-        "videos": {
-            "match": { "path": "/videos/" },
-            "strategy": "offline-first",
-            "apply": {
-                "cache": {
-                    "name": "cached-videos",
-                    "version": "1"
-                }
-            }
-        },
-        "userData": {
-            "match": { "path": "/api/user/.*" },
-            "options": { "credentials": "same-origin"},
-            "strategy": "offline-first",
-            "apply": {
-                "indexedDB": {
-                    "name": "userData",
-                    "version": "3",
-                    "key": "id",
-                    "indexes": [
-                        "name",
-                        {
-                            "name": "twitter",
-                            "path": "twitter",
-                            "options": {
-                                "unique": true
-                            }
-                        }
-                    ]
-                }
-            }
-        },
-        "service": {
-            "match": { "path": "/api/service/.*" },
-            "options": { "credentials": "same-origin"},
-            "strategy": "fastest",
-            "apply": {
-                "indexedDB": {
-                    "name": "serviceData",
-                    "version": "1",
-                    "indexes": ["id"]
-                }
-            }
+        "yourRuleName": {
+            "match": { },
+            "apply": { }
         }
     }
-}
-;
+};
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
@@ -1072,7 +924,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.9.3' };
+var DSW = { version: '1.9.4' };
 var REQUEST_TIME_LIMIT = 5000;
 
 // this try/catch is used simply to figure out the current scope
@@ -1171,6 +1023,16 @@ if (isInSWScope) {
 
                         // in case "match" is an array
                         // we will treat it as an "OR"
+
+                        if (!heuristic.match.length || !Object.keys(heuristic.match).length) {
+                            // if there is nothing to match...we do nothing
+                            return;
+                        }
+                        if (!Object.keys(heuristic.match).length) {
+                            // if there is nothing to apply, we do nothing with it, either
+                            return;
+                        }
+
                         if (Array.isArray(heuristic.match)) {
                             extensions = [];
                             path = [];
@@ -1304,6 +1166,9 @@ if (isInSWScope) {
                 event.respondWith(new Promise(function (resolve, reject) {
                     if (typeof response.then == 'function') {
                         response.then(function (result) {
+                            if (typeof result.clone != 'function') {
+                                return resolve(result);
+                            }
                             var response = result.clone();
 
                             // then, if it has been tracked, let's tell the listeners
