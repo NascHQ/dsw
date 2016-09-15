@@ -1066,7 +1066,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.9.4' };
+var DSW = { version: '1.9.5' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 
