@@ -7,7 +7,7 @@
         "/index.html?homescreen=1"
     ],
     "notification": {
-        "auto": false,
+        "auto": true,
         "server": "GCM",
         "productId": "483627048705",
         "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
