@@ -1,6 +1,6 @@
 {
   "name": "dsw",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
     "dsw": "./bin/index.js"
