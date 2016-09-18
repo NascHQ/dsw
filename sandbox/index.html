@@ -24,7 +24,6 @@
                 }
             }*/)
             .then(function(result){
-                debugger;
                 var el = document.getElementById('offline-support-message');
                 el.classList.add('offline-support');
                 el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';

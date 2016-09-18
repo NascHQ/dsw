@@ -1340,8 +1340,10 @@ if (isInSWScope) {
         self.addEventListener('push', function (event) {
 
             if (PWASettings.notification && PWASettings.notification.dataSrc) {
+                // if there is a dataSrc defined, we fetch it
                 return event.waitUntil(fetch(PWASettings.notification.dataSrc).then(function (response) {
                     if (response.status == 200) {
+                        // then to use it as the structure for the notification
                         return response.json().then(function (data) {
                             var notifData = {};
                             if (PWASettings.notification.dataPath) {
@@ -1351,12 +1353,9 @@ if (isInSWScope) {
                             }
                             var notif = self.registration.showNotification(notifData.title, {
                                 'body': notifData.body || notifData.content || notifData.message,
-                                'icon': notifData.icon || notifData.image
+                                'icon': notifData.icon || notifData.image,
+                                'tag': notifData.tag || null
                             });
-
-                            setTimeout(function (_) {
-                                notif.close();
-                            }, PWASettings.notification.duration || DEFAULT_NOTIF_DURATION);
                         });
                     } else {
                         throw new Error('Fetching ' + PWASettings.notification.dataSrc + ' returned a ' + response.status + ' status.');
@@ -1364,6 +1363,14 @@ if (isInSWScope) {
                 }).catch(function (err) {
                     _logger2.default.warn('Received a push, but Failed retrieving the notification data.', err);
                 }));
+            } else if (PWASettings.notification.title) {
+                // you can also specify the message data
+                var n = PWASettings.notification;
+                var notif = self.registration.showNotification(n.title, {
+                    'body': n.body || n.content || n.message,
+                    'icon': n.icon || n.image,
+                    'tag': n.tag || null
+                });
             }
         });
 
@@ -1602,6 +1609,7 @@ if (isInSWScope) {
                                         resolve();
                                     }
                                 })]).then(function (_) {
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     resolve(DSW.status);
                                 });
                             });
@@ -1626,6 +1634,8 @@ if (isInSWScope) {
                                 }
                             });
                         }
+                        // on refreshes, we update the variable to be used in the API
+                        DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                     }
                 } else {
                     DSW.status.appShell = 'Service worker not supported';

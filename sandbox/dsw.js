@@ -12,8 +12,7 @@ const PWASettings = {
         "senderId": "640391334636",
         "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
         "dataSrc": "http://localhost:8888/notification.json",
-        "dataPath": "notification",
-        "duration": 5000
+        "dataPath": "notification"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
@@ -1277,7 +1276,7 @@ if (isInSWScope) {
                         }))).then(function (_) {
                             resolve();
                         }).catch(function (err) {
-                            console.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
+                            _logger2.default.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
                             //throw new Error('Aborting service worker installation');
                             reject();
                         });
@@ -1495,8 +1494,10 @@ if (isInSWScope) {
         self.addEventListener('push', function (event) {
 
             if (PWASettings.notification && PWASettings.notification.dataSrc) {
+                // if there is a dataSrc defined, we fetch it
                 return event.waitUntil(fetch(PWASettings.notification.dataSrc).then(function (response) {
                     if (response.status == 200) {
+                        // then to use it as the structure for the notification
                         return response.json().then(function (data) {
                             var notifData = {};
                             if (PWASettings.notification.dataPath) {
@@ -1506,12 +1507,9 @@ if (isInSWScope) {
                             }
                             var notif = self.registration.showNotification(notifData.title, {
                                 'body': notifData.body || notifData.content || notifData.message,
-                                'icon': notifData.icon || notifData.image
+                                'icon': notifData.icon || notifData.image,
+                                'tag': notifData.tag || null
                             });
-
-                            setTimeout(function (_) {
-                                notif.close();
-                            }, PWASettings.notification.duration || DEFAULT_NOTIF_DURATION);
                         });
                     } else {
                         throw new Error('Fetching ' + PWASettings.notification.dataSrc + ' returned a ' + response.status + ' status.');
@@ -1519,13 +1517,21 @@ if (isInSWScope) {
                 }).catch(function (err) {
                     _logger2.default.warn('Received a push, but Failed retrieving the notification data.', err);
                 }));
+            } else if (PWASettings.notification.title) {
+                // you can also specify the message data
+                var n = PWASettings.notification;
+                var notif = self.registration.showNotification(n.title, {
+                    'body': n.body || n.content || n.message,
+                    'icon': n.icon || n.image,
+                    'tag': n.tag || null
+                });
             }
         });
 
         // When user clicks/touches the notification, we shall close it and open
         // or focus the web page
         self.addEventListener('notificationclick', function (event) {
-            console.log('Notification click: tag', event.notification.tag);
+            _logger2.default.log('Notification click: tag', event.notification.tag);
             event.notification.close();
 
             var url = 'TODO';
@@ -1535,11 +1541,11 @@ if (isInSWScope) {
             clients.matchAll({
                 type: 'window'
             }).then(function (windowClients) {
-                console.log('WindowClients', windowClients);
+                _logger2.default.log('WindowClients', windowClients);
                 // and let's see if any of these is already our page
                 for (var i = 0; i < windowClients.length; i++) {
                     var client = windowClients[i];
-                    console.log('WindowClient', client);
+                    _logger2.default.log('WindowClient', client);
                     // if it is, we simply focus it
                     if (client.url === url && 'focus' in client) {
                         return client.focus();
@@ -1737,7 +1743,7 @@ if (isInSWScope) {
                                             resolve();
                                         });
                                     } else {
-                                        resolve;
+                                        resolve();
                                     }
                                 }), new Promise(function (resolve, reject) {
                                     // setting up sync
@@ -1757,6 +1763,7 @@ if (isInSWScope) {
                                         resolve();
                                     }
                                 })]).then(function (_) {
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     resolve(DSW.status);
                                 });
                             });
@@ -1781,6 +1788,8 @@ if (isInSWScope) {
                                 }
                             });
                         }
+                        // on refreshes, we update the variable to be used in the API
+                        DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                     }
                 } else {
                     DSW.status.appShell = 'Service worker not supported';

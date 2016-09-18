@@ -469,8 +469,10 @@ if (isInSWScope) {
     self.addEventListener('push', function(event) {
         
         if (PWASettings.notification && PWASettings.notification.dataSrc) {
+            // if there is a dataSrc defined, we fetch it
             return event.waitUntil(fetch(PWASettings.notification.dataSrc).then(response=>{
                 if (response.status == 200) {
+                    // then to use it as the structure for the notification
                     return response.json().then(data=>{
                         let notifData = {};
                         if (PWASettings.notification.dataPath) {
@@ -480,12 +482,9 @@ if (isInSWScope) {
                         }
                         let notif = self.registration.showNotification(notifData.title, {
                             'body': notifData.body || notifData.content || notifData.message,
-                            'icon': notifData.icon || notifData.image
+                            'icon': notifData.icon || notifData.image,
+                            'tag': notifData.tag || null
                         });
-                        
-                        setTimeout(_=>{
-                            notif.close();
-                        }, PWASettings.notification.duration || DEFAULT_NOTIF_DURATION);
                     });
                 } else {
                     throw new Error(`Fetching ${PWASettings.notification.dataSrc} returned a ${response.status} status.`);
@@ -493,6 +492,16 @@ if (isInSWScope) {
             }).catch(err=>{
                 logger.warn('Received a push, but Failed retrieving the notification data.', err);
             }));
+        } else if (PWASettings.notification.title) {
+            // you can also specify the message data
+            let n = PWASettings.notification;
+            let notif = self.registration.showNotification(
+                n.title,
+                {
+                    'body': n.body || n.content || n.message,
+                    'icon': n.icon || n.image,
+                    'tag': n.tag || null
+                });
         }
     });
     
@@ -736,6 +745,7 @@ if (isInSWScope) {
                                         }
                                     })
                                 ]).then(_=>{
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     resolve(DSW.status);
                                 });
                             });
@@ -761,6 +771,8 @@ if (isInSWScope) {
                             }
                         });
                     }
+                    // on refreshes, we update the variable to be used in the API
+                    DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                 }
             } else {
                 DSW.status.appShell = 'Service worker not supported';
