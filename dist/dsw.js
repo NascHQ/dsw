@@ -1582,7 +1582,7 @@ if (isInSWScope) {
                                             resolve();
                                         });
                                     } else {
-                                        resolve;
+                                        resolve();
                                     }
                                 }), new Promise(function (resolve, reject) {
                                     // setting up sync

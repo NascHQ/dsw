@@ -713,7 +713,7 @@ if (isInSWScope) {
                                                 resolve();
                                             });
                                         } else {
-                                            resolve;
+                                            resolve();
                                         }
                                     }),
                                     new Promise((resolve, reject)=>{
