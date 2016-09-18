@@ -10,7 +10,10 @@
         "auto": true,
         "service": "GCM",
         "senderId": "640391334636",
-        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8"
+        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
+        "dataSrc": "http://localhost:8888/notification.json",
+        "dataPath": "notification",
+        "duration": 5000
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,

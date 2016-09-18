@@ -917,6 +917,7 @@ var isInTest = typeof global.it === 'function';
 var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
+var DEFAULT_NOTIF_DURATION = 6000;
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -984,6 +985,9 @@ if (isInSWScope) {
                 }
                 return result || response;
             },
+
+
+            // SW Scope's setup
             setup: function setup() {
                 var _this = this;
 
@@ -1118,7 +1122,7 @@ if (isInSWScope) {
                         }))).then(function (_) {
                             resolve();
                         }).catch(function (err) {
-                            console.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
+                            _logger2.default.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
                             //throw new Error('Aborting service worker installation');
                             reject();
                         });
@@ -1334,20 +1338,39 @@ if (isInSWScope) {
         });
 
         self.addEventListener('push', function (event) {
-            console.log('Push message', event);
-            debugger;
-            var title = 'Push message';
 
-            event.waitUntil(self.registration.showNotification(title, {
-                'body': 'The Message',
-                'icon': 'images/icon.png'
-            }));
+            if (PWASettings.notification && PWASettings.notification.dataSrc) {
+                return event.waitUntil(fetch(PWASettings.notification.dataSrc).then(function (response) {
+                    if (response.status == 200) {
+                        return response.json().then(function (data) {
+                            var notifData = {};
+                            if (PWASettings.notification.dataPath) {
+                                notifData = data[PWASettings.notification.dataPath];
+                            } else {
+                                notifData = data;
+                            }
+                            var notif = self.registration.showNotification(notifData.title, {
+                                'body': notifData.body || notifData.content || notifData.message,
+                                'icon': notifData.icon || notifData.image
+                            });
+
+                            setTimeout(function (_) {
+                                notif.close();
+                            }, PWASettings.notification.duration || DEFAULT_NOTIF_DURATION);
+                        });
+                    } else {
+                        throw new Error('Fetching ' + PWASettings.notification.dataSrc + ' returned a ' + response.status + ' status.');
+                    }
+                }).catch(function (err) {
+                    _logger2.default.warn('Received a push, but Failed retrieving the notification data.', err);
+                }));
+            }
         });
 
         // When user clicks/touches the notification, we shall close it and open
         // or focus the web page
         self.addEventListener('notificationclick', function (event) {
-            console.log('Notification click: tag', event.notification.tag);
+            _logger2.default.log('Notification click: tag', event.notification.tag);
             event.notification.close();
 
             var url = 'TODO';
@@ -1357,11 +1380,11 @@ if (isInSWScope) {
             clients.matchAll({
                 type: 'window'
             }).then(function (windowClients) {
-                console.log('WindowClients', windowClients);
+                _logger2.default.log('WindowClients', windowClients);
                 // and let's see if any of these is already our page
                 for (var i = 0; i < windowClients.length; i++) {
                     var client = windowClients[i];
-                    console.log('WindowClient', client);
+                    _logger2.default.log('WindowClient', client);
                     // if it is, we simply focus it
                     if (client.url === url && 'focus' in client) {
                         return client.focus();
@@ -1517,14 +1540,17 @@ if (isInSWScope) {
             });
         };
 
+        // client's setup
         DSW.setup = function () {
             var config = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
             return new Promise(function (resolve, reject) {
-                pendingResolve = function pendingResolve() {
-                    clearTimeout(installationTimeOut);
-                    resolve();
-                };
+                var appShellPromise = new Promise(function (resolve, reject) {
+                    pendingResolve = function pendingResolve() {
+                        clearTimeout(installationTimeOut);
+                        resolve(DSW.status);
+                    };
+                });
                 pendingReject = function pendingReject(reason) {
                     clearTimeout(installationTimeOut);
                     reject(reason || 'Installation timeout');
@@ -1545,27 +1571,39 @@ if (isInSWScope) {
                             navigator.serviceWorker.ready.then(function (reg) {
                                 _logger2.default.info('Registered service worker');
 
-                                // setting up notifications
-                                if (PWASettings.notification && PWASettings.notification.auto) {
-                                    reg.pushManager.subscribe({
-                                        userVisibleOnly: true
-                                    }).then(function (sub) {
-                                        _logger2.default.log('Subscribed to notification server:', { endpoint: sub.endpoint });
-                                        DSW.status.notification = true;
-                                    });
-                                }
-
-                                if (config && config.sync) {
-                                    if ('SyncManager' in window) {
-                                        navigator.serviceWorker.ready.then(function (reg) {
-                                            return reg.sync.register('syncr');
-                                        }).then(function (_) {
-                                            DSW.status.sync = true;
+                                Promise.all([appShellPromise, new Promise(function (resolve, reject) {
+                                    // setting up notifications
+                                    if (PWASettings.notification && PWASettings.notification.auto) {
+                                        reg.pushManager.subscribe({
+                                            userVisibleOnly: true
+                                        }).then(function (sub) {
+                                            _logger2.default.log('Subscribed to notification server'); // endpoint: sub.endpoint
+                                            DSW.status.notification = sub.endpoint;
+                                            resolve();
                                         });
                                     } else {
-                                        DSW.status.sync = 'Failed enabling sync';
+                                        resolve;
                                     }
-                                }
+                                }), new Promise(function (resolve, reject) {
+                                    // setting up sync
+                                    if (config && config.sync) {
+                                        if ('SyncManager' in window) {
+                                            navigator.serviceWorker.ready.then(function (reg) {
+                                                return reg.sync.register('syncr');
+                                            }).then(function (_) {
+                                                DSW.status.sync = true;
+                                                resolve();
+                                            });
+                                        } else {
+                                            DSW.status.sync = 'Failed enabling sync';
+                                            resolve();
+                                        }
+                                    } else {
+                                        resolve();
+                                    }
+                                })]).then(function (_) {
+                                    resolve(DSW.status);
+                                });
                             });
                         }).catch(function (err) {
                             reject({
