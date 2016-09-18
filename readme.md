@@ -12,14 +12,14 @@ You will simply have to set up how your service worker will handle requests in a
 
 If you are starting from scratch and want to see it working right away, you can use the content inside of `/boilerplate`.
 
-## Live Demo
+## :sparkler: Live Demo
 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
 [Dynamic Service Worker demo](https://dsw-einygtbncl.now.sh/)
 
-## Advantages
+## :bell: Advantages
 
 - Use of variables to build URLs and redirects
 - Different strategies (offline-first, online-first or fastest)
@@ -33,7 +33,7 @@ You can then go offline and reload the page to validate it.
 - Client API with many possibilities
 - Support for opaque requests
 
-## Learning it
+## :books: Learning it
 
 Read the commented json configuration file: https://naschq.github.io/dsw/config-example.html
 - [How to install](https://github.com/NascHQ/dsw#installing-it)
@@ -59,7 +59,7 @@ Read the commented json configuration file: https://naschq.github.io/dsw/config-
   - [Client API](https://github.com/NascHQ/dsw#using-the-api)
   - [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
 
-## Installing it
+## :electric_plug: Installing it
 
 It's a Node.js program that you may install globally:
 
@@ -130,7 +130,7 @@ Now, let's set up your project's offline configuration.
 
 When you change something in your `dswfile.json`, you shall re-execute the command above.
 
-## Configuring it
+## :bookmark_tabs: Configuring it
 
 Open the `dswfile.json` in the root of your project and let's add some content like this:
 
@@ -282,7 +282,7 @@ Well, it uses the `cacheApi` to store as requests, only your keys. When you try 
 
 This way, you can access the information in your IndexedDB by yourself, while your requests will automatically deal with it, too.
 
-### Tracing and debugging
+### :beetle: Tracing and debugging
 
 Yes, you can debug your configuration and trace requests!<br/>
 The API for that is quite simple and very powerful.
@@ -296,7 +296,7 @@ DSW.trace('/some/matching-pattern', function(data){
 This is it. Now, any request that matches `/some/matching-pattern` will be sent to your callback function with all the trace information.<br/>
 This data includes all the steps and different states your requests have been through. This way you validate and debug your rules.
 
-# Examples
+# :vhs: Examples
 
 Using both `match` and `apply`, we can do a lot of things.<br/>
 Don't forget to re-run `dsw path-to-project` whenever you made a change to your `dswfile.js` file.
@@ -546,7 +546,7 @@ In case you want to send credentials or other settings to fetch, you can use the
 }
 ```
 
-### Using it programatically
+### :computer: Using it programatically
 
 You can also use it programatically, specially if you intend to use or create a tool to build, like `grunt` or `gulp`.
 
@@ -556,7 +556,7 @@ let dsw = requier('dsw');
 dsw.generate('./path-to-project', options);
 ```
 
-### Using the API
+### :bulb: Using the API
 
 There is a client API as well, so you can use some features with aliases and shortcuts with the DSW client API.
 
@@ -605,12 +605,12 @@ DSW.onNetworkStatusChange(function(connected){
 
 * This depends on browser support...some browser will say the device is online even though there is no internet connection, just because the device is connected to a private network(with a rounter).
 
-## Sandbox
+## :package: Sandbox
 
 Want to just see it working as fast as possible?<br/>
 Clone the project, go to its directory, install it and run `npm run try`
 
-# Contributing
+# :chart_with_upwards_trend: Contributing
 
 So, you want to contribute? Cool! We need it! :)  
 We ask you to please read and follow our [Code of Conduct](https://github.com/NascHQ/dsw/blob/master/CODE_OF_CONDUCT.md).
@@ -653,6 +653,10 @@ This is automatic, but you stillneed to reload the _try_ command in the other ta
 npm run try
 ```
 
+### Help by commenting(or reporting on issues)
+
+If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
+
 ### Tips
 
 In the browser, though, you may face some boring situations, so, to make sure you will not fall into a trap debugging unchanged things, here goes some tips:
@@ -673,16 +677,12 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 6 - You can use the Lighthouse to validate the service worker situation: [Lighthouse](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
-### Help by commenting(or reporting on issues)
-
-If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
-
-#### Browser support
+#### :construction: Browser support
 
 Service workers have been adopted by browsers and you can see an updated list here:<br/>
 [isServiceWorkerReady?](https://jakearchibald.github.io/isserviceworkerready/)
 
-#### Related projects
+#### :recycle: Related projects
 
 Some other projects that might help you too.
 
