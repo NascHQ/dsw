@@ -8,9 +8,9 @@ const PWASettings = {
     ],
     "notification": {
         "auto": true,
-        "server": "GCM",
-        "productId": "483627048705",
-        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
+        "service": "GCM",
+        "senderId": "640391334636",
+        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
@@ -1066,7 +1066,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.9.5' };
+var DSW = { version: '1.9.6' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 
@@ -1243,6 +1243,7 @@ if (isInSWScope) {
                     // adding the dsw itself to cache
                     _this.addRule('*', {
                         name: 'serviceWorker',
+                        strategy: 'fastest',
                         match: { path: /^\/dsw.js(\?=dsw-manager)?$/ },
                         'apply': { cache: {} }
                     }, location.href);
@@ -1251,6 +1252,7 @@ if (isInSWScope) {
                     var rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                     _this.addRule('*', {
                         name: 'rootDir',
+                        strategy: 'fastest',
                         match: { path: rootMatchingRX },
                         'apply': { cache: {} }
                     }, rootMatchingRX);
@@ -1485,7 +1487,7 @@ if (isInSWScope) {
 
         self.addEventListener('push', function (event) {
             console.log('Push message', event);
-
+            debugger;
             var title = 'Push message';
 
             event.waitUntil(self.registration.showNotification(title, {
@@ -1651,7 +1653,8 @@ if (isInSWScope) {
                 DSW.enableNotifications().then(function (_) {
                     var opts = {
                         body: options.body || '',
-                        icon: options.icon || false
+                        icon: options.icon || false,
+                        tag: options.tag || null
                     };
                     var n = new Notification(title, opts);
                     if (options.duration) {
@@ -1693,12 +1696,13 @@ if (isInSWScope) {
 
                             navigator.serviceWorker.ready.then(function (reg) {
                                 _logger2.default.info('Registered service worker');
+
                                 // setting up notifications
                                 if (PWASettings.notification && PWASettings.notification.auto) {
                                     reg.pushManager.subscribe({
                                         userVisibleOnly: true
                                     }).then(function (sub) {
-                                        _logger2.default.log('Subscribed to notification server:', sub.endpoint);
+                                        _logger2.default.log('Subscribed to notification server:', { endpoint: sub.endpoint });
                                         DSW.status.notification = true;
                                     });
                                 }
@@ -1750,6 +1754,46 @@ if (isInSWScope) {
 }
 
 exports.default = DSW;
+
+/*
+sub: dXsA2MqO2Y4:APA91bFvPJDafKwWGfNa8-M…ZoAbRVD1kpHmKfNpj8luTv9EwduclwasN86FIhewKjGXrNG5l7pocp9_aWBTGHJkqgzCqVqzXy
+product-key: 483627048705
+notifier: AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU
+
+
+project-id: dsw-tests
+sender/server key: 483627048705
+product id: 640391334636 (gcm_sender_id)
+
+authorization Key: AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8
+server key: AIzaSyCM6uh7yfFcAeLwTcyXr3gLmOFAv672nqA
+
+curl --header "Authorization: key=AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8" \
+       --header Content-Type:"application/json" \
+       https://fcm.googleapis.com/fcm/send \
+       -d "{\"data\":{\"foo\": \"Oh My OMG\"}, \"registration_ids\":[\"cuh_S1jD6k8:APA91bFoOx28kaExjeat21ojOo9K_KvdXnD3yVnMjX0AnTMPTNFxkrQGo7OapcPW3dFGUjZPV0STVq34OsUQ8svS3UjSxJX7tqhMhGevYMMYRscHjdLU6CNhTMRBvYYzdKVLcXJMHjX_\"]}"
+
+
+
+
+
+
+
+
+
+<script src="https://www.gstatic.com/firebasejs/3.4.0/firebase.js"></script>
+<script>
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
+    authDomain: "dsw-tests.firebaseapp.com",
+    databaseURL: "https://dsw-tests.firebaseio.com",
+    storageBucket: "dsw-tests.appspot.com",
+    messagingSenderId: "640391334636"
+  };
+  firebase.initializeApp(config);
+</script>
+*/
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./logger.js":5,"./strategies.js":7,"./utils.js":8}],7:[function(require,module,exports){

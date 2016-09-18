@@ -8,9 +8,9 @@
     ],
     "notification": {
         "auto": true,
-        "server": "GCM",
-        "productId": "483627048705",
-        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
+        "service": "GCM",
+        "senderId": "640391334636",
+        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
