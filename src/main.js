@@ -13,6 +13,7 @@ import utils from './utils.js';
 const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 const REQUEST_TIME_LIMIT = 5000;
 const REGISTRATION_TIMEOUT = 12000;
+const DEFAULT_NOTIF_DURATION = 6000;
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -85,6 +86,8 @@ if (isInSWScope) {
             }
             return result || response;
         },
+        
+        // SW Scope's setup
         setup (dswConfig={}) {
             // let's prepare both cacheManager and strategies with the
             // current referencies
@@ -191,6 +194,7 @@ if (isInSWScope) {
                 // adding the dsw itself to cache
                 this.addRule('*', {
                     name: 'serviceWorker',
+                    strategy: 'fastest',
                     match: { path: /^\/dsw.js(\?=dsw-manager)?$/ },
                     'apply': { cache: { } }
                 }, location.href);
@@ -199,6 +203,7 @@ if (isInSWScope) {
                 let rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                 this.addRule('*', {
                     name: 'rootDir',
+                    strategy: 'fastest',
                     match: { path: rootMatchingRX },
                     'apply': { cache: { } }
                 }, rootMatchingRX);
@@ -221,7 +226,7 @@ if (isInSWScope) {
                         resolve();
                     })
                     .catch(err=>{
-                        console.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
+                        logger.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
                         //throw new Error('Aborting service worker installation');
                         reject();
                     });
@@ -336,6 +341,10 @@ if (isInSWScope) {
                 
                 DSWManager.requestId = 1 + (DSWManager.requestId || 0);
                 
+                if (event.request.method == 'POST' || event.request.method == 'PUT') {
+                    return;
+                }
+                
                 if (DSWManager.trackMoved[event.request.url]) {
                     let movedInfo = DSWManager.trackMoved[event.request.url];
                     event.request.requestId = movedInfo.id;
@@ -352,6 +361,7 @@ if (isInSWScope) {
                 }
                 
                 const url = new URL(event.request.url);
+                const sameOrigin = url.origin == location.origin;
                 const pathName = url.pathname;
                 
                 // in case we want to enforce https
@@ -365,8 +375,14 @@ if (isInSWScope) {
                 
                 // get the best fiting rx for the path, to find the rule that
                 // matches the most
-                let matchingRule = getBestMatchingRX(pathName,
+                let matchingRule;
+                if (!sameOrigin) {
+                    matchingRule = getBestMatchingRX(url.origin + url.pathname,
                                                  DSWManager.rules['*']);
+                } else {
+                    matchingRule = getBestMatchingRX(pathName,
+                                                 DSWManager.rules['*']);
+                }
                 if (matchingRule) {
                     // if there is a rule that matches the url
                     DSWManager.traceStep(
@@ -391,7 +407,7 @@ if (isInSWScope) {
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
-                    if (response && (response.type == 'opaque' || response.status == 200)) {
+                    if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                         return response;
                     } else {
                         return DSWManager.treatBadPage(response, pathName, event);
@@ -448,9 +464,7 @@ if (isInSWScope) {
     });
     
     self.addEventListener('message', function(event) {
-        // TODO: add support to message event
         const ports = event.ports;
-        
         if (event.data.trackPath) {
             let tp = event.data.trackPath;
             DSWManager.tracking[tp] = {
@@ -462,21 +476,54 @@ if (isInSWScope) {
     });
     
     self.addEventListener('push', function(event) {
-        console.log('Push message', event);
-
-        var title = 'Push message';
-
-        event.waitUntil(
-        self.registration.showNotification(title, {
-            'body': 'The Message',
-            'icon': 'images/icon.png'
-        }));
+        
+        // let's trigger the event
+        DSWManager.broadcast({
+            event: 'pushnotification',
+            data: event.data
+        });
+            
+        if (PWASettings.notification && PWASettings.notification.dataSrc) {
+            // if there is a dataSrc defined, we fetch it
+            return event.waitUntil(fetch(PWASettings.notification.dataSrc).then(response=>{
+                if (response.status == 200) {
+                    // then to use it as the structure for the notification
+                    return response.json().then(data=>{
+                        let notifData = {};
+                        if (PWASettings.notification.dataPath) {
+                            notifData = data[PWASettings.notification.dataPath];
+                        } else {
+                            notifData = data;
+                        }
+                        let notif = self.registration.showNotification(notifData.title, {
+                            'body': notifData.body || notifData.content || notifData.message,
+                            'icon': notifData.icon || notifData.image,
+                            'tag': notifData.tag || null
+                        });
+                    });
+                } else {
+                    throw new Error(`Fetching ${PWASettings.notification.dataSrc} returned a ${response.status} status.`);
+                }
+            }).catch(err=>{
+                logger.warn('Received a push, but Failed retrieving the notification data.', err);
+            }));
+        } else if (PWASettings.notification.title) {
+            // you can also specify the message data
+            let n = PWASettings.notification;
+            let notif = self.registration.showNotification(
+                n.title,
+                {
+                    'body': n.body || n.content || n.message,
+                    'icon': n.icon || n.image,
+                    'tag': n.tag || null
+                });
+        }
     });
     
     // When user clicks/touches the notification, we shall close it and open
     // or focus the web page
     self.addEventListener('notificationclick', function(event) {
-        console.log('Notification click: tag', event.notification.tag);
+        logger.log('Notification click: tag', event.notification.tag);
         event.notification.close();
 
         var url = 'TODO';
@@ -486,11 +533,11 @@ if (isInSWScope) {
             clients.matchAll({
                 type: 'window'
             }).then(function(windowClients) {
-                console.log('WindowClients', windowClients);
+                logger.log('WindowClients', windowClients);
                 // and let's see if any of these is already our page
                 for (var i = 0; i < windowClients.length; i++) {
                     var client = windowClients[i];
-                    console.log('WindowClient', client);
+                    logger.log('WindowClient', client);
                     // if it is, we simply focus it
                     if (client.url === url && 'focus' in client) {
                         return client.focus();
@@ -526,13 +573,58 @@ if (isInSWScope) {
         registeredServiceWorker,
         installationTimeOut;
     
+    const eventManager = (()=>{
+        const events = {};
+        return {
+            addEventListener (eventName, listener) {
+                events[eventName] = events[eventName] || [];
+                events[eventName].push(listener);
+            },
+            trigger (eventName, data={}) {
+                let listener;
+                try {
+                    if (events[eventName]) {
+                        for (listener of events[eventName]) {
+                            if (typeof listener == 'function') {
+                                listener(data);
+                            }
+                        }
+                    }
+                    
+                    listener = 'on' + eventName;
+                    if (typeof DSW[listener] == 'function') {
+                        DSW[listener](data);
+                    }
+                }catch(e){
+                    if (listener && listener.name) {
+                        listener = listener.name;
+                    } else {
+                        listener = listener || 'annonymous';
+                    }
+                    logger.error(`Failed trigerring event ${eventName} on listener ${listener}` , e.message, e);
+                }
+            }
+        };
+    })();
+    
+    // let's store some events, so it can be autocompleted in devTools
+    DSW.addEventListener = eventManager.addEventListener;
+    DSW.onpushnotification = function () { /* use this to know when a notification arrived */ };
+    DSW.enabled = function () { /* use this to know when DSW is enabled and running */ };
+    DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
+    DSW.onnotificationsenabled = function () { /* use this to know when user has enabled notifications */ };
+    
     navigator.serviceWorker.addEventListener('message', event=>{
+        // if it is waiting for the installation confirmation
         if (pendingResolve && event.data.DSWStatus !== void(0)) {
+            // and if the message is about a successful installation
             if (registeredServiceWorker) {
+                // this means all the appShell have been downloaded
                 if (event.data.DSWStatus) {
                     DSW.status.appShell = true;
                     pendingResolve(DSW.status);
                 } else {
+                    // if it failed, let's unregister it, to avoid false positives
                     DSW.status.appShell = false;
                     pendingReject(DSW.status);
                     registeredServiceWorker.unregister();
@@ -541,7 +633,8 @@ if (isInSWScope) {
             pendingResolve = false;
             pendingReject = false;
         }
-        //console.log(event.data);
+        
+        eventManager.trigger(event.data.event, event.data.data); // yeah, I know ¬¬
     });
 
     DSW.trace = function (match, options, callback) {
@@ -561,6 +654,8 @@ if (isInSWScope) {
     };
     
     DSW.sendMessage = (message, waitForAnswer=false)=>{
+        // This method sends a message to the service worker.
+        // Useful for specific tokens and internal use and trace
         return new Promise((resolve, reject)=>{
             var messageChannel = new MessageChannel();
             
@@ -606,6 +701,8 @@ if (isInSWScope) {
         return navigator.onLine;
     };
     
+    // this method will register the SW for push notifications
+    // but is not really connected to web notifications (the popup message)
     DSW.enableNotifications = _=>{
         return new Promise((resolve, reject)=>{
             if (navigator.onLine) {
@@ -614,6 +711,9 @@ if (isInSWScope) {
                         userVisibleOnly: true
                     });
                     return req.then(function(sub) {
+                        DSW.status.notification = sub.endpoint;
+                        eventManager.trigger('notificationsenabled', DSW.status);
+                        logger.info('Registered to notification server');
                         resolve(sub);
                     }).catch(reason=>{
                         reject(reason || 'Not allowed by user');
@@ -630,7 +730,8 @@ if (isInSWScope) {
             DSW.enableNotifications().then(_=>{
                 const opts = {
                     body: options.body || '',
-                    icon: options.icon || false
+                    icon: options.icon || false,
+                    tag: options.tag || null
                 };
                 let n = new Notification(title, opts);
                 if (options.duration) {
@@ -645,12 +746,15 @@ if (isInSWScope) {
         });
     };
     
+    // client's setup
     DSW.setup = (config={}) => {
         return new Promise((resolve, reject)=>{
-            pendingResolve = function(){
-                clearTimeout(installationTimeOut);
-                resolve();
-            };
+            let appShellPromise = new Promise((resolve, reject)=>{
+                pendingResolve = function(){
+                    clearTimeout(installationTimeOut);
+                    resolve(DSW.status);
+                };
+            });
             pendingReject = function(reason){
                 clearTimeout(installationTimeOut);
                 reject(reason || 'Installation timeout');
@@ -672,29 +776,41 @@ if (isInSWScope) {
                         
                             navigator.serviceWorker.ready.then(function(reg) {
                                 logger.info('Registered service worker');
+                                eventManager.trigger('registered', DSW.status);
                                 
-                                // setting up notifications
-                                if (PWASettings.notification && PWASettings.notification.auto) {
-                                    reg.pushManager.subscribe({
-                                        userVisibleOnly: true
-                                    }).then(function(sub) {
-                                        logger.log('Subscribed to notification server:', sub.endpoint);
-                                        DSW.status.notification = true;
-                                    });
-                                }
-
-                                if (config && config.sync) {
-                                    if ('SyncManager' in window) {
-                                        navigator.serviceWorker.ready.then(function(reg) {
-                                            return reg.sync.register('syncr');
-                                        })
-                                        .then(_=>{
-                                            DSW.status.sync = true;
-                                        });
-                                    } else {
-                                        DSW.status.sync= 'Failed enabling sync';
-                                    }
-                                }
+                                Promise.all([
+                                    appShellPromise,
+                                    new Promise((resolve, reject)=>{
+                                        if (PWASettings.notification && PWASettings.notification.auto) {
+                                            return DSW.enableNotifications();
+                                        } else {
+                                            resolve();
+                                        }
+                                    }),
+                                    new Promise((resolve, reject)=>{
+                                        // setting up sync
+                                        if (config && config.sync) {
+                                            if ('SyncManager' in window) {
+                                                navigator.serviceWorker.ready.then(function(reg) {
+                                                    return reg.sync.register('syncr');
+                                                })
+                                                .then(_=>{
+                                                    DSW.status.sync = true;
+                                                    resolve();
+                                                });
+                                            } else {
+                                                DSW.status.sync= 'Failed enabling sync';
+                                                resolve();
+                                            }
+                                        } else {
+                                            resolve();
+                                        }
+                                    })
+                                ]).then(_=>{
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                    eventManager.trigger('enabled', DSW.status);
+                                    resolve(DSW.status);
+                                });
                             });
                         })
                         .catch(err=>{
@@ -706,8 +822,7 @@ if (isInSWScope) {
                                 error: err
                             });
                         });
-
-                } else { // todo: remove it from the else statement and see if it works
+                } else { // TODO: remove it from the else statement and see if it works even for the first load
                     // service worker was already registered and is active
                     // setting up traceable requests
                     if (config && config.trace) {
@@ -718,6 +833,8 @@ if (isInSWScope) {
                             }
                         });
                     }
+                    // on refreshes, we update the variable to be used in the API
+                    DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                 }
             } else {
                 DSW.status.appShell = 'Service worker not supported';

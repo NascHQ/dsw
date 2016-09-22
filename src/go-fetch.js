@@ -22,10 +22,14 @@ function goFetch (rule, request, event, matching) {
         let req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: sameOrigin? 'cors': 'no-cors',
+            mode: request.mode || (sameOrigin? 'cors': 'no-cors'),
             cache: 'default',
             redirect: 'manual'
         });
+        
+        if (request.body) {
+            req.body = request.body;
+        }
         
         req.requestId = (event? event.request: request).requestId;
         req.traceSteps = (event? event.request: request).traceSteps;
@@ -60,7 +64,7 @@ function goFetch (rule, request, event, matching) {
     // if the host is not the same
     if (!sameOrigin) {
         // we set it to an opaque request
-        reqConfig.mode = 'no-cors';
+        reqConfig.mode = request.mode || 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
     

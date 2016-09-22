@@ -12,14 +12,14 @@ You will simply have to set up how your service worker will handle requests in a
 
 If you are starting from scratch and want to see it working right away, you can use the content inside of `/boilerplate`.
 
-## :sparkler: Live Demo
+## Live Demo
 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
 [Dynamic Service Worker demo](https://dsw-einygtbncl.now.sh/)
 
-## :bell: Advantages
+## Advantages
 
 - Use of variables to build URLs and redirects
 - Different strategies (offline-first, online-first or fastest)
@@ -33,11 +33,12 @@ You can then go offline and reload the page to validate it.
 - Client API with many possibilities
 - Support for opaque requests
 
-## :books: Learning it
+## Learning it
 
 Read the commented json configuration file: https://naschq.github.io/dsw/config-example.html
 - [How to install](https://github.com/NascHQ/dsw#installing-it)
 - [How to use it](https://github.com/NascHQ/dsw#using-it)
+- [Push Notification support](https://github.com/NascHQ/dsw#push-notifications)
  - [Matching requests](https://github.com/NascHQ/dsw#matching)
  - [Request Strategies](https://github.com/NascHQ/dsw#strategy)
  - [Possible actions for each request](https://github.com/NascHQ/dsw#applying)
@@ -55,11 +56,14 @@ Read the commented json configuration file: https://naschq.github.io/dsw/config-
   - [Caching static files](https://github.com/NascHQ/dsw#caching-your-static-files)
   - [Bypassing requests](https://github.com/NascHQ/dsw#bypassing-requests)
   - [Sending credentials](https://github.com/NascHQ/dsw#sending-credentials)
-  - [Using it programatically (require('dsw'))](https://github.com/NascHQ/dsw#using-it-programatically)
-  - [Client API](https://github.com/NascHQ/dsw#using-the-api)
-  - [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
+- [Using it programatically (require('dsw'))](https://github.com/NascHQ/dsw#using-it-programatically)
+- [Client API](https://github.com/NascHQ/dsw#using-the-api)
+  - [Notifications API](https://github.com/NascHQ/dsw#notifications)
+  - [PUSH Notifications API](https://github.com/NascHQ/dsw#push-notifications-api)
+  - [Connection Status API](https://github.com/NascHQ/dsw#connection-status)
+- [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
 
-## :electric_plug: Installing it
+## Installing it
 
 It's a Node.js program that you may install globally:
 
@@ -130,13 +134,13 @@ Now, let's set up your project's offline configuration.
 
 When you change something in your `dswfile.json`, you shall re-execute the command above.
 
-## :bookmark_tabs: Configuring it
+## Configuring it
 
 Open the `dswfile.json` in the root of your project and let's add some content like this:
 
 ```js
 {
-    "dswVersion": 2.2,
+    "dswVersion": 1.0,
     "applyImmediately": true,
     "dswRules": {
         "yourRuleName": {
@@ -149,6 +153,79 @@ Open the `dswfile.json` in the root of your project and let's add some content l
 
 That's it! You may have many rules.
 Reminding that `applyImmediately` is optional. It will replace the previously registered service worker as soon as the new one loads.
+
+### Push notifications
+
+If you want to enable and use push notifications, you can set:
+
+```js
+{
+    "dswVersion": 1.0,
+    "applyImmediately": true,
+    "notification": {
+        "auto": false,
+        "service": "GCM",
+        "senderId": "your-project-id",
+        "dataSrc": "http://where.to/get-your/notification-data",
+        "dataPath": "notification"
+    },
+    "dswRules": {
+        /* ... */
+    }
+}
+```
+
+Here, `dataSrc` is the path or service where dsw will find the structure for your notification.  
+And `dataPath` is an optional path for it. For example, the dataSrc request could return:
+
+```js
+{
+    "title": "The title",
+    "icon": "path-to-icon",
+    "body": "The message itself"
+}
+```
+
+In this case, `dataPath` would not be provided. But:
+
+```js
+{
+    "notification: {
+        "title": "The title",
+        "icon": "path-to-icon",
+        "body": "The message itself"
+    }
+}
+```
+
+For this case, you can say that the `dataPath` is "notification".
+
+You can also provide the static information for notifications, like so:
+
+
+```js
+{
+    "dswVersion": 1.0,
+    "applyImmediately": true,
+    "notification": {
+        "auto": false,
+        "service": "GCM",
+        "senderId": "your-project-id",
+        "title": "IMPORTANT",
+        "body": "There is an update in our page",
+        "icon": "path-to-icon"
+    },
+    "dswRules": {
+        /* ... */
+    }
+}
+```
+
+In this case, you could use a more generic message simply to call your user to your page.
+
+The `auto` property is false by default, but if true, will ask for the users permission (to trigger notifications) as soon as the service worker gets registered.
+
+**NOTE**: By now, only Google's GCM service is supported. You can use it with Firebase or Google Console, for example, to trigger new push notifications.
 
 ### Matching
 
@@ -282,7 +359,7 @@ Well, it uses the `cacheApi` to store as requests, only your keys. When you try 
 
 This way, you can access the information in your IndexedDB by yourself, while your requests will automatically deal with it, too.
 
-### :beetle: Tracing and debugging
+### Tracing and debugging
 
 Yes, you can debug your configuration and trace requests!<br/>
 The API for that is quite simple and very powerful.
@@ -296,7 +373,7 @@ DSW.trace('/some/matching-pattern', function(data){
 This is it. Now, any request that matches `/some/matching-pattern` will be sent to your callback function with all the trace information.<br/>
 This data includes all the steps and different states your requests have been through. This way you validate and debug your rules.
 
-# :vhs: Examples
+# Examples
 
 Using both `match` and `apply`, we can do a lot of things.<br/>
 Don't forget to re-run `dsw path-to-project` whenever you made a change to your `dswfile.js` file.
@@ -349,7 +426,7 @@ Now, access in your browser, first, the `index.html` file(so the service worker 
 
 #### Caching data
 
-Let's see an example of requests being cached:
+Let's see an example of requests being cached (by default, all requests are cached unless you use `cache: false`):
 
 ```js
 {
@@ -546,7 +623,7 @@ In case you want to send credentials or other settings to fetch, you can use the
 }
 ```
 
-### :computer: Using it programatically
+### Using it programatically
 
 You can also use it programatically, specially if you intend to use or create a tool to build, like `grunt` or `gulp`.
 
@@ -556,7 +633,7 @@ let dsw = requier('dsw');
 dsw.generate('./path-to-project', options);
 ```
 
-### :bulb: Using the API
+### Using the API
 
 There is a client API as well, so you can use some features with aliases and shortcuts with the DSW client API.
 
@@ -569,7 +646,7 @@ To do that, you can use the `DSW.enableNotifications()` method, which will retur
 DSW.enableNotifications().then(function(){
     console.log('notification was shown');
 }).catch(function(reason){
-    console.log('Did not show the notification:', reason);
+    console.log("User hasn't allowed notifications", reason);
 });
 ```
 
@@ -588,6 +665,29 @@ DSW.notify('The title', {
 });
 ```
 
+### Events
+
+With DSW API you can listen to many events, including:
+
+#### Push Notifications API
+
+You can use both `onpushnotification` or addEventListener for `pushnotification`.
+
+```js
+DSW.addEventListener('pushnotification', function(){
+  console.log('received it in addEventListener');
+});
+
+DSW.onpushnotification = function () {
+  console.log('received in onpushnotification');
+}
+```
+
+Nowadays, notifications cannot carry any data, so you could use it to decide, in **each client** what to do with this information.  
+If you want to use it to actually show a notification (using webnotification), don't do it using this listener. In case your user has more tabs opened in your page, **each one** will trigger this event.
+
+Instead, if you want to show some information, use the `notification` configuration in your `dswfile`.
+
 #### Connection status
 
 You can use the methods `DSW.online` and `DSW.offline` to know if the device has internet connection*.<br/>
@@ -605,12 +705,12 @@ DSW.onNetworkStatusChange(function(connected){
 
 * This depends on browser support...some browser will say the device is online even though there is no internet connection, just because the device is connected to a private network(with a rounter).
 
-## :package: Sandbox
+## Sandbox
 
 Want to just see it working as fast as possible?<br/>
 Clone the project, go to its directory, install it and run `npm run try`
 
-# :chart_with_upwards_trend: Contributing
+# Contributing
 
 So, you want to contribute? Cool! We need it! :)  
 We ask you to please read and follow our [Code of Conduct](https://github.com/NascHQ/dsw/blob/master/CODE_OF_CONDUCT.md).
@@ -653,10 +753,6 @@ This is automatic, but you stillneed to reload the _try_ command in the other ta
 npm run try
 ```
 
-### Help by commenting(or reporting on issues)
-
-If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
-
 ### Tips
 
 In the browser, though, you may face some boring situations, so, to make sure you will not fall into a trap debugging unchanged things, here goes some tips:
@@ -677,12 +773,16 @@ In the browser, though, you may face some boring situations, so, to make sure yo
 
 6 - You can use the Lighthouse to validate the service worker situation: [Lighthouse](https://chrome.google.com/webstore/detail/lighthouse/blipmdconlkpinefehnmjammfjpmpbjk?hl=en)
 
-#### :construction: Browser support
+### Help by commenting(or reporting on issues)
+
+If you have an idea or suggestion, please let us know by creating an issue at [DSW Github](https://github.com/NascHQ/dsw) Project page.
+
+#### Browser support
 
 Service workers have been adopted by browsers and you can see an updated list here:<br/>
 [isServiceWorkerReady?](https://jakearchibald.github.io/isserviceworkerready/)
 
-#### :recycle: Related projects
+#### Related projects
 
 Some other projects that might help you too.
 

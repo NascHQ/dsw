@@ -15,6 +15,20 @@
     // Default is false, if changed to true, will NOT delete other caches
     // otherwise, all caches but the current ones will be deleted on activation
     "keepUnusedCaches": false,
+    // DSW Also offers push notification support with a nice API for your clients
+    // and a powerful mechanism for notifications.
+    "notification": {
+        // if true, will ask for notifications permission as soon as the SW gets registered
+        "auto": false,
+        // For now, GCM is the only supported service for push notifications
+        "service": "GCM",
+        // set here your project's id in GCM
+        "senderId": "your-project-id",
+        // when notified, where could DSW get information about title, body and icon for the notification
+        "dataSrc": "http://where.to/get-your/notification-data",
+        // in case title, body and icon are not in the root path of the object received from dataSrc
+        "dataPath": "notification"
+    },
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
     "dswRules": {

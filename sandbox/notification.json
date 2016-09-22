@@ -1,0 +1,8 @@
+{
+    "notification": {
+        "title": "It worked out",
+        "icon": "/helmet.png",
+        "body": "A beautiful body",
+        "tag": null
+    }
+}

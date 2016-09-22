@@ -1,5 +1,5 @@
 {
-    "dswVersion": 2.2,
+    "dswVersion": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -7,10 +7,11 @@
         "/index.html?homescreen=1"
     ],
     "notification": {
-        "auto": true,
-        "server": "GCM",
-        "productId": "483627048705",
-        "notifierId": "AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU"
+        "auto": false,
+        "service": "GCM",
+        "senderId": "640391334636",
+        "dataSrc": "http://localhost:8888/notification.json",
+        "dataPath": "notification"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
@@ -26,6 +27,12 @@
             "match": { "path": "/ignore/" },
             "apply": {
                 "bypass": "ignore"
+            }
+        },
+        "googleAPIs": {
+            "match": { "path": "/googleapis/" },
+            "apply": {
+                "bypass": "request"
             }
         },
         "easterEgg": {

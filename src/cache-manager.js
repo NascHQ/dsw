@@ -175,7 +175,7 @@ const cacheManager = {
                 fetch(goFetch(null, request))
                     .then(addIt)
                     .catch(err=>{
-                        DSWManager.traceStep(event.request, 'Fetch failed');
+                        DSWManager.traceStep(request, 'Fetch failed');
                         logger.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                         reject(response);
                     });
@@ -460,7 +460,7 @@ const cacheManager = {
                                         // if it is a opaque response, let it go!
                                         if (rule.action.cache !== false) {
                                             DSWManager.traceStep(event.request, 'Added to cache (opaque)');
-                                            return cacheManager.add(utils.createRequest(request, { mode: 'no-cors' }),
+                                            return cacheManager.add(utils.createRequest(request, { mode: request.mode || 'no-cors' }),
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
                                                                     rule);

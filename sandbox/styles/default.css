@@ -139,8 +139,6 @@ a {
 
 
 
-
-
 .wrapper {
     width: 90%;
     max-width: 800px;
@@ -173,6 +171,11 @@ a {
     width: 100%;
     text-align: center;
     padding-top: 12px;
+}
+
+.test-content video {
+    width: 100%;
+    height: 100%;
 }
 
 .fg {
@@ -227,6 +230,13 @@ a {
     top: 0;
     z-index: 1;
     width: 100%;
+}
+
+.test-content.message {
+    padding-top: 90px;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
 }
 
 .test-content img {
