@@ -10,7 +10,7 @@ const PWASettings = {
         "auto": false,
         "service": "GCM",
         "senderId": "640391334636",
-        "dataSrc": "http://localhost:8888/notification.json",
+        "dataSrc": "/notification.json",
         "dataPath": "notification"
     },
     "enforceSSL": false,
@@ -1077,7 +1077,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.9.6' };
+var DSW = { version: '1.10.0' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
