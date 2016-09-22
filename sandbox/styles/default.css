@@ -229,6 +229,13 @@ a {
     width: 100%;
 }
 
+.test-content.message {
+    padding-top: 90px;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
 .test-content img {
     height: 200px;
     min-width: 100%;

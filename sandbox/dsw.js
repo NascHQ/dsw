@@ -1,5 +1,5 @@
 const PWASettings = {
-    "dswVersion": 2.2,
+    "dswVersion": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -7,10 +7,9 @@ const PWASettings = {
         "/index.html?homescreen=1"
     ],
     "notification": {
-        "auto": true,
+        "auto": false,
         "service": "GCM",
         "senderId": "640391334636",
-        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
         "dataSrc": "http://localhost:8888/notification.json",
         "dataPath": "notification"
     },
@@ -28,6 +27,12 @@ const PWASettings = {
             "match": { "path": "/ignore/" },
             "apply": {
                 "bypass": "ignore"
+            }
+        },
+        "googleAPIs": {
+            "match": { "path": "/googleapis/" },
+            "apply": {
+                "bypass": "request"
             }
         },
         "easterEgg": {
@@ -356,7 +361,7 @@ var cacheManager = {
 
             if (!response) {
                 fetch(goFetch(null, request)).then(addIt).catch(function (err) {
-                    DSWManager.traceStep(event.request, 'Fetch failed');
+                    DSWManager.traceStep(request, 'Fetch failed');
                     _logger2.default.error('[ DSW ] :: Failed fetching ' + (request.url || request), err);
                     reject(response);
                 });
@@ -610,7 +615,7 @@ var cacheManager = {
                                             // if it is a opaque response, let it go!
                                             if (rule.action.cache !== false) {
                                                 DSWManager.traceStep(event.request, 'Added to cache (opaque)');
-                                                return cacheManager.add(_utils2.default.createRequest(request, { mode: 'no-cors' }), cacheManager.mountCacheId(rule), response, rule);
+                                                return cacheManager.add(_utils2.default.createRequest(request, { mode: request.mode || 'no-cors' }), cacheManager.mountCacheId(rule), response, rule);
                                             }
                                             return response;
                                         }
@@ -700,10 +705,14 @@ function goFetch(rule, request, event, matching) {
         var req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: sameOrigin ? 'cors' : 'no-cors',
+            mode: request.mode || (sameOrigin ? 'cors' : 'no-cors'),
             cache: 'default',
             redirect: 'manual'
         });
+
+        if (request.body) {
+            req.body = request.body;
+        }
 
         req.requestId = (event ? event.request : request).requestId;
         req.traceSteps = (event ? event.request : request).traceSteps;
@@ -738,7 +747,7 @@ function goFetch(rule, request, event, matching) {
     // if the host is not the same
     if (!sameOrigin) {
         // we set it to an opaque request
-        reqConfig.mode = 'no-cors';
+        reqConfig.mode = request.mode || 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
 
@@ -1384,6 +1393,10 @@ if (isInSWScope) {
 
                     DSWManager.requestId = 1 + (DSWManager.requestId || 0);
 
+                    if (event.request.method == 'POST' || event.request.method == 'PUT') {
+                        return;
+                    }
+
                     if (DSWManager.trackMoved[event.request.url]) {
                         var movedInfo = DSWManager.trackMoved[event.request.url];
                         event.request.requestId = movedInfo.id;
@@ -1402,6 +1415,7 @@ if (isInSWScope) {
                     }
 
                     var url = new URL(event.request.url);
+                    var sameOrigin = url.origin == location.origin;
                     var pathName = url.pathname;
 
                     // in case we want to enforce https
@@ -1414,7 +1428,12 @@ if (isInSWScope) {
 
                     // get the best fiting rx for the path, to find the rule that
                     // matches the most
-                    var matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
+                    var matchingRule = void 0;
+                    if (!sameOrigin) {
+                        matchingRule = (0, _bestMatchingRx2.default)(url.origin + url.pathname, DSWManager.rules['*']);
+                    } else {
+                        matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
+                    }
                     if (matchingRule) {
                         // if there is a rule that matches the url
                         DSWManager.traceStep(event.request, 'Best matching rule found: "' + matchingRule.rule.name + '"', {
@@ -1429,7 +1448,7 @@ if (isInSWScope) {
                     // if no rule is applied, we will request it
                     // this is the function to deal with the resolt of this request
                     var defaultTreatment = function defaultTreatment(response) {
-                        if (response && (response.type == 'opaque' || response.status == 200)) {
+                        if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                             return response;
                         } else {
                             return DSWManager.treatBadPage(response, pathName, event);
@@ -1658,6 +1677,8 @@ if (isInSWScope) {
             return navigator.onLine;
         };
 
+        // this method will register the SW for push notifications
+        // but is not really connected to web notifications (the popup message)
         DSW.enableNotifications = function (_) {
             return new Promise(function (resolve, reject) {
                 if (navigator.onLine) {
@@ -1666,6 +1687,8 @@ if (isInSWScope) {
                             userVisibleOnly: true
                         });
                         return req.then(function (sub) {
+                            DSW.status.notification = sub.endpoint;
+                            _logger2.default.info('Registered to notification server');
                             resolve(sub);
                         }).catch(function (reason) {
                             reject(reason || 'Not allowed by user');
@@ -1733,15 +1756,8 @@ if (isInSWScope) {
                                 _logger2.default.info('Registered service worker');
 
                                 Promise.all([appShellPromise, new Promise(function (resolve, reject) {
-                                    // setting up notifications
                                     if (PWASettings.notification && PWASettings.notification.auto) {
-                                        reg.pushManager.subscribe({
-                                            userVisibleOnly: true
-                                        }).then(function (sub) {
-                                            _logger2.default.log('Subscribed to notification server'); // endpoint: sub.endpoint
-                                            DSW.status.notification = sub.endpoint;
-                                            resolve();
-                                        });
+                                        return DSW.enableNotifications();
                                     } else {
                                         resolve();
                                     }

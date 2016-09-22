@@ -1,5 +1,5 @@
 {
-    "dswVersion": 2.2,
+    "dswVersion": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -7,10 +7,9 @@
         "/index.html?homescreen=1"
     ],
     "notification": {
-        "auto": true,
+        "auto": false,
         "service": "GCM",
         "senderId": "640391334636",
-        "authorizationKey": "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
         "dataSrc": "http://localhost:8888/notification.json",
         "dataPath": "notification"
     },
@@ -28,6 +27,12 @@
             "match": { "path": "/ignore/" },
             "apply": {
                 "bypass": "ignore"
+            }
+        },
+        "googleAPIs": {
+            "match": { "path": "/googleapis/" },
+            "apply": {
+                "bypass": "request"
             }
         },
         "easterEgg": {

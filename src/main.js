@@ -341,6 +341,10 @@ if (isInSWScope) {
                 
                 DSWManager.requestId = 1 + (DSWManager.requestId || 0);
                 
+                if (event.request.method == 'POST' || event.request.method == 'PUT') {
+                    return;
+                }
+                
                 if (DSWManager.trackMoved[event.request.url]) {
                     let movedInfo = DSWManager.trackMoved[event.request.url];
                     event.request.requestId = movedInfo.id;
@@ -357,6 +361,7 @@ if (isInSWScope) {
                 }
                 
                 const url = new URL(event.request.url);
+                const sameOrigin = url.origin == location.origin;
                 const pathName = url.pathname;
                 
                 // in case we want to enforce https
@@ -370,8 +375,14 @@ if (isInSWScope) {
                 
                 // get the best fiting rx for the path, to find the rule that
                 // matches the most
-                let matchingRule = getBestMatchingRX(pathName,
+                let matchingRule;
+                if (!sameOrigin) {
+                    matchingRule = getBestMatchingRX(url.origin + url.pathname,
                                                  DSWManager.rules['*']);
+                } else {
+                    matchingRule = getBestMatchingRX(pathName,
+                                                 DSWManager.rules['*']);
+                }
                 if (matchingRule) {
                     // if there is a rule that matches the url
                     DSWManager.traceStep(
@@ -396,7 +407,7 @@ if (isInSWScope) {
                 // if no rule is applied, we will request it
                 // this is the function to deal with the resolt of this request
                 let defaultTreatment = function (response) {
-                    if (response && (response.type == 'opaque' || response.status == 200)) {
+                    if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                         return response;
                     } else {
                         return DSWManager.treatBadPage(response, pathName, event);
@@ -638,6 +649,8 @@ if (isInSWScope) {
         return navigator.onLine;
     };
     
+    // this method will register the SW for push notifications
+    // but is not really connected to web notifications (the popup message)
     DSW.enableNotifications = _=>{
         return new Promise((resolve, reject)=>{
             if (navigator.onLine) {
@@ -646,6 +659,8 @@ if (isInSWScope) {
                         userVisibleOnly: true
                     });
                     return req.then(function(sub) {
+                        DSW.status.notification = sub.endpoint;
+                        logger.info('Registered to notification server');
                         resolve(sub);
                     }).catch(reason=>{
                         reject(reason || 'Not allowed by user');
@@ -712,15 +727,8 @@ if (isInSWScope) {
                                 Promise.all([
                                     appShellPromise,
                                     new Promise((resolve, reject)=>{
-                                        // setting up notifications
                                         if (PWASettings.notification && PWASettings.notification.auto) {
-                                            reg.pushManager.subscribe({
-                                                userVisibleOnly: true
-                                            }).then(function(sub) {
-                                                logger.log('Subscribed to notification server'); // endpoint: sub.endpoint
-                                                DSW.status.notification = sub.endpoint;
-                                                resolve();
-                                            });
+                                            return DSW.enableNotifications();
                                         } else {
                                             resolve();
                                         }
@@ -759,7 +767,6 @@ if (isInSWScope) {
                                 error: err
                             });
                         });
-
                 } else { // todo: remove it from the else statement and see if it works
                     // service worker was already registered and is active
                     // setting up traceable requests

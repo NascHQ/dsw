@@ -100,6 +100,49 @@ window.addEventListener('load', function(){
         videoEl.setAttribute('src', 'videos/dsw-video-sandbox.mp4');
         videoEl.play();
     });
+	
+	geby('btn-10-message').addEventListener('click', function(){
+		var el = this;
+        sendMessage().then(_=>{
+        	el.parentNode.querySelector('.test-content').innerHTML = 'Message Sent';
+        }).catch(err=>{
+        	el.parentNode.querySelector('.test-content').innerHTML = 'Message Failed';
+        });
+    });
+	
+	function sendMessage () {
+		return new Promise((resolve, reject)=>{
+            DSW.enableNotifications().then(_=>{
+                if (DSW.status.notification) {
+                    fetch('https://fcm.googleapis.com/fcm/send', {
+                        "method": "POST",
+                        "Authorization": "key=AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
+                        "mode": "cors",
+                        "body": JSON.stringify({
+                            registration_ids: [ DSW.status.notification.replace(/.+\/gcm\/send\//, '') ]
+                        }),
+                        headers: {
+                            "Content-Type":"application/json",
+                            "Authorization": "key=AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8"
+                        }
+                    }).then(response=>{
+                        console.log(response.status, response.statusText);
+    //					response.text().then(function(result){
+    //						console.log(result);
+    //					});
+                        resolve();
+                    }).catch(err=>{
+                        console.warn('Could not send the message', err);
+                        reject(err);
+                    });
+                } else {
+                    reject('Notification not allowed by the user');
+                }
+            }).catch(err=>{
+                reject('Notification not registered');
+            });
+		});
+	}
     
     // some requests that should bypass...you will only see them on your console
     setTimeout(_=>{
