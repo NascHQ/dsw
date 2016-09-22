@@ -38,6 +38,7 @@ You can then go offline and reload the page to validate it.
 Read the commented json configuration file: https://naschq.github.io/dsw/config-example.html
 - [How to install](https://github.com/NascHQ/dsw#installing-it)
 - [How to use it](https://github.com/NascHQ/dsw#using-it)
+- [Push Notification support](https://github.com/NascHQ/dsw#push-notifications)
  - [Matching requests](https://github.com/NascHQ/dsw#matching)
  - [Request Strategies](https://github.com/NascHQ/dsw#strategy)
  - [Possible actions for each request](https://github.com/NascHQ/dsw#applying)
@@ -55,9 +56,12 @@ Read the commented json configuration file: https://naschq.github.io/dsw/config-
   - [Caching static files](https://github.com/NascHQ/dsw#caching-your-static-files)
   - [Bypassing requests](https://github.com/NascHQ/dsw#bypassing-requests)
   - [Sending credentials](https://github.com/NascHQ/dsw#sending-credentials)
-  - [Using it programatically (require('dsw'))](https://github.com/NascHQ/dsw#using-it-programatically)
-  - [Client API](https://github.com/NascHQ/dsw#using-the-api)
-  - [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
+- [Using it programatically (require('dsw'))](https://github.com/NascHQ/dsw#using-it-programatically)
+- [Client API](https://github.com/NascHQ/dsw#using-the-api)
+  - [Notifications API](https://github.com/NascHQ/dsw#notifications)
+  - [PUSH Notifications API](https://github.com/NascHQ/dsw#push-notifications-api)
+  - [Connection Status API](https://github.com/NascHQ/dsw#connection-status)
+- [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
 
 ## Installing it
 
@@ -136,7 +140,7 @@ Open the `dswfile.json` in the root of your project and let's add some content l
 
 ```js
 {
-    "dswVersion": 2.2,
+    "dswVersion": 1.0,
     "applyImmediately": true,
     "dswRules": {
         "yourRuleName": {
@@ -149,6 +153,79 @@ Open the `dswfile.json` in the root of your project and let's add some content l
 
 That's it! You may have many rules.
 Reminding that `applyImmediately` is optional. It will replace the previously registered service worker as soon as the new one loads.
+
+### Push notifications
+
+If you want to enable and use push notifications, you can set:
+
+```js
+{
+    "dswVersion": 1.0,
+    "applyImmediately": true,
+    "notification": {
+        "auto": false,
+        "service": "GCM",
+        "senderId": "your-project-id",
+        "dataSrc": "http://where.to/get-your/notification-data",
+        "dataPath": "notification"
+    },
+    "dswRules": {
+        /* ... */
+    }
+}
+```
+
+Here, `dataSrc` is the path or service where dsw will find the structure for your notification.  
+And `dataPath` is an optional path for it. For example, the dataSrc request could return:
+
+```js
+{
+    "title": "The title",
+    "icon": "path-to-icon",
+    "body": "The message itself"
+}
+```
+
+In this case, `dataPath` would not be provided. But:
+
+```js
+{
+    "notification: {
+        "title": "The title",
+        "icon": "path-to-icon",
+        "body": "The message itself"
+    }
+}
+```
+
+For this case, you can say that the `dataPath` is "notification".
+
+You can also provide the static information for notifications, like so:
+
+
+```js
+{
+    "dswVersion": 1.0,
+    "applyImmediately": true,
+    "notification": {
+        "auto": false,
+        "service": "GCM",
+        "senderId": "your-project-id",
+        "title": "IMPORTANT",
+        "body": "There is an update in our page",
+        "icon": "path-to-icon"
+    },
+    "dswRules": {
+        /* ... */
+    }
+}
+```
+
+In this case, you could use a more generic message simply to call your user to your page.
+
+The `auto` property is false by default, but if true, will ask for the users permission (to trigger notifications) as soon as the service worker gets registered.
+
+**NOTE**: By now, only Google's GCM service is supported. You can use it with Firebase or Google Console, for example, to trigger new push notifications.
 
 ### Matching
 
@@ -569,7 +646,7 @@ To do that, you can use the `DSW.enableNotifications()` method, which will retur
 DSW.enableNotifications().then(function(){
     console.log('notification was shown');
 }).catch(function(reason){
-    console.log('Did not show the notification:', reason);
+    console.log("User hasn't allowed notifications", reason);
 });
 ```
 
@@ -587,6 +664,29 @@ DSW.notify('The title', {
     console.log('Did not show the notification:', reason);
 });
 ```
+
+### Events
+
+With DSW API you can listen to many events, including:
+
+#### Push Notifications API
+
+You can use both `onpushnotification` or addEventListener for `pushnotification`.
+
+```js
+DSW.addEventListener('pushnotification', function(){
+  console.log('received it in addEventListener');
+});
+
+DSW.onpushnotification = function () {
+  console.log('received in onpushnotification');
+}
+```
+
+Nowadays, notifications cannot carry any data, so you could use it to decide, in **each client** what to do with this information.  
+If you want to use it to actually show a notification (using webnotification), don't do it using this listener. In case your user has more tabs opened in your page, **each one** will trigger this event.
+
+Instead, if you want to show some information, use the `notification` configuration in your `dswfile`.
 
 #### Connection status
 
