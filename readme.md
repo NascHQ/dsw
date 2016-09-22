@@ -31,6 +31,8 @@ You can then go offline and reload the page to validate it.
 - Support for messaging and syncing events (under development)
 - Quite simple JSON configuration and easy to start with the basic, or go further for more complex cases
 - Client API with many possibilities
+- API for Web Notifications
+- Support (and API) for Push Notifications
 - Support for opaque requests
 
 ## Learning it
