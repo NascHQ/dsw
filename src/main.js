@@ -478,8 +478,9 @@ if (isInSWScope) {
     self.addEventListener('push', function(event) {
         
         // let's trigger the event
-        DSW.broadcast({
-            event: 'pushnotification'
+        DSWManager.broadcast({
+            event: 'pushnotification',
+            data: event.data
         });
             
         if (PWASettings.notification && PWASettings.notification.dataSrc) {
@@ -572,6 +573,47 @@ if (isInSWScope) {
         registeredServiceWorker,
         installationTimeOut;
     
+    const eventManager = (()=>{
+        const events = {};
+        return {
+            addEventListener (eventName, listener) {
+                events[eventName] = events[eventName] || [];
+                events[eventName].push(listener);
+            },
+            trigger (eventName, data={}) {
+                let listener;
+                try {
+                    if (events[eventName]) {
+                        for (listener of events[eventName]) {
+                            if (typeof listener == 'function') {
+                                listener(data);
+                            }
+                        }
+                    }
+                    
+                    listener = 'on' + eventName;
+                    if (typeof DSW[listener] == 'function') {
+                        DSW[listener](data);
+                    }
+                }catch(e){
+                    if (listener && listener.name) {
+                        listener = listener.name;
+                    } else {
+                        listener = listener || 'annonymous';
+                    }
+                    logger.error(`Failed trigerring event ${eventName} on listener ${listener}` , e.message, e);
+                }
+            }
+        };
+    })();
+    
+    // let's store some events, so it can be autocompleted in devTools
+    DSW.addEventListener = eventManager.addEventListener;
+    DSW.onpushnotification = function () { /* use this to know when a notification arrived */ };
+    DSW.enabled = function () { /* use this to know when DSW is enabled and running */ };
+    DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
+    DSW.onnotificationsenabled = function () { /* use this to know when user has enabled notifications */ };
+    
     navigator.serviceWorker.addEventListener('message', event=>{
         // if it is waiting for the installation confirmation
         if (pendingResolve && event.data.DSWStatus !== void(0)) {
@@ -591,8 +633,8 @@ if (isInSWScope) {
             pendingResolve = false;
             pendingReject = false;
         }
-        debugger;
-        //console.log(event.data);
+        
+        eventManager.trigger(event.data.event, event.data.data); // yeah, I know ¬¬
     });
 
     DSW.trace = function (match, options, callback) {
@@ -670,6 +712,7 @@ if (isInSWScope) {
                     });
                     return req.then(function(sub) {
                         DSW.status.notification = sub.endpoint;
+                        eventManager.trigger('notificationsenabled', DSW.status);
                         logger.info('Registered to notification server');
                         resolve(sub);
                     }).catch(reason=>{
@@ -733,6 +776,7 @@ if (isInSWScope) {
                         
                             navigator.serviceWorker.ready.then(function(reg) {
                                 logger.info('Registered service worker');
+                                eventManager.trigger('registered', DSW.status);
                                 
                                 Promise.all([
                                     appShellPromise,
@@ -764,6 +808,7 @@ if (isInSWScope) {
                                     })
                                 ]).then(_=>{
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                    eventManager.trigger('enabled', DSW.status);
                                     resolve(DSW.status);
                                 });
                             });

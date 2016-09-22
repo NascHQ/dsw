@@ -1352,8 +1352,9 @@ if (isInSWScope) {
         self.addEventListener('push', function (event) {
 
             // let's trigger the event
-            DSW.broadcast({
-                event: 'pushnotification'
+            DSWManager.broadcast({
+                event: 'pushnotification',
+                data: event.data
             });
 
             if (PWASettings.notification && PWASettings.notification.dataSrc) {
@@ -1443,6 +1444,70 @@ if (isInSWScope) {
             registeredServiceWorker = void 0,
             installationTimeOut = void 0;
 
+        var eventManager = function () {
+            var events = {};
+            return {
+                addEventListener: function addEventListener(eventName, listener) {
+                    events[eventName] = events[eventName] || [];
+                    events[eventName].push(listener);
+                },
+                trigger: function trigger(eventName) {
+                    var data = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+                    var listener = void 0;
+                    try {
+                        if (events[eventName]) {
+                            var _iteratorNormalCompletion = true;
+                            var _didIteratorError = false;
+                            var _iteratorError = undefined;
+
+                            try {
+                                for (var _iterator = events[eventName][Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                                    listener = _step.value;
+
+                                    if (typeof listener == 'function') {
+                                        listener(data);
+                                    }
+                                }
+                            } catch (err) {
+                                _didIteratorError = true;
+                                _iteratorError = err;
+                            } finally {
+                                try {
+                                    if (!_iteratorNormalCompletion && _iterator.return) {
+                                        _iterator.return();
+                                    }
+                                } finally {
+                                    if (_didIteratorError) {
+                                        throw _iteratorError;
+                                    }
+                                }
+                            }
+                        }
+
+                        listener = 'on' + eventName;
+                        if (typeof DSW[listener] == 'function') {
+                            DSW[listener](data);
+                        }
+                    } catch (e) {
+                        if (listener && listener.name) {
+                            listener = listener.name;
+                        } else {
+                            listener = listener || 'annonymous';
+                        }
+                        _logger2.default.error('Failed trigerring event ' + eventName + ' on listener ' + listener, e.message, e);
+                    }
+                }
+            };
+        }();
+
+        // let's store some events, so it can be autocompleted in devTools
+        DSW.addEventListener = eventManager.addEventListener;
+        DSW.onpushnotification = function () {/* use this to know when a notification arrived */};
+        DSW.enabled = function () {/* use this to know when DSW is enabled and running */};
+        DSW.onregistered = function () {/* use this to know when DSW has been registered */};
+        DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
+
         navigator.serviceWorker.addEventListener('message', function (event) {
             // if it is waiting for the installation confirmation
             if (pendingResolve && event.data.DSWStatus !== void 0) {
@@ -1462,8 +1527,8 @@ if (isInSWScope) {
                 pendingResolve = false;
                 pendingReject = false;
             }
-            debugger;
-            //console.log(event.data);
+
+            eventManager.trigger(event.data.event, event.data.data); // yeah, I know ¬¬
         });
 
         DSW.trace = function (match, options, callback) {
@@ -1539,6 +1604,7 @@ if (isInSWScope) {
                         });
                         return req.then(function (sub) {
                             DSW.status.notification = sub.endpoint;
+                            eventManager.trigger('notificationsenabled', DSW.status);
                             _logger2.default.info('Registered to notification server');
                             resolve(sub);
                         }).catch(function (reason) {
@@ -1605,6 +1671,7 @@ if (isInSWScope) {
 
                             navigator.serviceWorker.ready.then(function (reg) {
                                 _logger2.default.info('Registered service worker');
+                                eventManager.trigger('registered', DSW.status);
 
                                 Promise.all([appShellPromise, new Promise(function (resolve, reject) {
                                     if (PWASettings.notification && PWASettings.notification.auto) {
@@ -1631,6 +1698,7 @@ if (isInSWScope) {
                                     }
                                 })]).then(function (_) {
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                    eventManager.trigger('enabled', DSW.status);
                                     resolve(DSW.status);
                                 });
                             });

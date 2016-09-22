@@ -1497,9 +1497,7 @@ if (isInSWScope) {
         });
 
         self.addEventListener('message', function (event) {
-            // TODO: add support to message event
             var ports = event.ports;
-
             if (event.data.trackPath) {
                 var tp = event.data.trackPath;
                 DSWManager.tracking[tp] = {
@@ -1511,6 +1509,12 @@ if (isInSWScope) {
         });
 
         self.addEventListener('push', function (event) {
+
+            // let's trigger the event
+            DSWManager.broadcast({
+                event: 'pushnotification',
+                data: event.data
+            });
 
             if (PWASettings.notification && PWASettings.notification.dataSrc) {
                 // if there is a dataSrc defined, we fetch it
@@ -1599,13 +1603,81 @@ if (isInSWScope) {
             registeredServiceWorker = void 0,
             installationTimeOut = void 0;
 
+        var eventManager = function () {
+            var events = {};
+            return {
+                addEventListener: function addEventListener(eventName, listener) {
+                    events[eventName] = events[eventName] || [];
+                    events[eventName].push(listener);
+                },
+                trigger: function trigger(eventName) {
+                    var data = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+                    var listener = void 0;
+                    try {
+                        if (events[eventName]) {
+                            var _iteratorNormalCompletion = true;
+                            var _didIteratorError = false;
+                            var _iteratorError = undefined;
+
+                            try {
+                                for (var _iterator = events[eventName][Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                                    listener = _step.value;
+
+                                    if (typeof listener == 'function') {
+                                        listener(data);
+                                    }
+                                }
+                            } catch (err) {
+                                _didIteratorError = true;
+                                _iteratorError = err;
+                            } finally {
+                                try {
+                                    if (!_iteratorNormalCompletion && _iterator.return) {
+                                        _iterator.return();
+                                    }
+                                } finally {
+                                    if (_didIteratorError) {
+                                        throw _iteratorError;
+                                    }
+                                }
+                            }
+                        }
+
+                        listener = 'on' + eventName;
+                        if (typeof DSW[listener] == 'function') {
+                            DSW[listener](data);
+                        }
+                    } catch (e) {
+                        if (listener && listener.name) {
+                            listener = listener.name;
+                        } else {
+                            listener = listener || 'annonymous';
+                        }
+                        _logger2.default.error('Failed trigerring event ' + eventName + ' on listener ' + listener, e.message, e);
+                    }
+                }
+            };
+        }();
+
+        // let's store some events, so it can be autocompleted in devTools
+        DSW.addEventListener = eventManager.addEventListener;
+        DSW.onpushnotification = function () {/* use this to know when a notification arrived */};
+        DSW.enabled = function () {/* use this to know when DSW is enabled and running */};
+        DSW.onregistered = function () {/* use this to know when DSW has been registered */};
+        DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
+
         navigator.serviceWorker.addEventListener('message', function (event) {
+            // if it is waiting for the installation confirmation
             if (pendingResolve && event.data.DSWStatus !== void 0) {
+                // and if the message is about a successful installation
                 if (registeredServiceWorker) {
+                    // this means all the appShell have been downloaded
                     if (event.data.DSWStatus) {
                         DSW.status.appShell = true;
                         pendingResolve(DSW.status);
                     } else {
+                        // if it failed, let's unregister it, to avoid false positives
                         DSW.status.appShell = false;
                         pendingReject(DSW.status);
                         registeredServiceWorker.unregister();
@@ -1614,7 +1686,8 @@ if (isInSWScope) {
                 pendingResolve = false;
                 pendingReject = false;
             }
-            //console.log(event.data);
+
+            eventManager.trigger(event.data.event, event.data.data); // yeah, I know ¬¬
         });
 
         DSW.trace = function (match, options, callback) {
@@ -1634,6 +1707,8 @@ if (isInSWScope) {
         DSW.sendMessage = function (message) {
             var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
+            // This method sends a message to the service worker.
+            // Useful for specific tokens and internal use and trace
             return new Promise(function (resolve, reject) {
                 var messageChannel = new MessageChannel();
 
@@ -1688,6 +1763,7 @@ if (isInSWScope) {
                         });
                         return req.then(function (sub) {
                             DSW.status.notification = sub.endpoint;
+                            eventManager.trigger('notificationsenabled', DSW.status);
                             _logger2.default.info('Registered to notification server');
                             resolve(sub);
                         }).catch(function (reason) {
@@ -1754,6 +1830,7 @@ if (isInSWScope) {
 
                             navigator.serviceWorker.ready.then(function (reg) {
                                 _logger2.default.info('Registered service worker');
+                                eventManager.trigger('registered', DSW.status);
 
                                 Promise.all([appShellPromise, new Promise(function (resolve, reject) {
                                     if (PWASettings.notification && PWASettings.notification.auto) {
@@ -1780,6 +1857,7 @@ if (isInSWScope) {
                                     }
                                 })]).then(function (_) {
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                    eventManager.trigger('enabled', DSW.status);
                                     resolve(DSW.status);
                                 });
                             });
@@ -1793,7 +1871,7 @@ if (isInSWScope) {
                             });
                         });
                     } else {
-                        // todo: remove it from the else statement and see if it works
+                        // TODO: remove it from the else statement and see if it works even for the first load
                         // service worker was already registered and is active
                         // setting up traceable requests
                         if (config && config.trace) {
@@ -1820,46 +1898,6 @@ if (isInSWScope) {
 }
 
 exports.default = DSW;
-
-/*
-sub: dXsA2MqO2Y4:APA91bFvPJDafKwWGfNa8-M…ZoAbRVD1kpHmKfNpj8luTv9EwduclwasN86FIhewKjGXrNG5l7pocp9_aWBTGHJkqgzCqVqzXy
-product-key: 483627048705
-notifier: AIzaSyCeU5rn3PrMV7Gjq60LypWCF-MHGk3wXFU
-
-
-project-id: dsw-tests
-sender/server key: 483627048705
-product id: 640391334636 (gcm_sender_id)
-
-authorization Key: AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8
-server key: AIzaSyCM6uh7yfFcAeLwTcyXr3gLmOFAv672nqA
-
-curl --header "Authorization: key=AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8" \
-       --header Content-Type:"application/json" \
-       https://fcm.googleapis.com/fcm/send \
-       -d "{\"data\":{\"foo\": \"Oh My OMG\"}, \"registration_ids\":[\"cuh_S1jD6k8:APA91bFoOx28kaExjeat21ojOo9K_KvdXnD3yVnMjX0AnTMPTNFxkrQGo7OapcPW3dFGUjZPV0STVq34OsUQ8svS3UjSxJX7tqhMhGevYMMYRscHjdLU6CNhTMRBvYYzdKVLcXJMHjX_\"]}"
-
-
-
-
-
-
-
-
-
-<script src="https://www.gstatic.com/firebasejs/3.4.0/firebase.js"></script>
-<script>
-  // Initialize Firebase
-  var config = {
-    apiKey: "AIzaSyDrxZHHEF6EMOH2UbgT31ymj8Fe8Sy8d_8",
-    authDomain: "dsw-tests.firebaseapp.com",
-    databaseURL: "https://dsw-tests.firebaseio.com",
-    storageBucket: "dsw-tests.appspot.com",
-    messagingSenderId: "640391334636"
-  };
-  firebase.initializeApp(config);
-</script>
-*/
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./best-matching-rx.js":1,"./cache-manager.js":2,"./go-fetch.js":3,"./logger.js":5,"./strategies.js":7,"./utils.js":8}],7:[function(require,module,exports){
