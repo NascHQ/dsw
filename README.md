@@ -17,7 +17,7 @@ If you are starting from scratch and want to see it working right away, you can 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-ncdlpdummg.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-hpfvtqxejx.now.sh)
 
 ## Advantages
 
@@ -31,6 +31,8 @@ You can then go offline and reload the page to validate it.
 - Support for messaging and syncing events (under development)
 - Quite simple JSON configuration and easy to start with the basic, or go further for more complex cases
 - Client API with many possibilities
+- API for Web Notifications
+- Support (and API) for Push Notifications
 - Support for opaque requests
 
 ## Learning it
