@@ -42,7 +42,7 @@
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
               <p>This is the <strong>version</strong> of your cached configuration.
-In case you want to reload it, some change must be done in this file, if 
+In case you want to reload it, some change must be done in this file, if
 not in the content itself, at least, in the version number.
 This number is also used to name your cached files.</p>
 
@@ -202,8 +202,7 @@ and a powerful mechanism for notifications.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"dataPath"</span>: <span class="hljs-string">"notification"</span>
-    },</pre></div></div>
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"dataPath"</span>: <span class="hljs-string">"notification"</span>,</pre></div></div>
             
         </li>
         
@@ -213,6 +212,23 @@ and a powerful mechanism for notifications.</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Target is used when the user clicks on the notification.
+It will then open a window with this source, or focus a tab, in case it is already opened</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-string">"target"</span>: <span class="hljs-string">"/"</span>
+    },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
               <p>Here is where you will add all of your rules.
 You can create as many as you want, and name them as you will.</p>
@@ -224,11 +240,11 @@ You can create as many as you want, and name them as you will.</p>
         </li>
         
         
-        <li id="section-14">
+        <li id="section-15">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-14">&#182;</a>
+                <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
               <p>You may name your rules here
 this rule will redirect every not found image (or with error) to
@@ -241,11 +257,11 @@ a default image</p>
         </li>
         
         
-        <li id="section-15">
+        <li id="section-16">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-15">&#182;</a>
+                <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
               <p>everything that matches a status like 404 or 500
 and is an image (in the given extensions)</p>
@@ -257,11 +273,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-16">
+        <li id="section-17">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-16">&#182;</a>
+                <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
               <p>We are looking for everything with a status 400 or 500</p>
 
@@ -272,11 +288,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-17">
+        <li id="section-18">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-17">&#182;</a>
+                <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
               <p>AND with one of these extensions</p>
 
@@ -289,11 +305,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-18">
+        <li id="section-19">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-18">&#182;</a>
+                <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
               <p>will actually become a default 404 image</p>
 
@@ -306,11 +322,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-19">
+        <li id="section-20">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-19">&#182;</a>
+                <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
               <p>You can also output a string right away</p>
 
@@ -323,11 +339,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-20">
+        <li id="section-21">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-20">&#182;</a>
+                <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
               <p>by using the output action (it accepts variables, as in other examples)</p>
 
@@ -340,11 +356,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-21">
+        <li id="section-22">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-21">&#182;</a>
+                <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
               <p>This other example redirects pages that are not found</p>
 
@@ -355,11 +371,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-22">
+        <li id="section-23">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-22">&#182;</a>
+                <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
               <p>Any requisition that has a 404 status (including css, js, etc)</p>
 
@@ -373,11 +389,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-23">
+        <li id="section-24">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-23">&#182;</a>
+                <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>will receive our default 404 page</p>
 
@@ -390,11 +406,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-24">
+        <li id="section-25">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-24">&#182;</a>
+                <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
               <p>Redirecting requests</p>
 
@@ -406,11 +422,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-25">
+        <li id="section-26">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-25">&#182;</a>
+                <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
               <p>In this example, everything inside this directory should be redirected</p>
 
@@ -423,11 +439,11 @@ and is an image (in the given extensions)</p>
         </li>
         
         
-        <li id="section-26">
+        <li id="section-27">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-26">&#182;</a>
+                <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
               <p>we simply fetch the different content
 we could also use the “redirect” action here, it would work
@@ -442,11 +458,11 @@ as the same, but with a 302 status header</p>
         </li>
         
         
-        <li id="section-27">
+        <li id="section-28">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-27">&#182;</a>
+                <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
               <p>Some times, we want something NOT to be cached.
 In the following examples, we will cache EVERY image.
@@ -459,11 +475,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-28">
+        <li id="section-29">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-28">&#182;</a>
+                <a class="pilcrow" href="#section-29">&#182;</a>
               </div>
               <p>the image named “not-cached” will</p>
 
@@ -475,11 +491,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-29">
+        <li id="section-30">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-29">&#182;</a>
+                <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
               <p>not be cached…ever!</p>
 
@@ -492,11 +508,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-30">
+        <li id="section-31">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-30">&#182;</a>
+                <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
               <p>Now, let’s create a cache for every single image (except the one before)</p>
 
@@ -507,11 +523,11 @@ That’s why we are defining here one exception.</p>
         </li>
         
         
-        <li id="section-31">
+        <li id="section-32">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
+                <a class="pilcrow" href="#section-32">&#182;</a>
               </div>
               <p>Everything that matches the right extensions (and has a status
 different than 404 or 500, once we already defined rules for those)</p>
@@ -525,11 +541,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-32">
+        <li id="section-33">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-32">&#182;</a>
+                <a class="pilcrow" href="#section-33">&#182;</a>
               </div>
               <p>will be cached at “cached-images::1”</p>
 
@@ -540,11 +556,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-33">
+        <li id="section-34">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-33">&#182;</a>
+                <a class="pilcrow" href="#section-34">&#182;</a>
               </div>
               <p>If you don’t specify the version, it uses the value in dswVersion</p>
 
@@ -558,11 +574,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-34">
+        <li id="section-35">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-34">&#182;</a>
+                <a class="pilcrow" href="#section-35">&#182;</a>
               </div>
               <p>let’s cache our static files</p>
 
@@ -573,11 +589,11 @@ different than 404 or 500, once we already defined rules for those)</p>
         </li>
         
         
-        <li id="section-35">
+        <li id="section-36">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-35">&#182;</a>
+                <a class="pilcrow" href="#section-36">&#182;</a>
               </div>
               <p>all of our scripts and styles will be cached (once they don’t meet
 the prefious criteria of 404 status)</p>
@@ -596,11 +612,11 @@ the prefious criteria of 404 status)</p>
         </li>
         
         
-        <li id="section-36">
+        <li id="section-37">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-36">&#182;</a>
+                <a class="pilcrow" href="#section-37">&#182;</a>
               </div>
               <p>In this example, we are redirecting requests using variables
 from the matching regular expression</p>
@@ -613,11 +629,11 @@ from the matching regular expression</p>
         </li>
         
         
-        <li id="section-37">
+        <li id="section-38">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-37">&#182;</a>
+                <a class="pilcrow" href="#section-38">&#182;</a>
               </div>
               <p>We can use in our <em>apply</em> actions, the groups from
 this expression, between parenthesis</p>
@@ -631,11 +647,11 @@ this expression, between parenthesis</p>
         </li>
         
         
-        <li id="section-38">
+        <li id="section-39">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-38">&#182;</a>
+                <a class="pilcrow" href="#section-39">&#182;</a>
               </div>
               <p>here, each groups is represented by a variable, in order
 accessed as $x where x is the position of the variable
@@ -650,11 +666,11 @@ in the matching expression</p>
         </li>
         
         
-        <li id="section-39">
+        <li id="section-40">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-39">&#182;</a>
+                <a class="pilcrow" href="#section-40">&#182;</a>
               </div>
               <p>Lets cache everything that has html extension OR is at /
 Notice there we are using the OR here, instead of just the AND</p>
@@ -667,11 +683,11 @@ Notice there we are using the OR here, instead of just the AND</p>
         </li>
         
         
-        <li id="section-40">
+        <li id="section-41">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-40">&#182;</a>
+                <a class="pilcrow" href="#section-41">&#182;</a>
               </div>
               <p>everything with the html or htm extension</p>
 
@@ -682,11 +698,11 @@ Notice there we are using the OR here, instead of just the AND</p>
         </li>
         
         
-        <li id="section-41">
+        <li id="section-42">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-41">&#182;</a>
+                <a class="pilcrow" href="#section-42">&#182;</a>
               </div>
               <p>OR
 everything in /</p>
@@ -699,11 +715,11 @@ everything in /</p>
         </li>
         
         
-        <li id="section-42">
+        <li id="section-43">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-42">&#182;</a>
+                <a class="pilcrow" href="#section-43">&#182;</a>
               </div>
               <p>The default strategy is ‘offline-first’
 With the online-first strategy, it will ALWAYS go for the
@@ -721,11 +737,11 @@ Cache will ONLY be used when the network fails.</p>
         </li>
         
         
-        <li id="section-43">
+        <li id="section-44">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-43">&#182;</a>
+                <a class="pilcrow" href="#section-44">&#182;</a>
               </div>
               <p>we can also expire the cache</p>
 
@@ -739,11 +755,11 @@ Cache will ONLY be used when the network fails.</p>
         </li>
         
         
-        <li id="section-44">
+        <li id="section-45">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-44">&#182;</a>
+                <a class="pilcrow" href="#section-45">&#182;</a>
               </div>
               <p>Let’s use IndexedDB to store some data</p>
 
@@ -755,11 +771,11 @@ Cache will ONLY be used when the network fails.</p>
         </li>
         
         
-        <li id="section-45">
+        <li id="section-46">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-45">&#182;</a>
+                <a class="pilcrow" href="#section-46">&#182;</a>
               </div>
               <p>We will try to keep it up to date.
 DSW will look for it online, and if not possible, then look in the
@@ -774,11 +790,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-46">
+        <li id="section-47">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-46">&#182;</a>
+                <a class="pilcrow" href="#section-47">&#182;</a>
               </div>
               <p>The IndexedDB name</p>
 
@@ -789,11 +805,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-47">
+        <li id="section-48">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-47">&#182;</a>
+                <a class="pilcrow" href="#section-48">&#182;</a>
               </div>
               <p>The version of it. If you change it, your db will be updated.</p>
 
@@ -804,11 +820,11 @@ cached object in IndexedDB.</p>
         </li>
         
         
-        <li id="section-48">
+        <li id="section-49">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-48">&#182;</a>
+                <a class="pilcrow" href="#section-49">&#182;</a>
               </div>
               <p>The <em>json</em> data we are expecting in this example gives us
 and id, and we will use it as our kay for the IndexedDB structure.</p>
@@ -820,11 +836,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-49">
+        <li id="section-50">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-49">&#182;</a>
+                <a class="pilcrow" href="#section-50">&#182;</a>
               </div>
               <p>but we will also define some indexes</p>
 
@@ -835,11 +851,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-50">
+        <li id="section-51">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-50">&#182;</a>
+                <a class="pilcrow" href="#section-51">&#182;</a>
               </div>
               <p>one of the indexes is the property “name”</p>
 
@@ -850,11 +866,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-51">
+        <li id="section-52">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-51">&#182;</a>
+                <a class="pilcrow" href="#section-52">&#182;</a>
               </div>
               <p>the other index is the property “twitter”…</p>
 
@@ -867,11 +883,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-52">
+        <li id="section-53">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-52">&#182;</a>
+                <a class="pilcrow" href="#section-53">&#182;</a>
               </div>
               <p>…but for this one, we want to specify that it is unique.</p>
 
@@ -889,11 +905,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-53">
+        <li id="section-54">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-53">&#182;</a>
+                <a class="pilcrow" href="#section-54">&#182;</a>
               </div>
               <p>You can also bypass some requests</p>
 
@@ -906,11 +922,11 @@ and id, and we will use it as our kay for the IndexedDB structure.</p>
         </li>
         
         
-        <li id="section-54">
+        <li id="section-55">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-54">&#182;</a>
+                <a class="pilcrow" href="#section-55">&#182;</a>
               </div>
               <p>With the “request” value, it WILL perform the request, with no treatment.
 But the response will either be the response itself(in case of success)
@@ -925,11 +941,11 @@ or an empty string(if failed)</p>
         </li>
         
         
-        <li id="section-55">
+        <li id="section-56">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-55">&#182;</a>
+                <a class="pilcrow" href="#section-56">&#182;</a>
               </div>
               <p>When bypassing, you may also want to simply ignore some path</p>
 
@@ -940,11 +956,11 @@ or an empty string(if failed)</p>
         </li>
         
         
-        <li id="section-56">
+        <li id="section-57">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-56">&#182;</a>
+                <a class="pilcrow" href="#section-57">&#182;</a>
               </div>
               <p>imagine you have an old path and that some legacy script, html or css is
 still trying to load resources from it</p>
@@ -957,11 +973,11 @@ still trying to load resources from it</p>
         </li>
         
         
-        <li id="section-57">
+        <li id="section-58">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-57">&#182;</a>
+                <a class="pilcrow" href="#section-58">&#182;</a>
               </div>
               <p>by ignoring it, no network request will be started, and the output
 will be always a successful empty string</p>
@@ -977,11 +993,11 @@ will be always a successful empty string</p>
         </li>
         
         
-        <li id="section-58">
+        <li id="section-59">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-58">&#182;</a>
+                <a class="pilcrow" href="#section-59">&#182;</a>
               </div>
               <p>Here, we are telling the browser to send cookies and session credentions
 when fetching this
@@ -994,11 +1010,11 @@ You can pass any options accepted by fetch, here</p>
         </li>
         
         
-        <li id="section-59">
+        <li id="section-60">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-59">&#182;</a>
+                <a class="pilcrow" href="#section-60">&#182;</a>
               </div>
               <p>With the fastest strategy, both the network and cache will be verified.
 It means it will <em>always</em> start a new request, but also means that
@@ -1015,11 +1031,11 @@ it will keep the data up to date in the cache</p>
         </li>
         
         
-        <li id="section-60">
+        <li id="section-61">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-60">&#182;</a>
+                <a class="pilcrow" href="#section-61">&#182;</a>
               </div>
               <p>indexedDB support is still under development…</p>
 
@@ -1032,11 +1048,11 @@ it will keep the data up to date in the cache</p>
         </li>
         
         
-        <li id="section-61">
+        <li id="section-62">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-61">&#182;</a>
+                <a class="pilcrow" href="#section-62">&#182;</a>
               </div>
               <p>we can specify indexes using only strings</p>
 
