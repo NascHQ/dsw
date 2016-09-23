@@ -2,10 +2,10 @@
 ![Dynamic Service Worker](https://raw.githubusercontent.com/NascHQ/dsw/master/docs/images/worker-person.png)
 
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade) 
-[![GitHub [ERROR] :: Failed reading file at /Library/WebServer/Documents/www/tests/deletar-dsw/dswfile.jsonlicense](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt) 
-[![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues) 
-[![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw) 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade)
+[![GitHub [ERROR] :: Failed reading file at /Library/WebServer/Documents/www/tests/deletar-dsw/dswfile.jsonlicense](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/NascHQ/dsw/master/license.txt)
+[![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
+[![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw)
 
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
@@ -169,7 +169,8 @@ If you want to enable and use push notifications, you can set:
         "service": "GCM",
         "senderId": "your-project-id",
         "dataSrc": "http://where.to/get-your/notification-data",
-        "dataPath": "notification"
+        "dataPath": "notification",
+        "target": "/"
     },
     "dswRules": {
         /* ... */
@@ -177,7 +178,7 @@ If you want to enable and use push notifications, you can set:
 }
 ```
 
-Here, `dataSrc` is the path or service where dsw will find the structure for your notification.  
+Here, `dataSrc` is the path or service where dsw will find the structure for your notification.
 And `dataPath` is an optional path for it. For example, the dataSrc request could return:
 
 ```js
@@ -201,6 +202,7 @@ In this case, `dataPath` would not be provided. But:
 ```
 
 For this case, you can say that the `dataPath` is "notification".
+And `target` is the path where you want to focus your users once they click the notification.
 
 You can also provide the static information for notifications, like so:
 
@@ -674,18 +676,19 @@ With DSW API you can listen to many events, including:
 #### Push Notifications API
 
 You can use both `onpushnotification` or addEventListener for `pushnotification`.
+You are also able to listen for the user click in your notification by listening the event `notificationclicked`.
 
 ```js
 DSW.addEventListener('pushnotification', function(){
   console.log('received it in addEventListener');
 });
 
-DSW.onpushnotification = function () {
-  console.log('received in onpushnotification');
+DSW.onnotificationclicked = function (event) {
+  console.log('The user has clicked the notification', event.tag);
 }
 ```
 
-Nowadays, notifications cannot carry any data, so you could use it to decide, in **each client** what to do with this information.  
+Nowadays, notifications cannot carry any data, so you could use it to decide, in **each client** what to do with this information.
 If you want to use it to actually show a notification (using webnotification), don't do it using this listener. In case your user has more tabs opened in your page, **each one** will trigger this event.
 
 Instead, if you want to show some information, use the `notification` configuration in your `dswfile`.
@@ -714,7 +717,7 @@ Clone the project, go to its directory, install it and run `npm run try`
 
 # Contributing
 
-So, you want to contribute? Cool! We need it! :)  
+So, you want to contribute? Cool! We need it! :)
 We ask you to please read and follow our [Code of Conduct](https://github.com/NascHQ/dsw/blob/master/CODE_OF_CONDUCT.md).
 
 Here is how...and yep, as Service workers are still a little too new, it is a little bit weird! Here is how I've been doing this, and if you have any better suggestion, please let me know :)

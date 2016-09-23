@@ -536,11 +536,27 @@ if (isInSWScope) {
     // When user clicks/touches the notification, we shall close it and open
     // or focus the web page
     self.addEventListener('notificationclick', function(event) {
-        let tag = event.notification.tag;
-        logger.log('Notification click ', tag);
+        let tag = event.notification.tag,
+            targetUrl,
+            eventData = {
+                tag,
+                title: event.notification.title,
+                body: event.notification.body,
+                icon: event.notification.icon,
+                badge: event.notification.badge,
+                lang: event.notification.lang,
+                timestamp: event.notification.timestamp
+            };
+
         event.notification.close();
 
-        let url = PWASettings.notification? (PWASettings.notification.target || location.toString()): location.toString();
+        // the targetUul is the used to know if DSW should open a new window,
+        // focus a window or simply trigger the event
+        if (PWASettings.notification && PWASettings.notification.target !== void(0)) {
+            targetUrl = PWASettings.notification.target;
+        } else {
+            targetUrl = location.toString();
+        }
 
         event.waitUntil(
             // let's look for all windows(or frames) that are using our sw
@@ -552,14 +568,19 @@ if (isInSWScope) {
                 for (let i = 0; i < windowClients.length; i++) {
                     let client = windowClients[i];
                     // if it is, we simply focus it
-                    if ((client.url == url || (new URL(client.url)).pathname == url) && 'focus' in client) {
+                    if ((client.url == targetUrl ||
+                        (new URL(client.url)).pathname == targetUrl) &&
+                        'focus' in client) {
                         p= client.focus();
                         break;
                     }
                 }
                 // if it is not opened, we open it
-                if (!p && clients.openWindow) {
-                    p= clients.openWindow(url);
+                if (!p && targetUrl && clients.openWindow) {
+                    p= clients.openWindow(targetUrl);
+                } else {
+                    // if not, we simply resolve it
+                    p = Promise.resolve();
                 }
 
                 // now we execute the promise (either a openWindow or focus)
@@ -567,7 +588,7 @@ if (isInSWScope) {
                     // and then trigger the event
                     DSWManager.broadcast({
                         event: 'notificationclicked',
-                        data: { tag },
+                        data: eventData,
                     });
                 });
             })
@@ -576,7 +597,7 @@ if (isInSWScope) {
 
 
     self.addEventListener('sync', function(event) {
-        // TODO: add support to sync event
+        // TODO: add support to sync event as browsers evolve and support the feature
         //debugger;
     });
 
