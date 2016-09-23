@@ -11,7 +11,8 @@
         "service": "GCM",
         "senderId": "640391334636",
         "dataSrc": "/notification.json",
-        "dataPath": "notification"
+        "dataPath": "notification",
+        "target": "/"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,

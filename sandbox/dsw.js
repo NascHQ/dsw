@@ -11,7 +11,8 @@ const PWASettings = {
         "service": "GCM",
         "senderId": "640391334636",
         "dataSrc": "/notification.json",
-        "dataPath": "notification"
+        "dataPath": "notification",
+        "target": "/"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
@@ -1355,22 +1356,7 @@ if (isInSWScope) {
                                         },
                                         preview: result
                                     }, true);
-                                    var tracker = void 0;
-                                    var traceBack = function traceBack(port, key) {
-                                        // sending the trace information back to client
-                                        port.postMessage({
-                                            id: event.request.requestId,
-                                            src: event.request.traceSteps[0].data.url,
-                                            method: event.request.traceSteps[0].data.method,
-                                            steps: event.request.traceSteps
-                                        });
-                                    };
-                                    for (tracker in DSWManager.tracking) {
-                                        if (event.request.url.match(tracker)) {
-                                            DSWManager.tracking[tracker].ports.forEach(traceBack);
-                                            break;
-                                        }
-                                    }
+                                    DSWManager.sendTraceData(event);
                                 });
                             }
                             resolve(result);
@@ -1379,6 +1365,24 @@ if (isInSWScope) {
                         resolve(response);
                     }
                 }));
+            },
+            sendTraceData: function sendTraceData(event) {
+                var tracker = void 0;
+                var traceBack = function traceBack(port, key) {
+                    // sending the trace information back to client
+                    port.postMessage({
+                        id: event.request.requestId,
+                        src: event.request.traceSteps[0].data.url,
+                        method: event.request.traceSteps[0].data.method,
+                        steps: event.request.traceSteps
+                    });
+                };
+                for (tracker in DSWManager.tracking) {
+                    if (event.request.url.match(tracker)) {
+                        DSWManager.tracking[tracker].ports.forEach(traceBack);
+                        break;
+                    }
+                }
             },
             broadcast: function broadcast(message) {
                 return clients.matchAll().then(function (result) {
@@ -1393,10 +1397,6 @@ if (isInSWScope) {
 
                     DSWManager.requestId = 1 + (DSWManager.requestId || 0);
 
-                    if (event.request.method == 'POST' || event.request.method == 'PUT') {
-                        return;
-                    }
-
                     if (DSWManager.trackMoved[event.request.url]) {
                         var movedInfo = DSWManager.trackMoved[event.request.url];
                         event.request.requestId = movedInfo.id;
@@ -1407,16 +1407,22 @@ if (isInSWScope) {
                         DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
                     }
 
+                    var url = new URL(event.request.url);
+                    var sameOrigin = url.origin == location.origin;
+                    var pathName = url.pathname;
+
+                    if (event.request.method != 'GET') {
+                        DSWManager.traceStep(event.request, 'Ignoring ' + event.request.method + ' request', {});
+                        DSWManager.sendTraceData(event);
+                        return;
+                    }
+
                     // in case there are no rules (happens when chrome crashes, for example)
                     if (!Object.keys(DSWManager.rules).length) {
                         return DSWManager.setup(PWASettings).then(function (_) {
                             return fetch(event);
                         });
                     }
-
-                    var url = new URL(event.request.url);
-                    var sameOrigin = url.origin == location.origin;
-                    var pathName = url.pathname;
 
                     // in case we want to enforce https
                     if (PWASettings.enforceSSL) {
@@ -1443,6 +1449,13 @@ if (isInSWScope) {
                         return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
+                    } else {
+                        // if it is not sameOrigin and there is no rule for it
+                        if (!sameOrigin) {
+                            DSWManager.traceStep(event.request, 'Ignoring request because it is not from same origin and there are no rules for it', {});
+                            DSWManager.sendTraceData(event);
+                            return;
+                        }
                     }
 
                     // if no rule is applied, we will request it
@@ -1554,30 +1567,40 @@ if (isInSWScope) {
         // When user clicks/touches the notification, we shall close it and open
         // or focus the web page
         self.addEventListener('notificationclick', function (event) {
-            _logger2.default.log('Notification click: tag', event.notification.tag);
+            var tag = event.notification.tag;
+            _logger2.default.log('Notification click ', tag);
             event.notification.close();
 
-            var url = 'TODO';
+            var url = PWASettings.notification ? PWASettings.notification.target || location.toString() : location.toString();
 
             event.waitUntil(
             // let's look for all windows(or frames) that are using our sw
             clients.matchAll({
                 type: 'window'
             }).then(function (windowClients) {
-                _logger2.default.log('WindowClients', windowClients);
+                var p = void 0;
                 // and let's see if any of these is already our page
                 for (var i = 0; i < windowClients.length; i++) {
                     var client = windowClients[i];
-                    _logger2.default.log('WindowClient', client);
                     // if it is, we simply focus it
-                    if (client.url === url && 'focus' in client) {
-                        return client.focus();
+                    if ((client.url == url || new URL(client.url).pathname == url) && 'focus' in client) {
+                        p = client.focus();
+                        break;
                     }
                 }
                 // if it is not opened, we open it
-                if (clients.openWindow) {
-                    return clients.openWindow(url);
+                if (!p && clients.openWindow) {
+                    p = clients.openWindow(url);
                 }
+
+                // now we execute the promise (either a openWindow or focus)
+                p.then(function (_) {
+                    // and then trigger the event
+                    DSWManager.broadcast({
+                        event: 'notificationclicked',
+                        data: { tag: tag }
+                    });
+                });
             }));
         });
 
@@ -1663,6 +1686,7 @@ if (isInSWScope) {
         // let's store some events, so it can be autocompleted in devTools
         DSW.addEventListener = eventManager.addEventListener;
         DSW.onpushnotification = function () {/* use this to know when a notification arrived */};
+        DSW.onnotificationclicked = function () {/* use this to know when the user has clicked in a notification */};
         DSW.enabled = function () {/* use this to know when DSW is enabled and running */};
         DSW.onregistered = function () {/* use this to know when DSW has been registered */};
         DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
