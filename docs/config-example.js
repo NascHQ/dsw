@@ -1,6 +1,6 @@
 {
     // This is the **version** of your cached configuration.
-    // In case you want to reload it, some change must be done in this file, if 
+    // In case you want to reload it, some change must be done in this file, if
     // not in the content itself, at least, in the version number.
     // This number is also used to name your cached files.
     "dswVersion": 2.2,
@@ -27,7 +27,10 @@
         // when notified, where could DSW get information about title, body and icon for the notification
         "dataSrc": "http://where.to/get-your/notification-data",
         // in case title, body and icon are not in the root path of the object received from dataSrc
-        "dataPath": "notification"
+        "dataPath": "notification",
+        // Target is used when the user clicks on the notification.
+        // It will then open a window with this source, or focus a tab, in case it is already opened
+        "target": "/"
     },
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.

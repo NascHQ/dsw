@@ -2,7 +2,7 @@
     "notification": {
         "title": "It worked out",
         "icon": "/helmet.png",
-        "body": "A beautiful body",
+        "body": "A beautiful message body",
         "tag": null
     }
 }

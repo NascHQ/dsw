@@ -10,8 +10,9 @@
         "auto": false,
         "service": "GCM",
         "senderId": "640391334636",
-        "dataSrc": "http://localhost:8888/notification.json",
-        "dataPath": "notification"
+        "dataSrc": "/notification.json",
+        "dataPath": "notification",
+        "target": "/"
     },
     "enforceSSL": false,
     "requestTimeLimit": 6000,
