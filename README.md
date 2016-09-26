@@ -7,6 +7,8 @@
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw)
 
+[![NPM](https://nodei.co/npm-dl/dsw.png?months=3)](https://nodei.co/npm/dsw/)
+
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
