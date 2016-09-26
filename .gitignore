@@ -3,3 +3,4 @@ node_modules
 tests/index/
 .tmp-dsw-lib.js
 npm-debug.log
+npm-debug.log.*
