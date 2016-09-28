@@ -19,7 +19,7 @@ If you are starting from scratch and want to see it working right away, you can 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-gpghpgmibr.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-nnokhrgtda.now.sh)
 
 ## Advantages
 
