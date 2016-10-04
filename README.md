@@ -195,7 +195,7 @@ In this case, `dataPath` would not be provided. But:
 
 ```js
 {
-    "notification: {
+    "notification": {
         "title": "The title",
         "icon": "path-to-icon",
         "body": "The message itself"
