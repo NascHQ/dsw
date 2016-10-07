@@ -4,3 +4,5 @@ tests/index/
 .tmp-dsw-lib.js
 npm-debug.log
 npm-debug.log.*
+sandbox/tmp/*
+!sandbox/tmp/.gitkeep
