@@ -204,7 +204,7 @@ In this case, `dataPath` would not be provided. But:
 
 ```js
 {
-    "notification: {
+    "notification": {
         "title": "The title",
         "icon": "path-to-icon",
         "body": "The message itself"
@@ -805,7 +805,7 @@ Some other projects that might help you too.
 - [Lighthouse](https://github.com/GoogleChrome/lighthouse) - Validates your service worker and manifest for Progressive Web App
 - [SW-Toolbox](https://github.com/GoogleChrome/sw-toolbox) - A collection of tools for service workers
 - [SW-Precache](https://github.com/GoogleChrome/sw-precache) - Precaches specific resources
-
+- [Server-Sandbox](https://sandbox-server-dodikkcnbc.now.sh/) - Try your requests to validate their headers. Just fetch this address with the options you want.
 
 
 
