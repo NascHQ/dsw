@@ -1,5 +1,5 @@
 # Dynamic Service Worker
-![Dynamic Service Worker](https://raw.githubusercontent.com/NascHQ/dsw/master/docs/images/worker-person.png)
+![Dynamic Service Worker](https://raw.githubusercontent.com/NascHQ/dsw/master/docs/images/logo-dsw-horizontal.png)
 
 [![Version](https://img.shields.io/npm/v/dsw.svg?label=Version&maxAge=2592000)](https://www.npmjs.com/package/dsw)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/bb589aedc04b445d9633ddf66b55da06)](https://www.codacy.com/app/felipenmoura/dsw?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NascHQ/dsw/&amp;utm_campaign=Badge_Grade)
@@ -7,17 +7,19 @@
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw)
 
+[![NPM](https://nodei.co/npm-dl/dsw.png?months=3)](https://nodei.co/npm/dsw/)
+
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
-If you are starting from scratch and want to see it working right away, you can use the content inside of `/boilerplate`.
+If you are starting from scratch and want to see it working right away, you can go to a new directory and run the [init command](#init).
 
 ## Live Demo
 
 You can access this page and see a live demo of DSW working.
 After loading the page the first time, it will install the service worker. When opening it the second time, it will cache everything according to the defined rules (described in each block and link).
 You can then go offline and reload the page to validate it.
-[Dynamic Service Worker demo](https://dsw-demo-hpfvtqxejx.now.sh)
+[Dynamic Service Worker demo](https://dsw-demo-nnokhrgtda.now.sh)
 
 ## Advantages
 
@@ -74,6 +76,15 @@ It's a Node.js program that you may install globally:
 Or locally:
 
 ```npm install dsw --save```
+
+## Init
+
+In case you want to add support for your website or webapp to work offline, you can easily run in your project's directory:
+
+`dsw init`
+
+It will create the required files (if they don't already exist) or change the ones that exist but still need changes.
+For example, it may add a couple tags to your `index.html` file.
 
 ## Using it
 
@@ -193,7 +204,7 @@ In this case, `dataPath` would not be provided. But:
 
 ```js
 {
-    "notification: {
+    "notification": {
         "title": "The title",
         "icon": "path-to-icon",
         "body": "The message itself"
@@ -794,7 +805,7 @@ Some other projects that might help you too.
 - [Lighthouse](https://github.com/GoogleChrome/lighthouse) - Validates your service worker and manifest for Progressive Web App
 - [SW-Toolbox](https://github.com/GoogleChrome/sw-toolbox) - A collection of tools for service workers
 - [SW-Precache](https://github.com/GoogleChrome/sw-precache) - Precaches specific resources
-
+- [Server-Sandbox](https://sandbox-server-dodikkcnbc.now.sh/) - Try your requests to validate their headers. Just fetch this address with the options you want.
 
 
 
