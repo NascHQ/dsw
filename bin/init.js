@@ -145,7 +145,7 @@ module.exports = (()=>{
                     // :/
                 }
                 if (!fd) {
-                    var inStr = fs.createReadStream(__dirname + '../docs/images/default-404-image.jpg');
+                    var inStr = fs.createReadStream(__dirname + '/../docs/images/default-404-image.jpg');
                     var outStr = fs.createWriteStream(directory + '/404.jpg');
                     inStr.pipe(outStr);
                 }
