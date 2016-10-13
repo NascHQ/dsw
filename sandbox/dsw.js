@@ -1519,6 +1519,9 @@ if (isInSWScope) {
                 };
                 return;
             }
+            if (event.data.enableMocking) {
+                debugger;
+            }
         });
 
         self.addEventListener('push', function (event) {
@@ -1745,6 +1748,19 @@ if (isInSWScope) {
                 callback(event.data);
             };
             navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
+        };
+
+        DSW.enableMocking = function (mockId) {
+            var match = arguments.length <= 1 || arguments[1] === undefined ? '.*' : arguments[1];
+
+            var messageChannel = new MessageChannel();
+            navigator.serviceWorker.controller.postMessage({ enableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
+        };
+        DSW.disableMocking = function (mockId) {
+            var match = arguments.length <= 1 || arguments[1] === undefined ? '.*' : arguments[1];
+
+            var messageChannel = new MessageChannel();
+            navigator.serviceWorker.controller.postMessage({ disableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
         };
 
         DSW.sendMessage = function (message) {

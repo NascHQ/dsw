@@ -486,6 +486,19 @@ if (isInSWScope) {
             };
             return;
         }
+        if (event.data.enableMocking) {
+            let mockId = event.data.enableMocking.mockId;
+            let matching = event.data.enableMocking.match;
+            let finalMockId = mockId + matching;
+            // we will mock only for some clients (this way you can have two tabs with different approaches)
+            currentlyMocking[event.source.id] = currentlyMocking[event.source.id] || {};
+            let client = currentlyMocking[event.source.id];
+            // this client will mock the rules in mockId
+            client[finalMockId] = client[finalMockId] || [];
+            currentlyMocking[finalMockId].push();
+            debugger;
+            return;
+        }
     });
 
     self.addEventListener('push', function(event) {
@@ -696,6 +709,19 @@ if (isInSWScope) {
         navigator.serviceWorker
             .controller
             .postMessage({ trackPath: match }, [messageChannel.port2]);
+    };
+
+    DSW.enableMocking = function (mockId, match='.*') {
+        var messageChannel = new MessageChannel();
+        navigator.serviceWorker
+            .controller
+            .postMessage({ enableMocking: { mockId, match } }, [messageChannel.port2]);
+    };
+    DSW.disableMocking = function (mockId, match='.*') {
+        var messageChannel = new MessageChannel();
+        navigator.serviceWorker
+            .controller
+            .postMessage({ disableMocking: { mockId, match } }, [messageChannel.port2]);
     };
 
     DSW.sendMessage = (message, waitForAnswer=false)=>{
