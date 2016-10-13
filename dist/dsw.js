@@ -212,7 +212,7 @@ var cacheManager = {
         });
     },
     setExpiringTime: function setExpiringTime(request, rule) {
-        var expiresAt = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
+        var expiresAt = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
 
         if (typeof expiresAt == 'string') {
             expiresAt = parseExpiration(rule, expiresAt);
@@ -543,10 +543,15 @@ function goFetch(rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
+        var mode = request.mode;
+        if (mode == 'navigate') {
+            mode = sameOrigin ? 'cors' : 'no-cors';
+        }
+
         var req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: request.mode || (sameOrigin ? 'cors' : 'no-cors'),
+            mode: mode || (sameOrigin ? 'cors' : 'no-cors'),
             cache: 'default',
             redirect: 'manual'
         });
@@ -628,7 +633,7 @@ var dbs = {};
 var cacheManager;
 
 function getObjectStore(dbName) {
-    var mode = arguments.length <= 1 || arguments[1] === undefined ? 'readwrite' : arguments[1];
+    var mode = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'readwrite';
 
     var db = dbs[dbName],
         tx = void 0;
@@ -922,6 +927,7 @@ var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
+var currentlyMocking = {};
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -995,7 +1001,7 @@ if (isInSWScope) {
             setup: function setup() {
                 var _this = this;
 
-                var dswConfig = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+                var dswConfig = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
@@ -1146,8 +1152,8 @@ if (isInSWScope) {
                 return (0, _goFetch2.default)(null, request, event, matching);
             },
             traceStep: function traceStep(request, step, data) {
-                var fill = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
-                var moved = arguments.length <= 4 || arguments[4] === undefined ? false : arguments[4];
+                var fill = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+                var moved = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
 
                 // if there are no tracking listeners, this request will not be tracked
                 if (DSWManager.tracking) {
@@ -1360,7 +1366,17 @@ if (isInSWScope) {
                 return;
             }
             if (event.data.enableMocking) {
+                var mockId = event.data.enableMocking.mockId;
+                var matching = event.data.enableMocking.match;
+                var finalMockId = mockId + matching;
+                // we will mock only for some clients (this way you can have two tabs with different approaches)
+                currentlyMocking[event.source.id] = currentlyMocking[event.source.id] || {};
+                var client = currentlyMocking[event.source.id];
+                // this client will mock the rules in mockId
+                client[finalMockId] = client[finalMockId] || [];
+                currentlyMocking[finalMockId].push();
                 debugger;
+                return;
             }
         });
 
@@ -1496,7 +1512,7 @@ if (isInSWScope) {
                     events[eventName].push(listener);
                 },
                 trigger: function trigger(eventName) {
-                    var data = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+                    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
                     var listener = void 0;
                     try {
@@ -1549,7 +1565,7 @@ if (isInSWScope) {
         DSW.addEventListener = eventManager.addEventListener;
         DSW.onpushnotification = function () {/* use this to know when a notification arrived */};
         DSW.onnotificationclicked = function () {/* use this to know when the user has clicked in a notification */};
-        DSW.enabled = function () {/* use this to know when DSW is enabled and running */};
+        DSW.onenabled = function () {/* use this to know when DSW is enabled and running */};
         DSW.onregistered = function () {/* use this to know when DSW has been registered */};
         DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
 
@@ -1591,20 +1607,20 @@ if (isInSWScope) {
         };
 
         DSW.enableMocking = function (mockId) {
-            var match = arguments.length <= 1 || arguments[1] === undefined ? '.*' : arguments[1];
+            var match = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '.*';
 
             var messageChannel = new MessageChannel();
             navigator.serviceWorker.controller.postMessage({ enableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
         };
         DSW.disableMocking = function (mockId) {
-            var match = arguments.length <= 1 || arguments[1] === undefined ? '.*' : arguments[1];
+            var match = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '.*';
 
             var messageChannel = new MessageChannel();
             navigator.serviceWorker.controller.postMessage({ disableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
         };
 
         DSW.sendMessage = function (message) {
-            var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+            var waitForAnswer = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
             // This method sends a message to the service worker.
             // Useful for specific tokens and internal use and trace
@@ -1644,11 +1660,17 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.offline = function (_) {
+        DSW.isOffline = DSW.offline = function (_) {
             return !navigator.onLine;
         };
-        DSW.online = function (_) {
+        DSW.isOnline = DSW.online = function (_) {
             return navigator.onLine;
+        };
+        DSW.isAppShellDone = function (_) {
+            return DSW.status.appShelle;
+        };
+        DSW.isRegistered = function (_) {
+            return DSW.status.registered;
         };
 
         // this method will register the SW for push notifications
@@ -1676,8 +1698,8 @@ if (isInSWScope) {
         };
 
         DSW.notify = function () {
-            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
-            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+            var title = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'Untitled';
+            var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
             return new Promise(function (resolve, reject) {
                 DSW.enableNotifications().then(function (_) {
@@ -1701,7 +1723,7 @@ if (isInSWScope) {
 
         // client's setup
         DSW.setup = function () {
-            var config = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+            var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
             return new Promise(function (resolve, reject) {
                 var appShellPromise = new Promise(function (resolve, reject) {
@@ -1729,6 +1751,7 @@ if (isInSWScope) {
 
                             navigator.serviceWorker.ready.then(function (reg) {
                                 _logger2.default.info('Registered service worker');
+                                DSW.status.ready = true;
                                 eventManager.trigger('registered', DSW.status);
 
                                 Promise.all([appShellPromise, new Promise(function (resolve, reject) {

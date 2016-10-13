@@ -16,13 +16,7 @@
 
         <script src="dsw.js"></script>
         <script>
-            DSW.setup(/*{
-                trace: {
-                    "\/image\/": function (traceData) {
-                        console.log(traceData);
-                    }
-                }
-            }*/)
+            DSW.setup()
             .then(function(result){
                 var el = document.getElementById('offline-support-message');
                 el.classList.add('offline-support');

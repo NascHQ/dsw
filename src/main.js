@@ -14,6 +14,7 @@ const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
 const REQUEST_TIME_LIMIT = 5000;
 const REGISTRATION_TIMEOUT = 12000;
 const DEFAULT_NOTIF_DURATION = 6000;
+const currentlyMocking = {};
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -668,7 +669,7 @@ if (isInSWScope) {
     DSW.addEventListener = eventManager.addEventListener;
     DSW.onpushnotification = function () { /* use this to know when a notification arrived */ };
     DSW.onnotificationclicked = function () { /* use this to know when the user has clicked in a notification */ };
-    DSW.enabled = function () { /* use this to know when DSW is enabled and running */ };
+    DSW.onenabled = function () { /* use this to know when DSW is enabled and running */ };
     DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
     DSW.onnotificationsenabled = function () { /* use this to know when user has enabled notifications */ };
 
@@ -765,11 +766,17 @@ if (isInSWScope) {
             cb();
         }
     };
-    DSW.offline = _=>{
+    DSW.isOffline = DSW.offline = _=>{
         return !navigator.onLine;
     };
-    DSW.online = _=>{
+    DSW.isOnline = DSW.online = _=>{
         return navigator.onLine;
+    };
+    DSW.isAppShellDone = _=>{
+        return DSW.status.appShelle;
+    };
+    DSW.isRegistered = _=>{
+        return DSW.status.registered;
     };
 
     // this method will register the SW for push notifications
@@ -847,6 +854,7 @@ if (isInSWScope) {
 
                             navigator.serviceWorker.ready.then(function(reg) {
                                 logger.info('Registered service worker');
+                                DSW.status.ready = true;
                                 eventManager.trigger('registered', DSW.status);
 
                                 Promise.all([
