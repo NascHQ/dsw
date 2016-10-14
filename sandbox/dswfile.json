@@ -1,4 +1,28 @@
 {
+    "dswVersion": 1,
+    "appShell": [ ],
+
+    "notification": {
+        "auto": false,
+        "service": "GCM",
+        "senderId": "640391334636",
+        "dataSrc": "/notification.json",
+        "dataPath": "notification",
+        "target": "/"
+    },
+
+    "rules": {
+        "myRule": {
+            "match": { /* path, status or extension */ },
+            "apply": { /* fetch, cache, indexedDB, redirect or output */ }
+        }
+    }
+}
+
+
+
+
+{
     "dswVersion": 2.3,
     "applyImmediately": true,
     "appShell": [

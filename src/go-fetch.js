@@ -20,14 +20,14 @@ function goFetch (rule, request, event, matching) {
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
         let mode = request.mode;
-        if (mode == 'navigate') {
+        if (!mode || mode == 'navigate') {
             mode = (sameOrigin? 'cors': 'no-cors');
         }
 
         let req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: mode || (sameOrigin? 'cors': 'no-cors'),
+            mode: mode,
             cache: 'default',
             redirect: 'manual'
         });

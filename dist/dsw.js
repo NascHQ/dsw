@@ -544,14 +544,14 @@ function goFetch(rule, request, event, matching) {
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
         var mode = request.mode;
-        if (mode == 'navigate') {
+        if (!mode || mode == 'navigate') {
             mode = sameOrigin ? 'cors' : 'no-cors';
         }
 
         var req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: mode || (sameOrigin ? 'cors' : 'no-cors'),
+            mode: mode,
             cache: 'default',
             redirect: 'manual'
         });
@@ -1496,7 +1496,8 @@ if (isInSWScope) {
             registered: false,
             sync: false,
             appShell: false,
-            notification: false
+            notification: false,
+            version: PWASettings.dswVersion
         };
 
         var pendingResolve = void 0,

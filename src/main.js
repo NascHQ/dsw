@@ -623,7 +623,8 @@ if (isInSWScope) {
         registered: false,
         sync: false,
         appShell: false,
-        notification: false
+        notification: false,
+        version: PWASettings.dswVersion
     };
 
     let pendingResolve,
