@@ -49,7 +49,6 @@
     "docco": "^0.7.0",
     "gh-pages": "^0.11.0",
     "minifier": "^0.7.1",
-    "mocha": "latest",
     "watch": "latest"
   },
   "dependencies": {

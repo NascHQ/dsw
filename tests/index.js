@@ -1,13 +1,11 @@
-'use strict';
+import { ClientFunction } from 'testcafe';
 
-/* eslint-env mocha */
-const assert = require('assert');
-const childProcess = require('child_process');
+const getWindowLocation = ClientFunction(() => window.location);
 
-describe('Source code', function() {
-    it('Should pass all the lint rules', () => {
-        // assert(childProcess.execSync('npm run lint'));
-        // it passes in local, but fails in travis!
-        assert(true);
-    });
+fixture `My fixture`
+    .page('http://localhost:8888/');
+
+test('My Test', async t => {
+    const location = await getWindowLocation();
+    console.log(location.href);
 });

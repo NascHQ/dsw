@@ -16,14 +16,24 @@
 
 <script src="dsw.js"></script>
 <script>
-    DSW.setup()
-    .then(function(result){
-        // inform the user the service worker is installed
-    })
-    .catch(function(reason){
-        // the page will not work offline due to a problem
-        // in the service worker or browser doesn't support it
+    DSW.addEventListener('activated', function(event){
+        console.log(event);
     });
+    DSW.setup()
+        .then(function(result){
+            var el = document.getElementById('offline-support-message');
+            el.classList.add('offline-support');
+            el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
+        })
+        .catch(function(reason){
+            var el = document.getElementById('offline-support-message');
+            el.innerHTML = 'Offline support<br/>not installed';
+            el.classList.add('no-offline-support');
+            console.warn(reason);
+            setTimeout(function(){
+                el.classList.remove('no-offline-support');
+            }, 6000);
+        });
 </script>
 
     </head>

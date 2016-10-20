@@ -10,7 +10,7 @@ import goFetch from './go-fetch.js';
 import strategies from './strategies.js';
 import utils from './utils.js';
 
-const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#' };
+const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#', ready: null };
 const REQUEST_TIME_LIMIT = 5000;
 const REGISTRATION_TIMEOUT = 12000;
 const DEFAULT_NOTIF_DURATION = 6000;
@@ -106,7 +106,7 @@ if (isInSWScope) {
 
             const ROOT_SW_SCOPE = (new URL(location.href)).pathname.replace(/\/[^\/]+$/, '/');
 
-            return new Promise((resolve, reject)=>{
+            return DSW.ready = new Promise((resolve, reject)=>{
                 // we will prepare and store the rules here, so it becomes
                 // easier to deal with, latelly on each requisition
                 let preCache = PWASettings.appShell || [],
@@ -684,6 +684,7 @@ if (isInSWScope) {
     DSW.onnotificationclicked = function () { /* use this to know when the user has clicked in a notification */ };
     DSW.onenabled = function () { /* use this to know when DSW is enabled and running */ };
     DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
+    DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
     DSW.onnotificationsenabled = function () { /* use this to know when user has enabled notifications */ };
 
     navigator.serviceWorker.addEventListener('message', event=>{
@@ -694,6 +695,7 @@ if (isInSWScope) {
                 // this means all the appShell have been downloaded
                 if (event.data.DSWStatus) {
                     DSW.status.appShell = true;
+                    eventManager.trigger('activated', DSW.status);
                     pendingResolve(DSW.status);
                 } else {
                     // if it failed, let's unregister it, to avoid false positives
@@ -779,8 +781,11 @@ if (isInSWScope) {
             cb();
         }
     };
-    DSW.isAppShellDone = _=>{
-        return DSW.status.appShell;
+
+    // this means all the appShell dependencies have been downloaded and
+    // the sw has been successfuly installed and registered
+    DSW.isAppShellDone = DSW.isActivated _=>{
+        return DSW.status.registered && DSW.status.appShell;
     };
     DSW.isRegistered = _=>{
         return DSW.status.registered;
@@ -833,7 +838,13 @@ if (isInSWScope) {
 
     // client's setup
     DSW.setup = (config={}) => {
-        return new Promise((resolve, reject)=>{
+
+        // in case DSW.setup has already been called
+        if (DSW.ready) {
+            return DSW.ready;
+        }
+
+        return DSW.ready = new Promise((resolve, reject)=>{
             let appShellPromise = new Promise((resolve, reject)=>{
                 pendingResolve = function(){
                     clearTimeout(installationTimeOut);

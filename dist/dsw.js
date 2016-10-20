@@ -923,7 +923,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#' };
+var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1019,7 +1019,7 @@ if (isInSWScope) {
 
                 var ROOT_SW_SCOPE = new URL(location.href).pathname.replace(/\/[^\/]+$/, '/');
 
-                return new Promise(function (resolve, reject) {
+                return DSW.ready = new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
                     var preCache = PWASettings.appShell || [],
@@ -1578,6 +1578,7 @@ if (isInSWScope) {
         DSW.onnotificationclicked = function () {/* use this to know when the user has clicked in a notification */};
         DSW.onenabled = function () {/* use this to know when DSW is enabled and running */};
         DSW.onregistered = function () {/* use this to know when DSW has been registered */};
+        DSW.onregistered = function () {/* use this to know when DSW has been registered */};
         DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
 
         navigator.serviceWorker.addEventListener('message', function (event) {
@@ -1588,6 +1589,7 @@ if (isInSWScope) {
                     // this means all the appShell have been downloaded
                     if (event.data.DSWStatus) {
                         DSW.status.appShell = true;
+                        eventManager.trigger('activated', DSW.status);
                         pendingResolve(DSW.status);
                     } else {
                         // if it failed, let's unregister it, to avoid false positives
@@ -1730,7 +1732,13 @@ if (isInSWScope) {
         DSW.setup = function () {
             var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-            return new Promise(function (resolve, reject) {
+
+            // in case DSW.setup has already been called
+            if (DSW.ready) {
+                return DSW.ready;
+            }
+
+            return DSW.ready = new Promise(function (resolve, reject) {
                 var appShellPromise = new Promise(function (resolve, reject) {
                     pendingResolve = function pendingResolve() {
                         clearTimeout(installationTimeOut);
