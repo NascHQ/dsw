@@ -65,7 +65,8 @@ Read the commented json configuration file: https://naschq.github.io/dsw/config-
   - [Notifications API](https://github.com/NascHQ/dsw#notifications)
   - [PUSH Notifications API](https://github.com/NascHQ/dsw#push-notifications-api)
   - [Connection Status API](https://github.com/NascHQ/dsw#connection-status)
-- [Contributing to the project](https://github.com/NascHQ/dsw#contributing)
+- [
+ting to the project](https://github.com/NascHQ/dsw#contributing)
 
 ## Installing it
 
@@ -728,8 +729,10 @@ Clone the project, go to its directory, install it and run `npm run try`
 
 # Contributing
 
-So, you want to contribute? Cool! We need it! :)
+So, you want to contribute? Cool! We need it! :)  
 We ask you to please read and follow our [Code of Conduct](https://github.com/NascHQ/dsw/blob/master/CODE_OF_CONDUCT.md).
+
+Also, read the `CONTRIBUTING.md` file.
 
 Here is how...and yep, as Service workers are still a little too new, it is a little bit weird! Here is how I've been doing this, and if you have any better suggestion, please let me know :)
 
