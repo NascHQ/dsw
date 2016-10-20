@@ -1673,8 +1673,11 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.isAppShellDone = function (_) {
-            return DSW.status.appShell;
+
+        // this means all the appShell dependencies have been downloaded and
+        // the sw has been successfuly installed and registered
+        DSW.isAppShellDone = DSW.isActivated = function (_) {
+            return DSW.status.registered && DSW.status.appShell;
         };
         DSW.isRegistered = function (_) {
             return DSW.status.registered;

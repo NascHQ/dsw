@@ -1,11 +1,17 @@
 import { ClientFunction } from 'testcafe';
 
-const getWindowLocation = ClientFunction(() => window.location);
+const registerSW = ClientFunction(() => {
+    return new Promise((resolve, reject)=>{
+        DSW.addEventListener('activated', function(){
+            resolve(DSW.satus);
+        });
+    });
+});
 
-fixture `My fixture`
+fixture `DSW fixture`
     .page('http://localhost:8888/');
 
 test('My Test', async t => {
-    const location = await getWindowLocation();
-    console.log(location.href);
+    const status = await registerSW();
+    console.log(status);
 });
