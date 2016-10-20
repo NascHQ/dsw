@@ -1,5 +1,5 @@
 const PWASettings = {
-    "dswVersion": 2.3,
+    "version": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -17,7 +17,7 @@ const PWASettings = {
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
-    "dswRules": {
+    "rules": {
         "byPassable": {
             "match": { "path": "/bypass/" },
             "apply": {
@@ -57,6 +57,15 @@ const PWASettings = {
                 "fetch": "/images/public/404.jpg"
             }
         },
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            "apply": {
+                "output": ""
+            }
+        },
         "redirectOlderPage": {
             "match": {
                 "path": "/legacy-images/.*"
@@ -67,10 +76,11 @@ const PWASettings = {
         },
         "pageNotFound": {
             "match": {
-                "status": [404]
+                "status": [404],
+                "path": "(.*)"
             },
             "apply": {
-                "fetch": "/not-found.html"
+                "redirect": "/not-found.html?from=$1"
             }
         },
         "imageNotCached": {
@@ -341,7 +351,7 @@ var cacheManager = {
                                 } else {
                                     clonedResponse = response.clone();
                                     DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
-                                    cache.put(request, clonedResponse);
+                                    clonedResponse & request & cache.put(request, clonedResponse);
                                 }
                             })();
                         }
@@ -704,14 +714,14 @@ function goFetch(rule, request, event, matching) {
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
         var mode = request.mode;
-        if (mode == 'navigate') {
+        if (!mode || mode == 'navigate') {
             mode = sameOrigin ? 'cors' : 'no-cors';
         }
 
         var req = new Request(tmpUrl, {
             method: request.method || 'GET',
             headers: request.headers || {},
-            mode: mode || (sameOrigin ? 'cors' : 'no-cors'),
+            mode: mode,
             cache: 'default',
             redirect: 'manual'
         });
@@ -1083,11 +1093,19 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.5' };
+var DSW = { version: '1.10.6', build: '1476971339691' };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
 var currentlyMocking = {};
+
+// These will be used in both ServiceWorker and Client scopes
+DSW.isOffline = DSW.offline = function (_) {
+    return !navigator.onLine;
+};
+DSW.isOnline = DSW.online = function (_) {
+    return navigator.onLine;
+};
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -1133,7 +1151,7 @@ if (isInSWScope) {
                     var matching = pathName.match(cur.rx);
                     if (matching) {
                         if (cur.action.redirect && !cur.action.fetch) {
-                            cur.action.fetch = cur.action.fetch;
+                            cur.action.fetch = cur.action.redirect;
                         }
                         if (cur.action.fetch) {
                             DSWManager.traceStep(event.request, 'Found fallback rule', {
@@ -1165,9 +1183,11 @@ if (isInSWScope) {
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
-                _utils2.default.setup(DSWManager, PWASettings);
+                _utils2.default.setup(DSWManager, PWASettings, DSW);
                 _cacheManager2.default.setup(DSWManager, PWASettings, _goFetch2.default);
                 _strategies2.default.setup(DSWManager, _cacheManager2.default, _goFetch2.default);
+
+                var ROOT_SW_SCOPE = new URL(location.href).pathname.replace(/\/[^\/]+$/, '/');
 
                 return new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
@@ -1216,7 +1236,7 @@ if (isInSWScope) {
                             path = (path.join('|') || '') + '|';
                         } else {
                             // "match" may be an object, then we simply use it
-                            path = heuristic.match.path || ''; // aqui + '([.+]?)';
+                            path = heuristic.match.path || '';
                             extensions = heuristic.match.extension, status = heuristic.match.status;
                         }
 
@@ -1279,7 +1299,7 @@ if (isInSWScope) {
                         'apply': { cache: {} }
                     }, rootMatchingRX);
 
-                    preCache.unshift('/');
+                    preCache.unshift(ROOT_SW_SCOPE);
 
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
@@ -1292,9 +1312,9 @@ if (isInSWScope) {
                         }))).then(function (_) {
                             resolve();
                         }).catch(function (err) {
-                            _logger2.default.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
-                            //throw new Error('Aborting service worker installation');
-                            reject();
+                            var errMessage = 'Failed storing the appShell! Could not register the service worker.' + '\nCould not find ' + (err.url || err.message) + '\n';
+                            _logger2.default.error(errMessage, err);
+                            reject(errMessage);
                         });
                     } else {
                         resolve();
@@ -1653,6 +1673,7 @@ if (isInSWScope) {
     (function () {
 
         DSW.status = {
+            version: PWASettings.version || PWASettings.dswVersion,
             registered: false,
             sync: false,
             appShell: false,
@@ -1820,14 +1841,8 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.isOffline = DSW.offline = function (_) {
-            return !navigator.onLine;
-        };
-        DSW.isOnline = DSW.online = function (_) {
-            return navigator.onLine;
-        };
         DSW.isAppShellDone = function (_) {
-            return DSW.status.appShelle;
+            return DSW.status.appShell;
         };
         DSW.isRegistered = function (_) {
             return DSW.status.registered;
@@ -1910,7 +1925,7 @@ if (isInSWScope) {
                             DSW.status.registered = true;
 
                             navigator.serviceWorker.ready.then(function (reg) {
-                                _logger2.default.info('Registered service worker');
+
                                 DSW.status.ready = true;
                                 eventManager.trigger('registered', DSW.status);
 
@@ -1940,6 +1955,7 @@ if (isInSWScope) {
                                 })]).then(function (_) {
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     eventManager.trigger('enabled', DSW.status);
+                                    _logger2.default.info('Service Worker was registered', DSW.status);
                                     resolve(DSW.status);
                                 });
                             });
@@ -1968,7 +1984,7 @@ if (isInSWScope) {
                         DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                     }
                 } else {
-                    DSW.status.appShell = 'Service worker not supported';
+                    DSW.status.fail = 'Service worker not supported';
                 }
             });
         };
@@ -1993,6 +2009,10 @@ var _logger = require('./logger.js');
 
 var _logger2 = _interopRequireDefault(_logger);
 
+var _utils = require('./utils.js');
+
+var _utils2 = _interopRequireDefault(_utils);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DSWManager = void 0;
@@ -2011,7 +2031,6 @@ var strategies = {
         // store it in the cache
         // and then return it to be used
         DSWManager.traceStep(request, 'Info: Using offline first strategy');
-        //logger.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
@@ -2040,6 +2059,18 @@ var strategies = {
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
         }
+
+        // if browser is offline, there is no need to try the request
+        if (_utils2.default.DSW.isOffline()) {
+            return treatIt(new Response('', {
+                status: 404,
+                statusText: 'Browser is offline',
+                headers: {
+                    'Content-Type': 'text/plain'
+                }
+            }));
+        }
+
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
@@ -2113,7 +2144,10 @@ var strategies = {
             }
 
             // one promise go for the network
-            goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatCatch);
+            // if browser is offline, there is no need to try the request
+            if (_utils2.default.DSW.isOnline()) {
+                goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatCatch);
+            }
             // the other, for the cache
             cacheManager.get(rule, request.clone(), event, matching).then(treatCache).catch(treatCatch);
         });
@@ -2122,7 +2156,7 @@ var strategies = {
 
 exports.default = strategies;
 
-},{"./logger.js":5}],8:[function(require,module,exports){
+},{"./logger.js":5,"./utils.js":8}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2155,9 +2189,10 @@ var utils = {
         req.requestId = request.requestId;
         return req;
     },
-    setup: function setup(DSWManager) {
+    setup: function setup(DSWManager, PWASettings, DSW) {
         utils.DSWManager = DSWManager;
         utils.PWASettings = PWASettings;
+        utils.DSW = DSW;
     }
 };
 

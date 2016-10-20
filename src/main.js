@@ -10,11 +10,19 @@ import goFetch from './go-fetch.js';
 import strategies from './strategies.js';
 import utils from './utils.js';
 
-const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#' };
+const DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#' };
 const REQUEST_TIME_LIMIT = 5000;
 const REGISTRATION_TIMEOUT = 12000;
 const DEFAULT_NOTIF_DURATION = 6000;
 const currentlyMocking = {};
+
+// These will be used in both ServiceWorker and Client scopes
+DSW.isOffline = DSW.offline = _=>{
+    return !navigator.onLine;
+};
+DSW.isOnline = DSW.online = _=>{
+    return navigator.onLine;
+};
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -62,7 +70,7 @@ if (isInSWScope) {
                     let matching = pathName.match(cur.rx);
                     if (matching) {
                         if (cur.action.redirect && !cur.action.fetch) {
-                            cur.action.fetch = cur.action.fetch;
+                            cur.action.fetch = cur.action.redirect;
                         }
                         if (cur.action.fetch) {
                             DSWManager.traceStep(event.request, 'Found fallback rule', {
@@ -92,9 +100,11 @@ if (isInSWScope) {
         setup (dswConfig={}) {
             // let's prepare both cacheManager and strategies with the
             // current referencies
-            utils.setup(DSWManager, PWASettings);
+            utils.setup(DSWManager, PWASettings, DSW);
             cacheManager.setup(DSWManager, PWASettings, goFetch);
             strategies.setup(DSWManager, cacheManager, goFetch);
+
+            const ROOT_SW_SCOPE = (new URL(location.href)).pathname.replace(/\/[^\/]+$/, '/');
 
             return new Promise((resolve, reject)=>{
                 // we will prepare and store the rules here, so it becomes
@@ -143,7 +153,7 @@ if (isInSWScope) {
                         path = (path.join('|') || '') + '|';
                     } else {
                         // "match" may be an object, then we simply use it
-                        path = (heuristic.match.path || '' );// aqui + '([.+]?)';
+                        path = (heuristic.match.path || '' );
                         extensions = heuristic.match.extension,
                         status = heuristic.match.status;
                     }
@@ -209,7 +219,7 @@ if (isInSWScope) {
                     'apply': { cache: { } }
                 }, rootMatchingRX);
 
-                preCache.unshift('/');
+                preCache.unshift(ROOT_SW_SCOPE);
 
                 // if we've got urls to pre-store, let's cache them!
                 // also, if there is any database to be created, this is the time
@@ -227,9 +237,11 @@ if (isInSWScope) {
                         resolve();
                     })
                     .catch(err=>{
-                        logger.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
-                        //throw new Error('Aborting service worker installation');
-                        reject();
+                        let errMessage = 'Failed storing the appShell! Could not register the service worker.' +
+                                         '\nCould not find ' + (err.url || err.message) + '\n';
+                        logger.error(errMessage,
+                                     err);
+                        reject(errMessage);
                     });
                 }else{
                     resolve();
@@ -620,11 +632,11 @@ if (isInSWScope) {
 }else{
 
     DSW.status = {
+        version: PWASettings.version || PWASettings.dswVersion,
         registered: false,
         sync: false,
         appShell: false,
-        notification: false,
-        version: PWASettings.dswVersion
+        notification: false
     };
 
     let pendingResolve,
@@ -767,14 +779,8 @@ if (isInSWScope) {
             cb();
         }
     };
-    DSW.isOffline = DSW.offline = _=>{
-        return !navigator.onLine;
-    };
-    DSW.isOnline = DSW.online = _=>{
-        return navigator.onLine;
-    };
     DSW.isAppShellDone = _=>{
-        return DSW.status.appShelle;
+        return DSW.status.appShell;
     };
     DSW.isRegistered = _=>{
         return DSW.status.registered;
@@ -854,7 +860,7 @@ if (isInSWScope) {
                             DSW.status.registered = true;
 
                             navigator.serviceWorker.ready.then(function(reg) {
-                                logger.info('Registered service worker');
+
                                 DSW.status.ready = true;
                                 eventManager.trigger('registered', DSW.status);
 
@@ -889,6 +895,7 @@ if (isInSWScope) {
                                 ]).then(_=>{
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     eventManager.trigger('enabled', DSW.status);
+                                    logger.info('Service Worker was registered', DSW.status);
                                     resolve(DSW.status);
                                 });
                             });
@@ -917,7 +924,7 @@ if (isInSWScope) {
                     DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
                 }
             } else {
-                DSW.status.appShell = 'Service worker not supported';
+                DSW.status.fail = 'Service worker not supported';
             }
         });
     };

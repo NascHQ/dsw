@@ -19,7 +19,7 @@ function lengthInUtf8Bytes(str) {
 
 const parseExpiration= (rule, expires)=>{
     let duration = expires || -1;
-    
+
     if (typeof duration == 'string') {
         // let's use a formated string to know the expiration time
         const sizes = {
@@ -31,7 +31,7 @@ const parseExpiration= (rule, expires)=>{
             M: 2592000,
             Y: 31449600
         };
-        
+
         let size = duration.slice(-1),
             val = duration.slice(0, -1);
         if (sizes[size]) {
@@ -115,7 +115,7 @@ const cacheManager = {
                         // adding to cache
                         let opts = response.type == 'opaque'? { mode: 'no-cors' } : {};
                         request = utils.createRequest(request, opts);
-                        
+
                         if (request.method != 'POST') {
                             let cacheData = {};
                             if (rule && rule.action && rule.action.cache) {
@@ -126,7 +126,7 @@ const cacheManager = {
                                     version: cacheId.split('::')[1]
                                 };
                             }
-                            
+
                             let clonedResponse;
                             if (response.bodyUsed) {
                                 // sometimes, due to different flows, the
@@ -149,7 +149,7 @@ const cacheManager = {
                                     'Added to cache',
                                     { cacheData }
                                 );
-                                cache.put(request, clonedResponse);
+                                clonedResponse & request & cache.put(request, clonedResponse);
                             }
                         }
                         resolve(response);
@@ -170,7 +170,7 @@ const cacheManager = {
                     reject(response);
                 }
             }
-            
+
             if (!response) {
                 fetch(goFetch(null, request))
                     .then(addIt)
@@ -226,12 +226,12 @@ const cacheManager = {
 
         let opts = rule.options || {};
         opts.headers = opts.headers || new Headers();
-        
+
         actionType = actionType.toLowerCase();
         // let's allow an idb alias for indexeddb...maybe we could move it to a
         // separated structure
         actionType = actionType == 'idb'? 'indexeddb': actionType;
-        
+
         // cache may expire...if so, we will use this verification afterwards
         let verifyCache;
         if (rule.action.cache && rule.action.cache.expires) {
@@ -240,7 +240,7 @@ const cacheManager = {
             // if it will not expire, we just use it as a resolved promise
             verifyCache = Promise.resolve();
         }
-        
+
         switch (actionType) {
         case 'bypass': {
             // if it is a bypass action (no rule shall be applied, at all)
@@ -249,7 +249,7 @@ const cacheManager = {
                 // and we will simple allow it to go ahead
                 // this also means we will NOT treat any result from it
                 //logger.info('Bypassing request, going for the network for', request.url);
-                
+
                 let treatResponse = function (response) {
                     if (response.status >= 200 && response.status < 300) {
                         DSWManager.traceStep(request, 'Request bypassed');
@@ -346,7 +346,7 @@ const cacheManager = {
             if(rule.action.cache){
                 cacheId = cacheManager.mountCacheId(rule);
             }
-            
+
             // lets verify if the cache is expired or not
             return verifyCache.then(expired=>{
                 let lookForCache;
@@ -360,7 +360,7 @@ const cacheManager = {
                     // if not expired, let's look for it!
                     lookForCache = caches.match(request);
                 }
-                
+
                 // look for the request in the cache
                 return lookForCache
                     .then(result=>{
@@ -467,7 +467,7 @@ const cacheManager = {
                                         }
                                         return response;
                                     }
-                                        
+
                                     if(!response.status){
                                         response.status = 404;
                                     }
@@ -513,7 +513,7 @@ const cacheManager = {
                             }
                         }
                     }); // end lookForCache
-                
+
             }); // end verifyCache
         }
         default: {

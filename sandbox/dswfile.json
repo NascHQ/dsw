@@ -1,29 +1,5 @@
 {
-    "dswVersion": 1,
-    "appShell": [ ],
-
-    "notification": {
-        "auto": false,
-        "service": "GCM",
-        "senderId": "640391334636",
-        "dataSrc": "/notification.json",
-        "dataPath": "notification",
-        "target": "/"
-    },
-
-    "rules": {
-        "myRule": {
-            "match": { /* path, status or extension */ },
-            "apply": { /* fetch, cache, indexedDB, redirect or output */ }
-        }
-    }
-}
-
-
-
-
-{
-    "dswVersion": 2.3,
+    "version": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -41,7 +17,7 @@
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
-    "dswRules": {
+    "rules": {
         "byPassable": {
             "match": { "path": "/bypass/" },
             "apply": {
@@ -81,6 +57,15 @@
                 "fetch": "/images/public/404.jpg"
             }
         },
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            "apply": {
+                "output": ""
+            }
+        },
         "redirectOlderPage": {
             "match": {
                 "path": "/legacy-images/.*"
@@ -91,10 +76,11 @@
         },
         "pageNotFound": {
             "match": {
-                "status": [404]
+                "status": [404],
+                "path": "(.*)"
             },
             "apply": {
-                "fetch": "/not-found.html"
+                "redirect": "/not-found.html?from=$1"
             }
         },
         "imageNotCached": {

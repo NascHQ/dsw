@@ -9,13 +9,13 @@
             "type": "image/png"
         },
         {
-            "src": "images/icon-152.png",
-            "sizes": "152x152",
+            "src": "images/icon-144.png",
+            "sizes": "144x144",
             "type": "image/png"
         },
         {
-            "src": "images/icon-144.png",
-            "sizes": "144x144",
+            "src": "images/icon-152.png",
+            "sizes": "152x152",
             "type": "image/png"
         },
         {
@@ -43,10 +43,10 @@
     },
     "locales": {
         "pt": {
-            "name": "BrazilJS",
+            "name": "WebApp",
             "description": "Sua descrição."
         },
-        "pt": {
+        "es": {
             "name": "WebApp",
             "description": "Su descripción."
         },

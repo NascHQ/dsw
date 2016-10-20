@@ -1,3 +1,11 @@
 <h1>Your Custom 404 page</h1>
 This is your customized 404 page.<br/>
-Go ahead, type anything in the URL and hit enter ;)
+<script>
+    console.log(location);
+    if (location.search) {
+        var from = location.search.split('?from=');
+        if (from[1]) {
+            document.write('&nbsp;&nbsp;&nbsp;&nbsp;Redirected from <b>' + from[1] + '</b>');
+        }
+    }
+</script>

@@ -3,7 +3,7 @@
     // In case you want to reload it, some change must be done in this file, if
     // not in the content itself, at least, in the version number.
     // This number is also used to name your cached files.
-    "dswVersion": 2.2,
+    "version": 2.2,
     // Will force previous service workers to stop, and replace them for the newer one
     // otherwise, your new service worker configuration will only take place when
     // the current service worker experes (the next reload, or about a day)
@@ -34,7 +34,7 @@
     },
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
-    "dswRules": {
+    "rules": {
         // You may name your rules here
         // this rule will redirect every not found image (or with error) to
         // a default image
@@ -50,6 +50,17 @@
             "apply": {
                 // will actually become a default 404 image
                 "fetch": "/images/public/404.jpg"
+            }
+        },
+        // In case a script is not found, it should not return the 404 html
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            // instead, we simply output nothing
+            "apply": {
+                "output": ""
             }
         },
         // You can also output a string right away

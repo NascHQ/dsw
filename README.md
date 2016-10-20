@@ -7,8 +7,6 @@
 [![GitHub issues](https://img.shields.io/github/issues/NascHQ/dsw.svg)](https://github.com/NascHQ/dsw/issues)
 [![Build Status](https://travis-ci.org/NascHQ/dsw.svg)](https://travis-ci.org/NascHQ/dsw)
 
-[![NPM](https://nodei.co/npm-dl/dsw.png?months=3)](https://nodei.co/npm/dsw/)
-
 DSW allows you to enable and use Service Workers in a much easier way, also helping you to create and maintain your Progressive Web Apps working offline.<br/>
 You will simply have to set up how your service worker will handle requests in a JSON file. Read the [commented JSON example](https://naschq.github.io/dsw/config-example.html) or the documentation and examples below.
 
@@ -153,9 +151,9 @@ Open the `dswfile.json` in the root of your project and let's add some content l
 
 ```js
 {
-    "dswVersion": 1.0,
+    "version": 1.0,
     "applyImmediately": true,
-    "dswRules": {
+    "rules": {
         "yourRuleName": {
             "match": { },
             "apply": { }
@@ -173,7 +171,7 @@ If you want to enable and use push notifications, you can set:
 
 ```js
 {
-    "dswVersion": 1.0,
+    "version": 1.0,
     "applyImmediately": true,
     "notification": {
         "auto": false,
@@ -183,7 +181,7 @@ If you want to enable and use push notifications, you can set:
         "dataPath": "notification",
         "target": "/"
     },
-    "dswRules": {
+    "rules": {
         /* ... */
     }
 }
@@ -220,7 +218,7 @@ You can also provide the static information for notifications, like so:
 
 ```js
 {
-    "dswVersion": 1.0,
+    "version": 1.0,
     "applyImmediately": true,
     "notification": {
         "auto": false,
@@ -230,7 +228,7 @@ You can also provide the static information for notifications, like so:
         "body": "There is an update in our page",
         "icon": "path-to-icon"
     },
-    "dswRules": {
+    "rules": {
         /* ... */
     }
 }
@@ -399,8 +397,8 @@ Add this to your `dswfile.js`:
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "notFoundPages": {
             "match": {
                 "status": [404],
@@ -420,8 +418,8 @@ Add this to your `dswfile.js`:
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "notFoundPages": {
             "match": {
                 "status": [404],
@@ -445,8 +443,8 @@ Let's see an example of requests being cached (by default, all requests are cach
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "myCachedImages": {
             "match": {
                 "extension": ["png", "jpg", "gif"]
@@ -468,8 +466,8 @@ Let's see an example of requests being cached for *all images* except one specif
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "myNotCachedImage": {
             "match": {
                 "path": "\/images\/some-specific-image"
@@ -499,8 +497,8 @@ You may want to redirect requests some times, like so:
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "secretPath": {
             "match": {
                 "path": "\/private\/"
@@ -519,8 +517,8 @@ You can apply actions using variables from your regular expression, like this:
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "redirectWithVar": {
             "match": {
                 "path": "\/old-site\/(.*)"
@@ -539,8 +537,8 @@ Maybe you want to cache everything. Every single request (that is successful) wi
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "cacheAll": {
             "match": {
                 "path": "\/.*"
@@ -562,8 +560,8 @@ Most of times you will want to cache all your static files, like _javascript_ fi
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "statics": {
             "match": {
                 "extension": ["js", "css"]
@@ -587,8 +585,8 @@ When you use "ignor" as the bypass value, it will not even request it...nothing 
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
         "byPassable": {
             "match": { "path": "/bypass/" },
             "apply": {
@@ -611,8 +609,8 @@ In case you want to send credentials or other settings to fetch, you can use the
 
 ```js
 {
-    "dswVersion": 2.2,
-    "dswRules": {
+    "version": 2.2,
+    "rules": {
 	"userData": {
         "match": { "path": "\/api\/user\/.*" },
         "options": { "credentials": "same-origin"},

@@ -4,6 +4,7 @@ let cacheManager;
 let goFetch;
 
 import logger from './logger.js';
+import utils from './utils.js';
 
 const strategies = {
     setup: function (dswM, cacheM, gf) {
@@ -17,7 +18,6 @@ const strategies = {
         // store it in the cache
         // and then return it to be used
         DSWManager.traceStep(request, 'Info: Using offline first strategy');
-        //logger.info('offline first: Looking into cache for\n', request.url);
         return cacheManager.get(
             rule,
             request,
@@ -52,6 +52,18 @@ const strategies = {
                     return result || DSWManager.treatBadPage(response, pathName, event);
                 });
         }
+
+        // if browser is offline, there is no need to try the request
+        if (utils.DSW.isOffline()) {
+            return treatIt(new Response('', {
+                status: 404,
+                statusText: 'Browser is offline',
+                headers: {
+                    'Content-Type' : 'text/plain'
+                }
+            }));
+        }
+
         return goFetch(rule, request, event, matching)
             .then(treatIt)
             .catch(treatIt);
@@ -67,14 +79,14 @@ const strategies = {
             cacheTreated = false,
             networkFailed = false,
             cacheFailed = false;
-        
+
         // fetch at the same time from the network and from cache
         // in fail function, verify if it failed for both, then treatBadRequest
         // in success, the first to have a 200 response, resolves it
         return new Promise((resolve, reject)=>{
             function treatFetch (response) {
                 let result;
-                
+
                 // firstly, let's asure we update the cache, if needed
                 if (response.status == 200) {
                     // if we managed to load it from network and it has
@@ -127,12 +139,15 @@ const strategies = {
             }
 
             // one promise go for the network
-            goFetch(rule,
+            // if browser is offline, there is no need to try the request
+            if (utils.DSW.isOnline()) {
+                goFetch(rule,
                     request.clone(),
                     event,
                     matching)
                 .then(treatFetch)
                 .catch(treatCatch);
+            }
             // the other, for the cache
             cacheManager.get(rule,
                              request.clone(),
