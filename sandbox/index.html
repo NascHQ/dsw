@@ -16,24 +16,29 @@
 
 <script src="dsw.js"></script>
 <script>
-    DSW.addEventListener('activated', function(event){
-        console.log(event);
-    });
     DSW.setup()
         .then(function(result){
             var el = document.getElementById('offline-support-message');
             el.classList.add('offline-support');
             el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
+            console.info('[ DSW ] :: Service Worker is activated and has all the appShell ready (happens only once)');
         })
         .catch(function(reason){
             var el = document.getElementById('offline-support-message');
             el.innerHTML = 'Offline support<br/>not installed';
             el.classList.add('no-offline-support');
-            console.warn(reason);
+            console.warn('[ DSW ] :: Service Worker could now be activated!\n', reason);
             setTimeout(function(){
                 el.classList.remove('no-offline-support');
             }, 6000);
         });
+
+    DSW.ready.then(function dswReady (status) {
+        console.info('[ DSW ] :: Service Worker is active and working');
+    });
+    DSW.addEventListener('activated', function(event){
+        console.log('[ DSW ] :: Service worker was activated (happens only once)');
+    });
 </script>
 
     </head>

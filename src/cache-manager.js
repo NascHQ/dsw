@@ -445,10 +445,19 @@ const cacheManager = {
 
                             } else if (actionType == 'redirect') {
                                 // if this is supposed to redirect
-                                DSWManager.traceStep(event.request, 'Must redirect', {
-                                    from: event.request.url,
-                                    to: request.url
-                                });
+                                DSWManager.traceStep(
+                                    event.request,
+                                    'Must redirect',
+                                    {
+                                        from: event.request.url,
+                                        to: request.url
+                                    },
+                                    false,
+                                    {
+                                        url: request.url,
+                                        id: request.requestId,
+                                        steps: request.traceSteps
+                                    });
                                 return Response.redirect(request.url, 302);
                             } else {
                                 // this is a "normal" request, let's deliver it

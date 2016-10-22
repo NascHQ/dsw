@@ -614,6 +614,10 @@ var cacheManager = {
                                     DSWManager.traceStep(event.request, 'Must redirect', {
                                         from: event.request.url,
                                         to: request.url
+                                    }, false, {
+                                        url: request.url,
+                                        id: request.requestId,
+                                        steps: request.traceSteps
                                     });
                                     return Response.redirect(request.url, 302);
                                 } else {
@@ -1093,7 +1097,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1476983351157', ready: null };
+var DSW = { version: '1.10.6', build: '1477108822168', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1156,7 +1160,7 @@ if (isInSWScope) {
                         if (cur.action.fetch) {
                             DSWManager.traceStep(event.request, 'Found fallback rule', {
                                 rule: cur
-                            });
+                            }, false, event.request);
                             // not found requisitions should
                             // fetch a different resource
                             var req = new Request(cur.action.fetch);
@@ -1169,7 +1173,6 @@ if (isInSWScope) {
                 });
                 if (!result) {
                     DSWManager.traceStep(event.request, 'No fallback found. Request failed');
-                    //logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
                 }
                 return result || response;
             },
@@ -1427,10 +1430,11 @@ if (isInSWScope) {
                         var movedInfo = DSWManager.trackMoved[event.request.url];
                         event.request.requestId = movedInfo.id;
                         event.request.traceSteps = movedInfo.steps;
+                        event.request.originalSrc = movedInfo.url;
                         delete DSWManager.trackMoved[event.request.url];
                     } else {
                         event.request.requestId = DSWManager.requestId;
-                        DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
+                        DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                     }
 
                     var url = new URL(event.request.url);
@@ -1975,7 +1979,7 @@ if (isInSWScope) {
                                 status: false,
                                 sync: false,
                                 sw: false,
-                                message: 'Failed registering service worker',
+                                message: 'Failed registering service worker with the message:\n ' + err.message,
                                 error: err
                             });
                         });

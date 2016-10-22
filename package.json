@@ -9,7 +9,8 @@
   "preferGlobal": true,
   "main": "./lib/dsw.js",
   "scripts": {
-    "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
+    "DELETE-test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
+    "test": "browserify tests/src/index.js -o tests/dist/index.js -t [ babelify --presets [ es2015 ] ]",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js && gh-pages -d docs",
     "build": "npm run lint && browserify src/main.js -o dist/dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",
@@ -47,14 +48,15 @@
     "browserify": "latest",
     "chai": "^3.5.0",
     "docco": "^0.7.0",
+    "eslint": "^3.0.1",
     "gh-pages": "^0.11.0",
+    "http-server": "latest",
     "minifier": "^0.7.1",
+    "testcafe": "^0.9.0",
     "watch": "latest"
   },
   "dependencies": {
     "commander": "^2.9.0",
-    "eslint": "^3.0.1",
-    "http-server": "latest",
     "node-fetch": "^1.6.1"
   }
 }
