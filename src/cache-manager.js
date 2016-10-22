@@ -433,12 +433,6 @@ const cacheManager = {
                                         {
                                             from: event.request.url,
                                             to: request.url
-                                        },
-                                        false,
-                                        {
-                                            url: request.url,
-                                            id: request.requestId,
-                                            steps: request.traceSteps
                                         });
                                     return Response.redirect(request.url, 302);
                                 }

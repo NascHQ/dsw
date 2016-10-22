@@ -432,10 +432,6 @@ var cacheManager = {
                                         DSWManager.traceStep(event.request, 'Must redirect', {
                                             from: event.request.url,
                                             to: request.url
-                                        }, false, {
-                                            url: request.url,
-                                            id: request.requestId,
-                                            steps: request.traceSteps
                                         });
                                         return Response.redirect(request.url, 302);
                                     }
