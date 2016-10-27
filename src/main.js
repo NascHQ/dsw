@@ -63,6 +63,15 @@ if (isInSWScope) {
         },
         treatBadPage (response, pathName, event) {
             let result;
+            DSWManager.traceStep(
+                event.request,
+                'Request failed',
+                {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    type: response.type
+                });
             (DSWManager.rules[
                 response && response.status? response.status : 404
             ] || [])
@@ -73,14 +82,22 @@ if (isInSWScope) {
                             cur.action.fetch = cur.action.redirect;
                         }
                         if (cur.action.fetch) {
-                            DSWManager.traceStep(event.request, 'Found fallback rule', {
-                                rule: cur
-                            }, false, event.request);
-                            // not found requisitions should
+                            DSWManager.traceStep(
+                                event.request,
+                                'Found fallback rule',
+                                cur,
+                                false,
+                                {
+                                    url: event.request.url,
+                                    id: event.request.requestId,
+                                    steps: event.request.traceSteps
+                                });
+                            // not found requests should
                             // fetch a different resource
                             let req = new Request(cur.action.fetch);
                             req.requestId = event.request.requestId;
                             req.traceSteps = event.request.traceSteps;
+                            // applyMatch
                             result = cacheManager.get(cur,
                                                       req,
                                                       event,
@@ -175,9 +192,13 @@ if (isInSWScope) {
                     let noVars = /\$[0-9]+/;
                     if ( (appl.fetch && !appl.fetch.match(noVars))
                         ||
-                        (appl.redirect && !appl.redirect.match(noVars))) {
+                        (appl.redirect && !appl.redirect.match(noVars))
+                        ||
+                        (appl.cache && appl.cache.from)) {
                         preCache.push({
-                            url: appl.fetch || appl.redirect,
+                            url: (appl.cache && appl.cache.from)
+                                 ? appl.cache.from
+                                 : (appl.fetch || appl.redirect),
                             rule: heuristic
                         });
                     }
@@ -261,6 +282,15 @@ if (isInSWScope) {
         },
 
         traceStep (request, step, data, fill=false, moved=false) {
+
+            // we may also receive a list of requests
+            if (Array.isArray(request)) {
+                request.forEach(req=>{
+                    DSWManager.traceStep(req, step, data, fill, moved);
+                });
+                return;
+            }
+
             // if there are no tracking listeners, this request will not be tracked
             if (DSWManager.tracking) {
                 let id = request.requestId;
@@ -274,9 +304,10 @@ if (isInSWScope) {
                     data.referrer = request.referrer;
                 }
                 request.traceSteps.push({ step, data });
-                if (moved) {
-                    DSWManager.trackMoved[moved.url] = moved;
-                }
+            }
+            // but if it has moved, we then track it
+            if (moved) {
+                DSWManager.trackMoved[moved.url] = moved;
             }
         },
 
@@ -328,12 +359,17 @@ if (isInSWScope) {
             let tracker;
             let traceBack = (port, key)=>{
                 // sending the trace information back to client
-                port.postMessage({
+                let traceData = {
                     id: event.request.requestId,
                     src: event.request.traceSteps[0].data.url,
                     method: event.request.traceSteps[0].data.method,
                     steps: event.request.traceSteps
-                });
+                };
+                // if it has been redirected
+                if (traceData.src != event.request.url) {
+                    traceData.redirectedTo = event.request.url;
+                }
+                port.postMessage(traceData);
             };
             for(tracker in DSWManager.tracking) {
                 if (event.request.url.match(tracker)) {
@@ -362,6 +398,14 @@ if (isInSWScope) {
                     event.request.requestId = movedInfo.id;
                     event.request.traceSteps = movedInfo.steps;
                     event.request.originalSrc = movedInfo.url;
+                    if (movedInfo.rule
+                        && movedInfo.rule.action
+                        && movedInfo.rule.action.cache
+                        && movedInfo.rule.action.cache.from) {
+                        // it has moved, but is supposed to be cached from somewhere else
+                        // because it uses variables that are not supposed to be cached
+                        event.request.cachedFrom = movedInfo.rule.action.cache.from;
+                    }
                     delete DSWManager.trackMoved[event.request.url];
                 } else {
                     event.request.requestId = DSWManager.requestId;

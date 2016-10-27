@@ -212,7 +212,7 @@ const cacheManager = {
                 });
         });
     },
-    get: (rule, request, event, matching, forceFromCache)=>{
+    get: (rule, request, event, matching, forceFromCache, treatFailure=true)=>{
         let actionType = Object.keys(rule.action)[0],
             url = request.url || request,
             pathName = (new URL(url)).pathname;
@@ -233,7 +233,8 @@ const cacheManager = {
         actionType = actionType == 'idb'? 'indexeddb': actionType;
 
         // cache may expire...if so, we will use this verification afterwards
-        let verifyCache;
+        let verifyCache,
+            urlToMatch = null;
         if (rule.action.cache && rule.action.cache.expires) {
             verifyCache = cacheManager.hasExpired(request);
         } else {
@@ -252,10 +253,10 @@ const cacheManager = {
 
                 let treatResponse = function (response) {
                     if (response.status >= 200 && response.status < 300) {
-                        DSWManager.traceStep(request, 'Request bypassed');
+                        DSWManager.traceStep(event.request, 'Request bypassed');
                         return response;
                     } else {
-                        DSWManager.traceStep(request, 'Bypassed request failed and was ignored');
+                        DSWManager.traceStep(event.request, 'Bypassed request failed and was ignored');
                         let resp = new Response(''); // ignored
                         return resp;
                     }
@@ -269,13 +270,13 @@ const cacheManager = {
                 // or of type 'ignore' (or anything else, actually)
                 // and we will simply output nothing, as if ignoring both the
                 // request and response
-                DSWManager.traceStep(request, 'Bypassed request');
+                DSWManager.traceStep(event.request, 'Bypassed request');
                 actionType = 'output';
                 rule.action[actionType] = '';
             }
         }
         case 'output': {
-            DSWManager.traceStep(request, 'Responding with string output', { output: (rule.action[actionType]+'').substring(0, 180) });
+            DSWManager.traceStep(event.request, 'Responding with string output', { output: (rule.action[actionType]+'').substring(0, 180) });
             return new Response(
                 utils.applyMatch(matching,
                                  rule.action[actionType])
@@ -289,9 +290,9 @@ const cacheManager = {
                         // with success or not(saving it), we resolve it
                         let done = err=>{
                             if (err) {
-                                DSWManager.traceStep(request, 'Could not save response into IndexedDB', { err });
+                                DSWManager.traceStep(event.request, 'Could not save response into IndexedDB', { err });
                             } else {
-                                DSWManager.traceStep(request, 'Response object saved into IndexedDB');
+                                DSWManager.traceStep(event.request, 'Response object saved into IndexedDB');
                             }
                             resolve(response);
                         };
@@ -303,7 +304,7 @@ const cacheManager = {
                         // if it failed, we can look for a fallback
                         url = request.url;
                         pathName = new URL(url).pathname;
-                        DSWManager.traceStep(request, 'Fetch failed', {
+                        DSWManager.traceStep(event.request, 'Fetch failed', {
                             url: request.url,
                             status: response.status,
                             statusText: response.statusText
@@ -319,10 +320,14 @@ const cacheManager = {
                         // if we did have it in the indexedDB
                         if (result) {
                             // we use it
+                            DSWManager.traceStep(event.request, 'Found stored in IndexedDB');
                             return treatFetch(result);
                         }else{
                             // if it was not stored, let's fetch it
-                            //request = DSWManager.createRequest(request, event, matching);
+                            DSWManager.traceStep(event.request, 'Will fetch', {
+                                url: request.url,
+                                method: request.method
+                            });
                             return goFetch(rule, request, event, matching)
                                 .then(treatFetch)
                                 .catch(treatFetch);
@@ -340,8 +345,13 @@ const cacheManager = {
             // keep going to be treated with the cache case
         }
         case 'cache': {
-
             let cacheId;
+
+            if (event.request.cachedFrom) { // rule.action.cache  && rule.action.cache.from) {
+                urlToMatch = event.request.cachedFrom;
+            } else {
+                urlToMatch = null;
+            }
 
             if(rule.action.cache){
                 cacheId = cacheManager.mountCacheId(rule);
@@ -355,10 +365,9 @@ const cacheManager = {
                     // with no results from cache
                     DSWManager.traceStep(event.request, 'Cache was expired');
                     lookForCache = Promise.resolve();
-                    //logger.info('Cache expired for ', request.url);
                 } else{
                     // if not expired, let's look for it!
-                    lookForCache = caches.match(request);
+                    lookForCache = caches.match(urlToMatch || request);
                 }
 
                 // look for the request in the cache
@@ -366,8 +375,9 @@ const cacheManager = {
                     .then(result=>{
                         // if it does not exist (cache could not be verified)
                         if (result && result.status != 200) {
-                            DSWManager.traceStep(event.request,
-                                'Fetch failed',
+                            DSWManager.traceStep(
+                                event.request,
+                                'Not found in cache',
                                 {
                                     url: request.url,
                                     status: result.status,
@@ -378,32 +388,34 @@ const cacheManager = {
                             // even if it has expired
                             if (expired) {
                                 DSWManager.traceStep(
-                                    request,
-                                    'Forcing '+ (expired? 'expired ': '') +'result from cache'
+                                    event.request,
+                                    'Forcing '+ (expired? 'expired ': '') +'from cache'
                                 );
                                 // the true argument flag means it should come from cache, anyways
                                 return cacheManager.get(rule, request, event, matching, true);
                             }
-                            // look for rules that match for the request and its status
-                            (DSWManager.rules[result.status]||[]).some((cur, idx)=>{
-                                if (pathName.match(cur.rx)) {
-                                    // if a rule matched for the status and request
-                                    // and it tries to fetch a different source
-                                    if (cur.action.fetch || cur.action.redirect) {
-                                        DSWManager.traceStep(
-                                            event.request,
-                                            'Found fallback for failure',
-                                            {
-                                                rule: cur,
-                                                url: request.url
-                                            }
-                                        );
-                                        // problematic requests should
-                                        result = goFetch(rule, request, event, matching);
-                                        return true; // stopping the loop
+                            if (treatFailure) {
+                                // look for rules that match for the request and its status
+                                (DSWManager.rules[result.status]||[]).some((cur, idx)=>{
+                                    if (pathName.match(cur.rx)) {
+                                        // if a rule matched for the status and request
+                                        // and it tries to fetch a different source
+                                        if (cur.action.fetch || cur.action.redirect) {
+                                            DSWManager.traceStep(
+                                                event.request,
+                                                'Found fallback for failure',
+                                                {
+                                                    rule: cur,
+                                                    url: request.url
+                                                }
+                                            );
+                                            // problematic requests should
+                                            result = goFetch(rule, request, event, matching);
+                                            return true; // stopping the loop
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                             // we, then, return the promise of the failed result(for it
                             // could not be loaded and was not in cache)
                             return result;
@@ -420,20 +432,30 @@ const cacheManager = {
                                 if (request.url == event.request.url) {
                                     DSWManager.traceStep(
                                         event.request,
-                                        'Result from cache',
+                                        'Result found in cache',
                                         {
                                             url: event.request.url
                                         });
+                                    // it was successful
                                     return result;
                                 } else {
-                                    // coming from a redirect
+                                    // it is a redirect (different urls)
                                     DSWManager.traceStep(
                                         event.request,
-                                        'Must redirect',
+                                        'Redirecting',
                                         {
                                             from: event.request.url,
                                             to: request.url
+                                        },
+                                        false,
+                                        { // telling the tracker that it has moved
+                                            url: request.url,
+                                            id: request.requestId,
+                                            steps: request.traceSteps,
+                                            rule
                                         });
+                                    // let's move the browser's url and return
+                                    // the appropriate header
                                     return Response.redirect(request.url, 302);
                                 }
 
@@ -447,10 +469,11 @@ const cacheManager = {
                                         to: request.url
                                     },
                                     false,
-                                    {
+                                    { // telling the tracker that it has moved
                                         url: request.url,
                                         id: request.requestId,
-                                        steps: request.traceSteps
+                                        steps: request.traceSteps,
+                                        rule
                                     });
                                 return Response.redirect(request.url, 302);
                             } else {
@@ -462,7 +485,9 @@ const cacheManager = {
                                     if (response.type == 'opaque') {
                                         // if it is a opaque response, let it go!
                                         if (rule.action.cache !== false) {
-                                            DSWManager.traceStep(event.request, 'Added to cache (opaque)');
+                                            DSWManager.traceStep(event.request, 'Added to cache (opaque)', {
+                                                url: request.url
+                                            });
                                             return cacheManager.add(utils.createRequest(request, { mode: request.mode || 'no-cors' }),
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
@@ -477,11 +502,15 @@ const cacheManager = {
                                     // after retrieving it, we cache it
                                     // if it was ok
                                     if (response.status == 200) {
-                                        DSWManager.traceStep(event.request, 'Received result OK (200)');
+                                        DSWManager.traceStep(event.request, 'Received result OK (200)', {
+                                            url: request.url
+                                        });
                                         // if cache is not false, it will be added to cache
                                         if (rule.action.cache !== false) {
                                             // let's save it into cache
-                                            DSWManager.traceStep(event.request, 'Saving into cache');
+                                            DSWManager.traceStep(event.request, 'Saving into cache', {
+                                                url: request.url
+                                            });
                                             return cacheManager.add(request,
                                                                     cacheManager.mountCacheId(rule),
                                                                     response,
@@ -492,13 +521,15 @@ const cacheManager = {
                                     } else {
                                         // if it had expired, but could not be retrieved
                                         // from network, let's give its cache a chance!
-                                        DSWManager.traceStep(event.request, 'Failed fetching');
+                                        DSWManager.traceStep(request, 'Failed fetching', {
+                                            url: request.url
+                                        });
                                         if (expired) {
                                             logger.warn('Cache for ',
                                                         request.url || request,
                                                         'had expired, but the updated version could not be retrieved from the network!\n',
                                                         'Delivering the outdated cached data');
-                                            DSWManager.traceStep(event.request, 'Used expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
+                                            DSWManager.traceStep(event.request, 'Using expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
                                             return cacheManager.get(rule, request, event, matching, true);
                                         }
                                         // otherwise...let's see if there is a fallback
@@ -506,13 +537,18 @@ const cacheManager = {
                                         return DSWManager.treatBadPage(response, pathName, event);
                                     }
                                 };
-                                DSWManager.traceStep(event.request, 'Must fetch', {
-                                    url: request.url,
-                                    method: request.method
-                                });
-                                return goFetch(rule, request, event, matching)
-                                        .then(treatFetch)
-                                        .catch(treatFetch);
+
+                                // if not in cache, let's see if we should look
+                                // for it in the network
+                                if (treatFailure) {
+                                    DSWManager.traceStep(event.request, 'Will fetch', {
+                                        url: request.url,
+                                        method: request.method
+                                    });
+                                    return goFetch(rule, request, event, matching)
+                                            .then(treatFetch)
+                                            .catch(treatFetch);
+                                }
                             }
                         }
                     }); // end lookForCache

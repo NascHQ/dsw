@@ -80,7 +80,10 @@
                 "path": "(.*)"
             },
             "apply": {
-                "redirect": "/not-found.html?from=$1"
+                "redirect": "/not-found.html?from=$1",
+                "cache": {
+                    "from": "/not-found.html"
+                }
             }
         },
         "imageNotCached": {
