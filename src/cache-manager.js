@@ -434,7 +434,8 @@ const cacheManager = {
                                         event.request,
                                         'Result found in cache',
                                         {
-                                            url: event.request.url
+                                            url: event.request.url,
+                                            cacheSource: event.request.cachedFrom || event.request.url
                                         });
                                     // it was successful
                                     return result;

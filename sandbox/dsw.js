@@ -611,7 +611,8 @@ var cacheManager = {
                                     // or else...we simply return the result itself
                                     if (request.url == event.request.url) {
                                         DSWManager.traceStep(event.request, 'Result found in cache', {
-                                            url: event.request.url
+                                            url: event.request.url,
+                                            cacheSource: event.request.cachedFrom || event.request.url
                                         });
                                         // it was successful
                                         return result;
@@ -1132,7 +1133,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1477543670695', ready: null };
+var DSW = { version: '1.10.6', build: '1477624671648', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1465,11 +1466,18 @@ if (isInSWScope) {
                     }
                     port.postMessage(traceData);
                 };
+                // here we will send a message to each listener in the client(s)
+                // with the trace information
                 for (tracker in DSWManager.tracking) {
                     if (event.request.url.match(tracker)) {
                         DSWManager.tracking[tracker].ports.forEach(traceBack);
                         break;
                     }
+                }
+
+                // let's clear the garbage left from the request
+                if (event.request.traceSteps && event.request.traceSteps.length) {
+                    delete DSWManager.trackMoved[event.request.traceSteps[0].data.url];
                 }
             },
             broadcast: function broadcast(message) {
@@ -2189,17 +2197,17 @@ var strategies = {
                     if (response.status == 200) {
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
-                        DSWManager.traceStep(event.request, 'Got from network (status 200)', {
+                        DSWManager.traceStep(event.request, 'Fastest strategy resolved from network', {
                             url: response.url || request.url
                         });
                         resolve(response);
                     } else {
                         // if it failed, we will try and respond with
                         // something else
-                        //                        DSWManager.traceStep(event.request, 'Failed fetching', {
-                        //                            status: response.status,
-                        //                            statusText: response.statusText
-                        //                        });
+                        DSWManager.traceStep(event.request, 'Fastest strategy failed fetching', {
+                            status: response.status,
+                            statusText: response.statusText
+                        });
                         networkFailed = true;
                         treatCatch(response);
                     }
@@ -2210,7 +2218,7 @@ var strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    DSWManager.traceStep(event.request, 'Found cached');
+                    DSWManager.traceStep(event.request, 'Fastest strategy resolved from cached');
                     resolve(result);
                     return result;
                 } else {
@@ -2224,7 +2232,7 @@ var strategies = {
                 // if both network and cache failed,
                 // we have a problem with the request, let's treat it
                 if (networkFailed && cacheFailed) {
-                    DSWManager.traceStep(event.request, 'Could not fetch or find in cache');
+                    DSWManager.traceStep(event.request, 'Fastest strategy could not fetch nor find in cache');
                     resolve(DSWManager.treatBadPage(response, pathName, event));
                 }
                 // otherwise, we still got a chance on having a result from
@@ -2233,11 +2241,8 @@ var strategies = {
 
             // one promise go for the network
             // if browser is offline, there is no need to try the request
-            //            if (utils.DSW.isOnline()) {
             goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatFetch);
-            //            } else {
-            //                networkFailed = true;
-            //            }
+
             // the other, for the cache
             cacheManager.get(rule, request, event, matching, false, false) // will get, but not treat any failure
             .then(treatCache).catch(treatCatch);

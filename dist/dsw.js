@@ -438,7 +438,8 @@ var cacheManager = {
                                     // or else...we simply return the result itself
                                     if (request.url == event.request.url) {
                                         DSWManager.traceStep(event.request, 'Result found in cache', {
-                                            url: event.request.url
+                                            url: event.request.url,
+                                            cacheSource: event.request.cachedFrom || event.request.url
                                         });
                                         // it was successful
                                         return result;
@@ -1292,11 +1293,18 @@ if (isInSWScope) {
                     }
                     port.postMessage(traceData);
                 };
+                // here we will send a message to each listener in the client(s)
+                // with the trace information
                 for (tracker in DSWManager.tracking) {
                     if (event.request.url.match(tracker)) {
                         DSWManager.tracking[tracker].ports.forEach(traceBack);
                         break;
                     }
+                }
+
+                // let's clear the garbage left from the request
+                if (event.request.traceSteps && event.request.traceSteps.length) {
+                    delete DSWManager.trackMoved[event.request.traceSteps[0].data.url];
                 }
             },
             broadcast: function broadcast(message) {
@@ -1911,10 +1919,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _logger = require('./logger.js');
-
-var _logger2 = _interopRequireDefault(_logger);
-
 var _utils = require('./utils.js');
 
 var _utils2 = _interopRequireDefault(_utils);
@@ -1936,32 +1940,27 @@ var strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        DSWManager.traceStep(event.request, 'Info: Using offline first strategy');
+        DSWManager.traceStep(event.request, 'Info: Using offline first strategy', { url: request.url });
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
         // Will fetch it, and if there is a problem
         // will look for it in cache
-        DSWManager.traceStep(event.request, 'Info: Using online first strategy');
+        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url: request.url });
         function treatIt(response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        //logger.info('Updated in cache: ', request.url);
                         DSWManager.traceStep(event.request, 'Updated cache');
                     });
                 }
-                //logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching).then(function (result) {
                 // if failed to fetch and was not in cache, we look
                 // for a fallback response
                 var pathName = new URL(event.request.url).pathname;
-                //                    if(result){
-                //                        logger.info('From cache(after network failure): ', request.url);
-                //                    }
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
         }
@@ -1980,7 +1979,7 @@ var strategies = {
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
-        DSWManager.traceStep(event.request, 'Info: Using fastest strategy');
+        DSWManager.traceStep(event.request, 'Info: Using fastest strategy', { url: request.url });
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates
@@ -2016,17 +2015,17 @@ var strategies = {
                     if (response.status == 200) {
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
-                        DSWManager.traceStep(event.request, 'Got from network (status 200)', {
+                        DSWManager.traceStep(event.request, 'Fastest strategy resolved from network', {
                             url: response.url || request.url
                         });
                         resolve(response);
                     } else {
                         // if it failed, we will try and respond with
                         // something else
-                        //                        DSWManager.traceStep(event.request, 'Failed fetching', {
-                        //                            status: response.status,
-                        //                            statusText: response.statusText
-                        //                        });
+                        DSWManager.traceStep(event.request, 'Fastest strategy failed fetching', {
+                            status: response.status,
+                            statusText: response.statusText
+                        });
                         networkFailed = true;
                         treatCatch(response);
                     }
@@ -2037,7 +2036,7 @@ var strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
-                    DSWManager.traceStep(event.request, 'Found cached');
+                    DSWManager.traceStep(event.request, 'Fastest strategy resolved from cached');
                     resolve(result);
                     return result;
                 } else {
@@ -2051,7 +2050,7 @@ var strategies = {
                 // if both network and cache failed,
                 // we have a problem with the request, let's treat it
                 if (networkFailed && cacheFailed) {
-                    DSWManager.traceStep(event.request, 'Could not fetch or find in cache');
+                    DSWManager.traceStep(event.request, 'Fastest strategy could not fetch nor find in cache');
                     resolve(DSWManager.treatBadPage(response, pathName, event));
                 }
                 // otherwise, we still got a chance on having a result from
@@ -2060,11 +2059,8 @@ var strategies = {
 
             // one promise go for the network
             // if browser is offline, there is no need to try the request
-            //            if (utils.DSW.isOnline()) {
             goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatFetch);
-            //            } else {
-            //                networkFailed = true;
-            //            }
+
             // the other, for the cache
             cacheManager.get(rule, request, event, matching, false, false) // will get, but not treat any failure
             .then(treatCache).catch(treatCatch);
@@ -2074,7 +2070,7 @@ var strategies = {
 
 exports.default = strategies;
 
-},{"./logger.js":5,"./utils.js":8}],8:[function(require,module,exports){
+},{"./utils.js":8}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

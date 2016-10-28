@@ -371,11 +371,18 @@ if (isInSWScope) {
                 }
                 port.postMessage(traceData);
             };
+            // here we will send a message to each listener in the client(s)
+            // with the trace information
             for(tracker in DSWManager.tracking) {
                 if (event.request.url.match(tracker)) {
                     DSWManager.tracking[tracker].ports.forEach(traceBack);
                     break;
                 }
+            }
+
+            // let's clear the garbage left from the request
+            if (event.request.traceSteps && event.request.traceSteps.length) {
+                delete DSWManager.trackMoved[event.request.traceSteps[0].data.url];
             }
         },
 
