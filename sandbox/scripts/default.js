@@ -162,3 +162,57 @@ window.addEventListener('load', function(){
     }, 3000);
 
 });
+
+
+(()=>{
+
+    /*
+    This is used to run unit tests, mainly
+    */
+    window.addEventListener('message', function messageReceived (event) {
+
+        var answerMessage = function (result) {
+            event.ports[0].postMessage(result);
+        }
+
+        var command = null;
+
+        if (!event.data) {
+            return;
+        }
+        var command = event.data.DSWCommand;
+        if (!command){
+            return;
+        }
+
+        if (command.dswUnderAutomatedTest) {
+            // starting the sandbox page in test mode
+            DSW.trace(/.*/, function traceReceived (data) {
+                event.ports[0].postMessage({ trace: data });
+            });
+            document.body.classList.add('test-mode');
+            setTimeout(_=>{
+                answerMessage({ acknowledged: true });
+            }, 2000);
+            return;
+        }
+
+        if (command.get) {
+            switch (command.get) {
+                case 'dswStatus': {
+                    answerMessage(DSW.status);
+                    break;
+                }
+                case 'readyEvent': {
+                    DSW.ready.then(event=>{
+                            answerMessage({ status: DSW.status });
+                        })
+                        .catch(err=>{
+                            answerMessage({ err: err });
+                        });
+                    break;
+                }
+            }
+        }
+    });
+})();

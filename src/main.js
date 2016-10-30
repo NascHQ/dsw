@@ -128,9 +128,9 @@ if (isInSWScope) {
                 let preCache = PWASettings.appShell || [],
                     dbs = [];
 
-                Object.keys(dswConfig.dswRules).forEach(heuristic=>{
+                Object.keys(dswConfig.rules || dswConfig.dswRules).forEach(heuristic=>{
                     let ruleName = heuristic;
-                    heuristic = dswConfig.dswRules[heuristic];
+                    heuristic = (dswConfig.rules || dswConfig.dswRules)[heuristic];
                     heuristic.name = ruleName;
 
                     heuristic.action = heuristic.action || heuristic['apply'];
@@ -773,6 +773,7 @@ if (isInSWScope) {
         messageChannel.port1.onmessage = function(event) {
             callback(event.data);
         };
+
         navigator.serviceWorker
             .controller
             .postMessage({ trackPath: match }, [messageChannel.port2]);
@@ -911,7 +912,9 @@ if (isInSWScope) {
             if(navigator.serviceWorker){
                 if (!navigator.serviceWorker.controller) {
                     // rejects the registration after some time, if not resolved by then
-                    installationTimeOut = setTimeout(reject, config.timeout || REGISTRATION_TIMEOUT);
+                    installationTimeOut = setTimeout(_=>{
+                        reject('Registration timed out');
+                    }, config.timeout || REGISTRATION_TIMEOUT);
 
                     // we will use the same script, already loaded, for our service worker
                     var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');

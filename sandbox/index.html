@@ -14,32 +14,32 @@
 
         <link rel="stylesheet" href="styles/default.css">
 
-<script src="dsw.js"></script>
-<script>
-    DSW.setup()
-        .then(function(result){
-            var el = document.getElementById('offline-support-message');
-            el.classList.add('offline-support');
-            el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
-            console.info('[ DSW ] :: Service Worker is activated and has all the appShell ready (happens only once)');
-        })
-        .catch(function(reason){
-            var el = document.getElementById('offline-support-message');
-            el.innerHTML = 'Offline support<br/>not installed';
-            el.classList.add('no-offline-support');
-            console.warn('[ DSW ] :: Service Worker could now be activated!\n', reason);
-            setTimeout(function(){
-                el.classList.remove('no-offline-support');
-            }, 6000);
-        });
+        <script src="dsw.js"></script>
+        <script>
+            DSW.setup()
+                .then(function(result){
+                    var el = document.getElementById('offline-support-message');
+                    el.classList.add('offline-support');
+                    el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
+                    console.info('[ DSW ] :: Service Worker is activated and has all the appShell ready (happens only once)');
+                })
+                .catch(function(reason){
+                    var el = document.getElementById('offline-support-message');
+                    el.innerHTML = 'Offline support<br/>not installed';
+                    el.classList.add('no-offline-support');
+                    console.warn('[ DSW ] :: Service Worker could now be activated!\n', reason);
+                });
 
-    DSW.ready.then(function dswReady (status) {
-        console.info('[ DSW ] :: Service Worker is active and working');
-    });
-    DSW.addEventListener('activated', function(event){
-        console.log('[ DSW ] :: Service worker was activated (happens only once)');
-    });
-</script>
+            DSW.ready.then(function dswReady (status) {
+                console.info('[ DSW ] :: Service Worker is active and working');
+            }).catch(err=>{
+                console.warn('[ DSW ] :: Service Worker could not be fully registered', err);
+            });
+
+            DSW.addEventListener('activated', function(event){
+                console.log('[ DSW ] :: Service worker was activated (happens only once)');
+            });
+        </script>
 
     </head>
     <body>
@@ -76,7 +76,7 @@
                 </div>
                 <div class="fg">
                     <div class="test-description-container">
-                        You can use push notifications
+                        Use push notifications
                     </div>
                 </div>
             </div>

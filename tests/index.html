@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DSW Tests</title>
+</head>
+<body>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #ffd;
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+
+        #status {
+            float: left;
+            width: 25%;
+            border-left: solid 1px black;
+            margin: 0;
+            padding-left: 5px;
+        }
+
+        #status li.title {
+            font-size: 2em;
+            font-weight: bold;
+            padding-top: 22px;
+            padding-bottom: 22px;
+        }
+        #status li.title:before {
+            content: "";
+        }
+
+        #status li {
+            padding-left: 20px;
+        }
+
+        #status li:before {
+            content: "◷ ";
+            position: absolute;
+            left: 10px;
+        }
+        #status li:not(.passed):not(.failed):not(.title):before {
+            font-size: 1.3em;
+            margin-top: -5px;
+        }
+
+        #status li.passed:before {
+            content: "✔ ";
+            color: green;
+        }
+
+        #status li.failed:before {
+            content: "✖ ";
+            color: red;
+        }
+
+        #testPage {
+            float: right;
+            width: 75%;
+            height: 100%;
+            border: none;
+            border-left: solid 1px black;
+            background: -moz-linear-gradient(-45deg,  #f0f0f0 0%, #d2d3d5 40%, #eff0f2 100%);
+            background: -webkit-linear-gradient(-45deg,  #f0f0f0 0%,#d2d3d5 40%,#eff0f2 100%);
+            background: linear-gradient(135deg,  #f0f0f0 0%,#d2d3d5 40%,#eff0f2 100%);
+            filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f0f0f0', endColorstr='#eff0f2',GradientType=1 );
+            font-family: Helvetica, Arial, sans-serif;
+        }
+    </style>
+
+    <ol id="status">
+        <li class="title">Tests</li>
+    </ol>
+    <iframe src="" frameborder="0" id="testPage"></iframe>
+
+    <script>
+
+        var steps = {
+            ok: 0,
+            fail: 0
+        };
+
+        function addStep (step, status) {
+            var item = document.createElement('li');
+            item.innerHTML = step;
+            //item.classList.add(!status || status == 'ok' || status === true? 'ok': 'fail');
+            document.getElementById('status').appendChild(item);
+            item.ok = function () {
+                this.classList.add('passed');
+                steps.ok++;
+            };
+            item.fail = function () {
+                this.classList.add('failed');
+                steps.fail++;
+            };
+            if (status === false) {
+                item.fail();
+            }
+            if (status === true) {
+                item.ok();
+            }
+            return item;
+        }
+
+        /*
+        - load test page
+        - wait for sandbox to load
+        - then wait for DSW register to finish
+        - then reload sandbox page
+        - then wait for sandbox page to load
+        - then get dsw status
+        */
+
+        var traced = {};
+        var iframe = document.getElementById('testPage');
+        const SANDBOX_URL = 'http://localhost:8888/';
+
+        function sendMessage (message) {
+            return new Promise((resolve, reject)=>{
+                var messageChannel = new MessageChannel();
+                messageChannel.port1.onmessage = function messageReceived (event) {
+                    if (!event.data) {
+                        reject('No data arrived');
+                        return;
+                    }
+                    if (event.data && event.data.acknowledged !== void(0)) {
+                        resolve(event.data.acknowledged || false);
+                        return;
+                    } else {
+                        if (event.data.trace) {
+                            traced[event.data.trace.src] = event.data.trace;
+                        }
+                    }
+                    resolve(event.data);
+                };
+
+                document.getElementById('testPage')
+                    .contentWindow
+                    .postMessage(message, '*', [messageChannel.port2]);
+            });
+
+        }
+
+        function waitForSandboxToLoad () {
+            return new Promise((resolve, reject)=>{
+                var step = addStep('Load sandbox');
+                var wasOk = false;
+                iframe.onload = function () {
+                    resolve();
+                    step.ok();
+                    wasOk = true;
+                }
+                iframe.setAttribute('src', SANDBOX_URL);
+                setTimeout(_=>{
+                    if (!wasOk) {
+                        step.fail();
+                    }
+                }, 6000);
+            });
+        }
+
+        function waitForDSWRegistration () {
+            var step = addStep('Register SW');
+            var wasOk = false;
+
+            setTimeout(_=>{
+                if (!wasOk) {
+                    step.fail();
+                }
+            }, 4000);
+
+            return sendMessage({
+                DSWCommand: {
+                    get: 'readyEvent'
+                }
+            }).then(result=>{
+                if (result.status.registered) {
+                    wasOk = true;
+                    step.ok();
+                } else {
+                    step.fail();
+                }
+                addStep('Pre cache AppShell', result.status.appShell);
+            });
+        }
+
+        function waitForSandboxToReload () {
+            return new Promise((resolve, reject)=>{
+                // we have to do it this way due to an error freezing the devTools
+                // in chrome when we try to access the contentWindow in an iframe that
+                // we have changed the source.
+                var step = addStep('Reload Sandbox');
+                var finalIframe = document.createElement('iframe');
+                var wasOk = false;
+                finalIframe.setAttribute('id', 'testPage');
+                finalIframe.onload = function(){
+                    resolve();
+                    step.ok();
+                    wasOk = true;
+                };
+
+                setTimeout(_=>{
+                    if (!wasOk) {
+                        step.fail();
+                    }
+                }, 5000);
+                var src = iframe.src;
+                finalIframe.src = src;
+                iframe.replaceWith(finalIframe);
+                iframe = finalIframe;
+            });
+        }
+
+        function turnTestsOn () {
+            var step = addStep ('Enable test mode');
+            return sendMessage({
+                DSWCommand: {
+                    dswUnderAutomatedTest: true
+                }
+            }).then(result=>{
+                if (result) {
+                    step.ok();
+                } else {
+                    step.fail();
+                }
+            });
+        }
+
+        function getDSWStatus () {
+            var step = addStep('Get DSW Status');
+            return sendMessage({
+                DSWCommand: {
+                    get: 'dswStatus'
+                }
+            }).then(result=>{
+                if (result && result.registered) {
+                    return step.ok();
+                }
+                step.fail();
+            });
+        }
+
+        function closeTests () {
+            var text = '<strong>Finished:</strong>' +
+                '<br/>' + (steps.ok + steps.fail) + ' tests'+
+                '<br/>Tests passed: ' + steps.ok +
+                '<br/>Tests failed: ' + steps.fail +
+                '<br/>';
+            addStep(text, steps.fail? false: true);
+        }
+
+        // first load:
+        waitForSandboxToLoad()
+            .then(waitForDSWRegistration)
+            .then(waitForSandboxToReload)
+            .then(turnTestsOn)
+            .then(getDSWStatus)
+            .then(result=>{
+                closeTests()
+            })
+            .catch(error=>{
+                debugger;
+            });
+
+
+
+//        window.addEventListener('message', function messageReceived (message, ports) {
+//            debugger;
+//        });
+
+//        iframe.onload = function testPageLoaded () {
+//            addStep('Loaded', true);
+//            sendMessage({
+//                dswConfig: {
+//                    dswUnderAutomatedTest: true
+//                }
+//            }).then(result=>{
+//                addStep('DSW in test mode' + result, result);
+//            });
+//        }
+
+//        clientTester = {
+//            getDSWStatus: _=>{
+//                return new Promise((resolve, reject)=>{
+//                    var step = addStep('Get DSW Status');
+//                    sendMessage({
+//                        get: 'dswStatus'
+//                    }).then(result=>{
+//                        step.ok();
+//                        addStep('SW is Registered', result.ready);
+//                        addStep('Add Shell loaded', result.appShell);
+//                        addStep('SW is Ready', result.ready);
+//                        addStep('SW version : ' + result.version, true);
+//                        resolve(result);
+//                    });
+//                });
+//            }
+//        }
+    </script>
+</body>
+</html>

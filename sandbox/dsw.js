@@ -1133,7 +1133,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1477624671648', ready: null };
+var DSW = { version: '1.10.6', build: '1477838897534', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1243,9 +1243,9 @@ if (isInSWScope) {
                     var preCache = PWASettings.appShell || [],
                         dbs = [];
 
-                    Object.keys(dswConfig.dswRules).forEach(function (heuristic) {
+                    Object.keys(dswConfig.rules || dswConfig.dswRules).forEach(function (heuristic) {
                         var ruleName = heuristic;
-                        heuristic = dswConfig.dswRules[heuristic];
+                        heuristic = (dswConfig.rules || dswConfig.dswRules)[heuristic];
                         heuristic.name = ruleName;
 
                         heuristic.action = heuristic.action || heuristic['apply'];
@@ -2003,7 +2003,9 @@ if (isInSWScope) {
                 if (navigator.serviceWorker) {
                     if (!navigator.serviceWorker.controller) {
                         // rejects the registration after some time, if not resolved by then
-                        installationTimeOut = setTimeout(reject, config.timeout || REGISTRATION_TIMEOUT);
+                        installationTimeOut = setTimeout(function (_) {
+                            reject('Registration timed out');
+                        }, config.timeout || REGISTRATION_TIMEOUT);
 
                         // we will use the same script, already loaded, for our service worker
                         var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
@@ -2092,10 +2094,6 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _logger = require('./logger.js');
-
-var _logger2 = _interopRequireDefault(_logger);
-
 var _utils = require('./utils.js');
 
 var _utils2 = _interopRequireDefault(_utils);
@@ -2117,32 +2115,27 @@ var strategies = {
         // if it is not there, will fetch it,
         // store it in the cache
         // and then return it to be used
-        DSWManager.traceStep(event.request, 'Info: Using offline first strategy');
+        DSWManager.traceStep(event.request, 'Info: Using offline first strategy', { url: request.url });
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
         // Will fetch it, and if there is a problem
         // will look for it in cache
-        DSWManager.traceStep(event.request, 'Info: Using online first strategy');
+        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url: request.url });
         function treatIt(response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        //logger.info('Updated in cache: ', request.url);
                         DSWManager.traceStep(event.request, 'Updated cache');
                     });
                 }
-                //logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching).then(function (result) {
                 // if failed to fetch and was not in cache, we look
                 // for a fallback response
                 var pathName = new URL(event.request.url).pathname;
-                //                    if(result){
-                //                        logger.info('From cache(after network failure): ', request.url);
-                //                    }
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
         }
@@ -2161,7 +2154,7 @@ var strategies = {
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
-        DSWManager.traceStep(event.request, 'Info: Using fastest strategy');
+        DSWManager.traceStep(event.request, 'Info: Using fastest strategy', { url: request.url });
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates
@@ -2252,7 +2245,7 @@ var strategies = {
 
 exports.default = strategies;
 
-},{"./logger.js":5,"./utils.js":8}],8:[function(require,module,exports){
+},{"./utils.js":8}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

@@ -17,6 +17,23 @@ body {
     font-family: Helvetica, Arial, sans-serif;
     background-size: cover;
     background-attachment: fixed;
+    transition: background .5s ease-in-out 1.5s;
+}
+
+.test-mode {
+    background: #a5bfa5;
+    color: #fff;
+}
+
+.test-mode .card {
+    box-shadow: -6px -8px 30px #777;
+    height: 50px;
+}
+
+.test-mode .test-description h3,
+.test-mode .test-description .test-long-description,
+.test-mode .card .see-rule-btn {
+    display: none;
 }
 
 .project-status {
@@ -154,6 +171,7 @@ a {
     position: relative;
     display: flex;
     overflow: hidden;
+    transition: box-shadow .5s ease-in-out, height .3s ease-out .8s;
 }
 
 .card.small {
