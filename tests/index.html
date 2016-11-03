@@ -205,24 +205,25 @@
                 // in chrome when we try to access the contentWindow in an iframe that
                 // we have changed the source.
                 step = addStep('Reload Sandbox');
-                var finalIframe = document.createElement('iframe');
-                var wasOk = false;
-                finalIframe.setAttribute('id', 'testPage');
-                finalIframe.onload = function(){
-                    resolve();
-                    step.ok();
-                    wasOk = true;
-                };
-
                 setTimeout(_=>{
-                    if (!wasOk) {
-                        step.fail();
-                    }
-                }, 5000);
-                var src = iframe.src;
-                finalIframe.src = src;
-                iframe.replaceWith(finalIframe);
-                iframe = finalIframe;
+                    var finalIframe = document.createElement('iframe');
+                    var wasOk = false;
+                    finalIframe.setAttribute('id', 'testPage');
+                    finalIframe.onload = function(){
+                        resolve();
+                        step.ok();
+                        wasOk = true;
+                    };
+                    setTimeout(_=>{
+                        if (!wasOk) {
+                            step.fail();
+                        }
+                    }, 5000);
+                    var src = iframe.src;
+                    finalIframe.src = src;
+                    iframe.replaceWith(finalIframe);
+                    iframe = finalIframe;
+                }, 1000);
             });
         }
 
@@ -305,8 +306,78 @@
         }
 
         function validate (expected, result) {
-            debugger;
             return new Promise((resolve, reject)=>{
+
+                function fail (message) {
+                    console.error('[ TEST_FAIL ] :: ' + (message || ''), expected, result);
+                    resolve(false);
+                }
+
+                if (expected.length && result.steps.length != expected.length) {
+                    return fail('Number of steps', expected, result);
+                }
+
+                if (expected.follows) {
+                    // it should follow the steps in order
+                    // (extra steps in between are allowed, though)
+                    let nextStep = new RegExp(expected.follows.shift(), 'i');
+                    result.steps.forEach(cur=>{
+                        if (cur.step.match(nextStep)) {
+                            nextStep = expected.follows.shift();
+                        }
+                    });
+
+                    if (expected.follows.length) {
+                        return fail('Did not follow all the steps in order!\nMissed steps:\n - ' + expected.follows.join('\n - ') + '\n\n');
+                    }
+                }
+
+                if (expected.steps) {
+                    let i = 0,
+                        curStep = {};
+                    try {
+                        for(i in expected.steps) {
+
+                            curStep = expected.steps[i];
+
+                            if (i == 'last') {
+                                i = result.steps.length - 1;
+                            }
+
+                            // testing for the resulting url
+                            let stepData = result.steps[i].data;
+                            if (curStep.url) {
+                                // we check the url in the given step
+                                if (stepData.url != curStep.url) {
+                                    return fail('Url mismatch in step ' + i);
+                                }
+                            }
+                            if (curStep.rule) {
+                                // we check the rule name in the given step
+                                if ((stepData.name || stepData.rule.name) != curStep.rule) {
+                                    return fail('Rule name mismatch in step ' + i);
+                                }
+                            }
+                            if (curStep.strategy) {
+                                if (stepData.rule.strategy != curStep.strategy) {
+                                    return fail('Strategy mismatch for step ' + i);
+                                }
+                            }
+                            if (curStep.cache) {
+                                if (stepData.rule.action.cache) {
+                                    return fail('Step ' + i + ' should be caching');
+                                }
+                            }
+                            if (curStep.indexeddb) {
+                                if (stepData.rule.action.indexeddb) {
+                                    return fail('Step ' + i + ' should have indexedDB action    ');
+                                }
+                            }
+                        }
+                    }catch(e){
+                        return fail(e.message + '\nIn step ' + i);
+                    }
+                }
                 resolve({ status: true });
             });
         }
@@ -352,8 +423,21 @@
                         target: '#btn-img-2'
                     }
                 }).then(result=>{
-                    console.warn(result);
-                    resolve(result);
+                    resolve(assert(result, {
+                        follows: [
+                            'Will fetch',
+                            'Failed fetching',
+                            'fallback',
+                            'Redirecting',
+                            'Result found in cache'
+                        ],
+                        steps: {
+                            1: { rule: 'images'},
+                            6: { rule: 'imageNotFound' },
+                            8: { rule: 'images' },
+                            'last': { url: 'http://localhost:8888/images/public/404.jpg' }
+                        }
+                    }));
                 })
             });
         });
