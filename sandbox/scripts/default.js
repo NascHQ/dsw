@@ -18,6 +18,8 @@ window.addEventListener('DOMContentLoaded', function(){
         statusLabelEl.querySelector('.test-container span').innerHTML = connected? 'ONLINE': 'OFFLINE';
     });
 
+    let testMode = false;
+
     // this is just an alias for us to write less
     function set (el, attr, src) {
         el[attr] = '';
@@ -75,12 +77,13 @@ window.addEventListener('DOMContentLoaded', function(){
             });
         },
         "#btn-6-data": function(){
-            let i = Math.ceil(Math.random()*3);
+            let i = testMode? 1: Math.ceil(Math.random()*3);
             return new Promise((resolve, reject)=>{
                 let el = geby('test-6-iframe');
-                el.onload = resolve;
+                let url = '/api/user/'+i+'.json';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = reject;
-                set(el, 'src', '/api/user/'+i+'.json');
+                set(el, 'src', url);
             });
         },
         "#btn-7-page": function(){
@@ -91,9 +94,12 @@ window.addEventListener('DOMContentLoaded', function(){
                 'articles.html',
                 'contact.html'
             ];
-            let idx = Math.ceil(Math.random() * 5) -1;
-            set(geby('test-7-iframe'), 'src', '/old-site/' +
-                listOfOlderPages[idx]);
+            let el = geby('test-7-iframe');
+            let idx = testMode? 2: Math.ceil(Math.random() * 5) -1;
+            let url = '/old-site/' + listOfOlderPages[idx];
+            el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
+            el.onerror = reject;
+            set(el, 'src', url);
         },
         "#btn-8-video": function(){
             geby('iframe-embeded-video')
@@ -233,6 +239,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 DSW.trace(/.*/, function traceReceived (data) {
                     event.ports[0].postMessage({ trace: data });
                 });
+                testMode = true;
                 document.body.classList.add('test-mode');
                 setTimeout(_=>{
                     answerMessage({ acknowledged: true });

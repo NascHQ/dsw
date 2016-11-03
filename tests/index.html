@@ -41,13 +41,21 @@
         }
 
         #status li:before {
-            content: "◷ ";
+            content: "◷";
             position: absolute;
             left: 10px;
         }
         #status li:not(.passed):not(.failed):not(.title):before {
             font-size: 1.3em;
             margin-top: -5px;
+            animation-name: spin;
+            animation-duration: 1s;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+            transform-origin: 50% 50%;
+            width: 12px;
+            height: 27px;
+            display: inline-block;
         }
 
         #status li.passed:before {
@@ -72,6 +80,13 @@
             filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f0f0f0', endColorstr='#eff0f2',GradientType=1 );
             font-family: Helvetica, Arial, sans-serif;
         }
+
+        @keyframes spin {
+            from { transform: rotate(0) }
+            to { transform: rotate(360deg) }
+        }
+
+
     </style>
 
     <ol id="status">
@@ -317,6 +332,10 @@
                     return fail('Number of steps', expected, result);
                 }
 
+                if (expected.redirectedTo && result.redirectedTo != expected.redirectedTo) {
+                    return fail('Was supposed to redirect to ' + expected.redirectedTo);
+                }
+
                 if (expected.follows) {
                     // it should follow the steps in order
                     // (extra steps in between are allowed, though)
@@ -404,11 +423,17 @@
                     }
                 }).then(result=>{
                     resolve(assert(result, {
-                        length: 5,
+                        length: 7,
+                        follows: [
+                            'Best matching rule found: "images"',
+                            /Received result OK \(200\)/,
+                            "Saving into cache",
+                            "Responded"
+                        ],
                         steps: {
                             0: { url: 'http://localhost:8888/images/public/gears.png' },
                             1: { rule: 'images', strategy: 'offline-first' },
-                            4: { url: 'http://localhost:8888/images/public/gears.png' }
+                            6: { url: 'http://localhost:8888/images/public/gears.png' }
                         }
                     }));
                 })
@@ -450,8 +475,18 @@
                         target: '#btn-img-3'
                     }
                 }).then(result=>{
-                    console.warn(result);
-                    resolve(result);
+                    resolve(assert(result, {
+                        redirectedTo: 'http://localhost:8888/images/public/gizmo.jpg',
+                        follows: [
+                            'redirectOlderPage',
+                            'Redirecting',
+                            'Best matching rule found: "images"',
+                            'found in cache'
+                        ],
+                        steps: {
+                            'last': { url: 'http://localhost:8888/images/public/gizmo.jpg' }
+                        }
+                    }));
                 })
             });
         });
@@ -464,8 +499,55 @@
                         target: '#btn-img-4'
                     }
                 }).then(result=>{
-                    console.warn(result);
-                    resolve(result);
+                    resolve(assert(result, {
+                        follows: [
+                            'imageNotCached',
+                            'online first strategy',
+                            'Responded'
+                        ]
+                    }));
+                })
+            });
+        });
+
+        addTest('Page not found', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-5-page'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        redirectedTo: 'http://localhost:8888/not-found.html?from=/foo.html',
+                        follows: [
+                            'static-html',
+                            'fastest strategy',
+                            'Fastest strategy failed fetching',
+                            'Fastest strategy could not fetch nor find in cache',
+                            'Found fallback rule',
+                            'Redirecting',
+                            'static-html',
+                            'fastest strategy'
+                        ]
+                    }));
+                })
+            });
+        });
+
+        addTest('Load JSON', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-6-data'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'Best matching rule found: "userData"'
+                        ]
+                    }));
                 })
             });
         });
