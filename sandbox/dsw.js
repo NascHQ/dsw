@@ -1133,7 +1133,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1477838897534', ready: null };
+var DSW = { version: '1.10.6', build: '1478050865121', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1862,6 +1862,7 @@ if (isInSWScope) {
             messageChannel.port1.onmessage = function (event) {
                 callback(event.data);
             };
+
             navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
         };
 

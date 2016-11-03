@@ -1,6 +1,6 @@
 console.log('LOADED THE SCRIPT');
 
-window.addEventListener('load', function(){
+window.addEventListener('DOMContentLoaded', function(){
 
     // using the api to know when the browser connection status changes
     DSW.onNetworkStatusChange(function(connected){
@@ -28,6 +28,84 @@ window.addEventListener('load', function(){
         return document.getElementById(id);
     }
 
+    const tests = {
+        "#btn-img-1": function(){
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-1-image');
+                let url = 'images/public/gears.png';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
+                el.onerror = _=>{reject(_);};
+                set(el, 'src', url);
+            });
+        },
+        "#btn-img-2": function(){
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-2-image');
+                let url = 'images/public/something.png';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
+                el.onerror = _=>{reject(_);};
+                set(el, 'src', url);
+            });
+        },
+        "#btn-img-3": function(){
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-3-image');
+                let url = 'images/legacy-images/foo.png';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
+                el.onerror = _=>{reject(_);};
+                set(el, 'src', url);
+            });
+        },
+        "#btn-img-4": function(){
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-4-image');
+                let url = 'images/not-cached.jpg';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
+                el.onerror = _=>{reject(_);};
+                set(el, 'src', url);
+            });
+        },
+        "#btn-5-page": function(){
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-5-iframe');
+                let url = '/foo.html';
+                el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
+                el.onerror = _=>{reject(_);};
+                set(el, 'src', url);
+            });
+        },
+        "#btn-6-data": function(){
+            let i = Math.ceil(Math.random()*3);
+            return new Promise((resolve, reject)=>{
+                let el = geby('test-6-iframe');
+                el.onload = resolve;
+                el.onerror = reject;
+                set(el, 'src', '/api/user/'+i+'.json');
+            });
+        },
+        "#btn-7-page": function(){
+            let listOfOlderPages = [
+                'index.html',
+                'page-1.html',
+                'about.html',
+                'articles.html',
+                'contact.html'
+            ];
+            let idx = Math.ceil(Math.random() * 5) -1;
+            set(geby('test-7-iframe'), 'src', '/old-site/' +
+                listOfOlderPages[idx]);
+        },
+        "#btn-8-video": function(){
+            geby('iframe-embeded-video')
+                .setAttribute('src', 'https://www.youtube.com/embed/AgZJQT1-ixg?autoplay=1');
+        },
+        "#btn-9-video": function(){
+            var videoEl = geby('video-test');
+            videoEl.setAttribute('src', 'videos/dsw-video-sandbox.mp4');
+            videoEl.play();
+        }
+    };
+
     // the "ask for notification permission" button
     geby('enable-notif-btn').addEventListener('click', function(event){
         var el = this;
@@ -54,52 +132,23 @@ window.addEventListener('load', function(){
     });
 
     // adding the listeners for our tests
-    geby('btn-img-1').addEventListener('click', function(){
-        set(geby('test-1-image'), 'src', 'images/public/gears.png');
-    });
+    geby('btn-img-1').addEventListener('click', tests['#btn-img-1']);
 
-    geby('btn-img-2').addEventListener('click', function(){
-        set(geby('test-2-image'), 'src', 'images/public/something.png');
-    });
+    geby('btn-img-2').addEventListener('click', tests['#btn-img-2']);
 
-    geby('btn-img-3').addEventListener('click', function(){
-        set(geby('test-3-image'), 'src', 'images/legacy-images/foo.png');
-    });
+    geby('btn-img-3').addEventListener('click', tests['#btn-img-3']);
 
-    geby('btn-img-4').addEventListener('click', function(){
-        set(geby('test-4-image'), 'src', 'images/not-cached.jpg');
-    });
+    geby('btn-img-4').addEventListener('click', tests['#btn-img-4']);
 
-    geby('btn-5-page').addEventListener('click', function(){
-        set(geby('test-5-iframe'), 'src', '/foo.html');
-    });
-    geby('btn-6-data').addEventListener('click', function(){
-        let i = Math.ceil(Math.random()*3);
-        set(geby('test-6-iframe'), 'src', '/api/user/'+i+'.json');
-    });
-    geby('btn-7-page').addEventListener('click', function(){
-        let listOfOlderPages = [
-            'index.html',
-            'page-1.html',
-            'about.html',
-            'articles.html',
-            'contact.html'
-        ];
-        let idx = Math.ceil(Math.random() * 5) -1;
-        set(geby('test-7-iframe'), 'src', '/old-site/' +
-            listOfOlderPages[idx]);
-    });
+    geby('btn-5-page').addEventListener('click', tests['#btn-5-page']);
 
-    geby('btn-8-video').addEventListener('click', function(){
-        geby('iframe-embeded-video')
-            .setAttribute('src', 'https://www.youtube.com/embed/AgZJQT1-ixg?autoplay=1');
-    });
+    geby('btn-6-data').addEventListener('click', tests['#btn-6-data']);
 
-    geby('btn-9-video').addEventListener('click', function(){
-        var videoEl = geby('video-test');
-        videoEl.setAttribute('src', 'videos/dsw-video-sandbox.mp4');
-        videoEl.play();
-    });
+    geby('btn-7-page').addEventListener('click', tests['#btn-7-page']);
+
+    geby('btn-8-video').addEventListener('click', tests['#btn-8-video']);
+
+    geby('btn-9-video').addEventListener('click', tests['#btn-9-video']);
 
 	geby('btn-10-message').addEventListener('click', function(){
 		var el = this;
@@ -128,9 +177,6 @@ window.addEventListener('load', function(){
                         }
                     }).then(response=>{
                         console.log(response.status, response.statusText);
-    //					response.text().then(function(result){
-    //						console.log(result);
-    //					});
                         resolve();
                     }).catch(err=>{
                         console.warn('Could not send the message', err);
@@ -147,72 +193,97 @@ window.addEventListener('load', function(){
 
     // some requests that should bypass...you will only see them on your console
     setTimeout(_=>{
-        fetch('/api/bypass/log.js').then(_=>{
-            _.text().then(content=>{
+        fetch('/api/bypass/log.js').then(response=>{
+            response.text().then(content=>{
                 console.log(content);
             });
         });
         setTimeout(_=>{
-            fetch('/ignore/index.html').then(_=>{
-                _.text().then(content=>{
+            fetch('/ignore/index.html').then(response=>{
+                response.text().then(content=>{
                     console.log(content);
                 });
             });
         }, 1000);
     }, 3000);
 
-});
-
-
-(()=>{
 
     /*
     This is used to run unit tests, mainly
     */
-    window.addEventListener('message', function messageReceived (event) {
+    (()=>{
+        window.addEventListener('message', function messageReceived (event) {
 
-        var answerMessage = function (result) {
-            event.ports[0].postMessage(result);
-        }
+            var answerMessage = function (result) {
+                event.ports[0].postMessage(result || {});
+            }
 
-        var command = null;
+            var command = null;
 
-        if (!event.data) {
-            return;
-        }
-        var command = event.data.DSWCommand;
-        if (!command){
-            return;
-        }
+            if (!event.data) {
+                return;
+            }
+            var command = event.data.DSWCommand;
+            if (!command){
+                return;
+            }
 
-        if (command.dswUnderAutomatedTest) {
-            // starting the sandbox page in test mode
-            DSW.trace(/.*/, function traceReceived (data) {
-                event.ports[0].postMessage({ trace: data });
-            });
-            document.body.classList.add('test-mode');
-            setTimeout(_=>{
-                answerMessage({ acknowledged: true });
-            }, 2000);
-            return;
-        }
+            if (command.dswUnderAutomatedTest) {
+                // starting the sandbox page in test mode
+                DSW.trace(/.*/, function traceReceived (data) {
+                    event.ports[0].postMessage({ trace: data });
+                });
+                document.body.classList.add('test-mode');
+                setTimeout(_=>{
+                    answerMessage({ acknowledged: true });
+                }, 2000);
+                return;
+            }
 
-        if (command.get) {
-            switch (command.get) {
-                case 'dswStatus': {
-                    answerMessage(DSW.status);
-                    break;
+            if (command.get) {
+                switch (command.get) {
+                    case 'dswStatus': {
+                        answerMessage(DSW.status);
+                        break;
+                    }
+                    case 'readyEvent': {
+                        DSW.ready.then(event=>{
+                                answerMessage({ status: DSW.status });
+                            })
+                            .catch(err=>{
+                                answerMessage({ err: err });
+                            });
+                        break;
+                    }
                 }
-                case 'readyEvent': {
-                    DSW.ready.then(event=>{
-                            answerMessage({ status: DSW.status });
-                        })
-                        .catch(err=>{
-                            answerMessage({ err: err });
-                        });
-                    break;
+                return;
+            }
+
+            // it should execute a task (one of the functions in tests)
+            if (command.exec) {
+                switch(command.exec) {
+                    case 'click':
+                        tests[command.target]()
+                            .then(result=>{
+                                answerMessage({
+                                    status: true,
+                                    result: {
+                                        url: result
+                                    }
+                                });
+                            })
+                            .catch(err=>{
+                                answerMessage({
+                                    status: false,
+                                    err: err.message || 'Failed testing ' + command.target
+                                });
+                            });
+                        break;
+                    default:
+                        break;
                 }
             }
-        }
-    });
-})();
+        });
+    })();
+
+});
