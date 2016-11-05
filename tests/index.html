@@ -311,6 +311,21 @@
                 });
         }
 
+        function unregisterAndCleanUp () {
+            step = addStep('Unregistering');
+            return sendMessage({
+                DSWCommand: {
+                    unregister: true
+                }
+            }).then(result=>{
+                if (result === true) {
+                    step.ok();
+                } else {
+                    step.fail();
+                }
+            });
+        }
+
         function closeTests () {
             var text = '<strong>Finished:</strong>' +
                 '<br/>' + (steps.ok + steps.fail) + ' tests'+
@@ -552,6 +567,8 @@
             });
         });
 
+        // TODO: clear all caches and unregister the Service Worker
+        // TODO: get the currently used storage
 
 
 
@@ -564,6 +581,7 @@
             .then(turnTestsOn)
             .then(getDSWStatus)
             .then(execTests)
+            .then(unregisterAndCleanUp)
             .then(result=>{
                 closeTests()
             })

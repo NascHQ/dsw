@@ -286,6 +286,16 @@ window.addEventListener('DOMContentLoaded', function(){
                                 });
                             });
                         break;
+                    case 'unregister':
+                        DSW.unregister().then(result=>{
+                            answerMessage({
+                                status: true,
+                                result: {
+                                    unregistered: true
+                                }
+                            });
+                        });
+                        break;
                     default:
                         break;
                 }
