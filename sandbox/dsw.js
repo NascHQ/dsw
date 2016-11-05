@@ -299,6 +299,20 @@ var cacheManager = {
             });
         }
     },
+    // this method will delete all the caches
+    clear: function clear(areYouSure) {
+        if (areYouSure) {
+            return caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (key) {
+                    return caches.delete(key);
+                }));
+            });
+        } else {
+            return Promise.resolve().then(function (_) {
+                _logger2.default.info('Will not clean up the caches because you are not sure you really want to do that.\nIf you really want to clean all the caches, pass the argument true to this call.');
+            });
+        }
+    },
     // return a name for a default rule or the name for cache using the version
     // and a separator
     mountCacheId: function mountCacheId(rule) {
@@ -1133,7 +1147,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478294732378', ready: null };
+var DSW = { version: '1.10.6', build: '1478354580404', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1631,7 +1645,7 @@ if (isInSWScope) {
                 // this client will mock the rules in mockId
                 client[finalMockId] = client[finalMockId] || [];
                 currentlyMocking[finalMockId].push();
-                debugger;
+                // TODO: add mock support
                 return;
             }
         });
@@ -1824,7 +1838,7 @@ if (isInSWScope) {
         DSW.onnotificationclicked = function () {/* use this to know when the user has clicked in a notification */};
         DSW.onenabled = function () {/* use this to know when DSW is enabled and running */};
         DSW.onregistered = function () {/* use this to know when DSW has been registered */};
-        DSW.onregistered = function () {/* use this to know when DSW has been registered */};
+        DSW.onunregistered = function () {/* use this to know when DSW has been unregistered */};
         DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
 
         navigator.serviceWorker.addEventListener('message', function (event) {
@@ -1981,7 +1995,25 @@ if (isInSWScope) {
         DSW.unregister = function (_) {
             return new Promise(function (resolve, reject) {
                 DSW.ready.then(function (result) {
-                    debugger;
+                    _cacheManager2.default.clear(true) // firstly, we clear the caches
+                    .then(function (result) {
+                        if (result) {
+                            // now we try and unregister the ServiceWorker
+                            registeredServiceWorker.unregister().then(function (success) {
+                                if (success) {
+                                    DSW.status.registered = false;
+                                    DSW.status.sync = false;
+                                    DSW.status.notification = false;
+                                    resolve(DSW.status);
+                                    eventManager.trigger('unregistered', DSW.status);
+                                } else {
+                                    reject('Could not unregister service worker');
+                                }
+                            });
+                        } else {
+                            reject('Could not clean up the caches');
+                        }
+                    });
                 });
             });
         };
@@ -2072,15 +2104,19 @@ if (isInSWScope) {
                                 });
                             });
                         } else {
-                            // TODO: remove it from the else statement and see if it works even for the first load
                             // service worker was already registered and is active
                             // setting up traceable requests
                             if (config && config.trace) {
                                 navigator.serviceWorker.ready.then(function (reg) {
+                                    registeredServiceWorker = reg;
                                     var match = void 0;
                                     for (match in config.trace) {
                                         DSW.trace(match, config.trace[match]);
                                     }
+                                });
+                            } else {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    registeredServiceWorker = reg;
                                 });
                             }
                             // on refreshes, we update the variable to be used in the API

@@ -294,6 +294,14 @@ window.addEventListener('DOMContentLoaded', function(){
                                     unregistered: true
                                 }
                             });
+                        }).catch(reason=>{
+                            answerMessage({
+                                status: false,
+                                result: {
+                                    unregistered: false,
+                                    reason: reason
+                                }
+                            });
                         });
                         break;
                     default:

@@ -560,7 +560,7 @@ if (isInSWScope) {
             // this client will mock the rules in mockId
             client[finalMockId] = client[finalMockId] || [];
             currentlyMocking[finalMockId].push();
-            debugger;
+            // TODO: add mock support
             return;
         }
     });
@@ -735,7 +735,7 @@ if (isInSWScope) {
     DSW.onnotificationclicked = function () { /* use this to know when the user has clicked in a notification */ };
     DSW.onenabled = function () { /* use this to know when DSW is enabled and running */ };
     DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
-    DSW.onregistered = function () { /* use this to know when DSW has been registered */ };
+    DSW.onunregistered = function () { /* use this to know when DSW has been unregistered */ };
     DSW.onnotificationsenabled = function () { /* use this to know when user has enabled notifications */ };
 
     navigator.serviceWorker.addEventListener('message', event=>{
@@ -891,7 +891,28 @@ if (isInSWScope) {
     DSW.unregister = _=>{
         return new Promise((resolve, reject)=>{
             DSW.ready.then(result=>{
-                debugger;
+                cacheManager.clear(true) // firstly, we clear the caches
+                    .then(result=>{
+                        if (result) {
+                            DSW.status.appShell = false;
+                            // now we try and unregister the ServiceWorker
+                            registeredServiceWorker.unregister()
+                                .then(success=>{
+                                    if (success) {
+                                        DSW.status.registered = false;
+                                        DSW.status.sync = false;
+                                        DSW.status.notification = false;
+                                        DSW.status.ready = false;
+                                        resolve(DSW.status);
+                                        eventManager.trigger('unregistered', DSW.status);
+                                    } else {
+                                        reject('Could not unregister service worker');
+                                    }
+                                });
+                        } else {
+                            reject('Could not clean up the caches');
+                        }
+                    });
             });
         });
     };
@@ -922,7 +943,7 @@ if (isInSWScope) {
                 };
 
                 // opening on a page scope...let's install the worker
-                if(navigator.serviceWorker){
+                if (navigator.serviceWorker) {
                     if (!navigator.serviceWorker.controller) {
                         // rejects the registration after some time, if not resolved by then
                         installationTimeOut = setTimeout(_=>{
@@ -987,15 +1008,20 @@ if (isInSWScope) {
                                     error: err
                                 });
                             });
-                    } else { // TODO: remove it from the else statement and see if it works even for the first load
+                    } else {
                         // service worker was already registered and is active
                         // setting up traceable requests
                         if (config && config.trace) {
                             navigator.serviceWorker.ready.then(function(reg) {
+                                registeredServiceWorker = reg;
                                 let match;
                                 for(match in config.trace){
                                     DSW.trace(match, config.trace[match]);
                                 }
+                            });
+                        } else {
+                            navigator.serviceWorker.ready.then(function(reg) {
+                                registeredServiceWorker = reg;
                             });
                         }
                         // on refreshes, we update the variable to be used in the API

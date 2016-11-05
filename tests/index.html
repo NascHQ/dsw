@@ -315,10 +315,10 @@
             step = addStep('Unregistering');
             return sendMessage({
                 DSWCommand: {
-                    unregister: true
+                    exec: 'unregister'
                 }
-            }).then(result=>{
-                if (result === true) {
+            }).then(output=>{
+                if (output.result.unregistered) {
                     step.ok();
                 } else {
                     step.fail();
@@ -337,7 +337,9 @@
 
         function validate (expected, result) {
             return new Promise((resolve, reject)=>{
-
+                if (expected.debug) {
+                    debugger;
+                }
                 function fail (message) {
                     console.error('[ TEST_FAIL ] :: ' + (message || ''), expected, result);
                     resolve(false);
@@ -357,7 +359,7 @@
                     let nextStep = new RegExp(expected.follows.shift(), 'i');
                     result.steps.forEach(cur=>{
                         if (cur.step.match(nextStep)) {
-                            nextStep = expected.follows.shift();
+                            nextStep = new RegExp(expected.follows.shift(), 'i');
                         }
                     });
 
@@ -534,16 +536,18 @@
                     }
                 }).then(result=>{
                     resolve(assert(result, {
+                        //debug: true,
                         redirectedTo: 'http://localhost:8888/not-found.html?from=/foo.html',
                         follows: [
                             'static-html',
-                            'fastest strategy',
+                            'using fastest strategy',
                             'Fastest strategy failed fetching',
                             'Fastest strategy could not fetch nor find in cache',
                             'Found fallback rule',
-                            'Redirecting',
+                            'Must redirect',
                             'static-html',
-                            'fastest strategy'
+                            'using fastest strategy',
+                            'Result found in cache'
                         ]
                     }));
                 })
