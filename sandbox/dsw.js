@@ -872,6 +872,24 @@ var indexedDBManager = {
     setup: function setup(cm) {
         cacheManager = cm;
     },
+    delete: function _delete(databaseName) {
+        if (databaseName === true) {
+            for (var db in dbs) {
+                indexedDBManager.delete(db);
+            }
+        } else {
+            var req = indexedDB.deleteDatabase(databaseName);
+            req.onsuccess = function () {
+                console.log('Deleted database successfully');
+            };
+            req.onerror = function () {
+                console.log('Couldn\'t delete database');
+            };
+            req.onblocked = function () {
+                console.log('Couldn\'t delete database due to the operation being blocked');
+            };
+        }
+    },
     create: function create(config) {
         return new Promise(function (resolve, reject) {
 
@@ -1147,7 +1165,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478354580404', ready: null };
+var DSW = { version: '1.10.6', build: '1478401637026', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1998,18 +2016,24 @@ if (isInSWScope) {
                     _cacheManager2.default.clear(true) // firstly, we clear the caches
                     .then(function (result) {
                         if (result) {
+                            DSW.status.appShell = false;
+                            localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                             // now we try and unregister the ServiceWorker
                             registeredServiceWorker.unregister().then(function (success) {
                                 if (success) {
                                     DSW.status.registered = false;
                                     DSW.status.sync = false;
                                     DSW.status.notification = false;
+                                    DSW.status.ready = false;
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                     resolve(DSW.status);
                                     eventManager.trigger('unregistered', DSW.status);
                                 } else {
                                     reject('Could not unregister service worker');
                                 }
                             });
+                            // TODO: clear indexedDB too
+                            // indexedDBManager.delete();
                         } else {
                             reject('Could not clean up the caches');
                         }

@@ -895,6 +895,7 @@ if (isInSWScope) {
                     .then(result=>{
                         if (result) {
                             DSW.status.appShell = false;
+                            localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                             // now we try and unregister the ServiceWorker
                             registeredServiceWorker.unregister()
                                 .then(success=>{
@@ -903,12 +904,15 @@ if (isInSWScope) {
                                         DSW.status.sync = false;
                                         DSW.status.notification = false;
                                         DSW.status.ready = false;
+                                        localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
                                         resolve(DSW.status);
                                         eventManager.trigger('unregistered', DSW.status);
                                     } else {
                                         reject('Could not unregister service worker');
                                     }
                                 });
+                        // TODO: clear indexedDB too
+                        // indexedDBManager.delete();
                         } else {
                             reject('Could not clean up the caches');
                         }

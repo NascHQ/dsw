@@ -87,19 +87,21 @@ window.addEventListener('DOMContentLoaded', function(){
             });
         },
         "#btn-7-page": function(){
-            let listOfOlderPages = [
-                'index.html',
-                'page-1.html',
-                'about.html',
-                'articles.html',
-                'contact.html'
-            ];
-            let el = geby('test-7-iframe');
-            let idx = testMode? 2: Math.ceil(Math.random() * 5) -1;
-            let url = '/old-site/' + listOfOlderPages[idx];
-            el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
-            el.onerror = reject;
-            set(el, 'src', url);
+            return new Promise((resolve, reject)=>{
+                let listOfOlderPages = [
+                    'index.html',
+                    'page-1.html',
+                    'about.html',
+                    'articles.html',
+                    'contact.html'
+                ];
+                let el = geby('test-7-iframe');
+                let idx = testMode? 2: Math.ceil(Math.random() * 5) -1;
+                let url = '/old-site/' + listOfOlderPages[idx];
+                el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
+                el.onerror = reject;
+                set(el, 'src', url);
+            });
         },
         "#btn-8-video": function(){
             geby('iframe-embeded-video')

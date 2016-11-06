@@ -18,34 +18,52 @@ const indexedDBManager = {
     setup (cm) {
         cacheManager = cm;
     },
+    delete (databaseName) {
+        if (databaseName === true) {
+            for(let db in dbs) {
+                indexedDBManager.delete(db);
+            }
+        } else {
+            let req = indexedDB.deleteDatabase(databaseName);
+            req.onsuccess = function () {
+                console.log('Deleted database successfully');
+            };
+            req.onerror = function () {
+                console.log('Couldn\'t delete database');
+            };
+            req.onblocked = function () {
+                console.log('Couldn\'t delete database due to the operation being blocked');
+            };
+        }
+    },
     create (config) {
         return new Promise((resolve, reject)=>{
-            
+
             let request = indexedDB.open(config.name || DEFAULT_DB_NAME,
                         parseInt(config.version, 10) || undefined);
-    
+
             function dataBaseReady (db, dbName, resolve) {
                 db.onversionchange = function(event) {
                     db.close();
                     logger.log('There is a new version of the database(IndexedDB) for '+
                                 config.name);
                 };
-                
+
                 if (!dbs[dbName]) {
                     dbs[dbName] = db;
                 }
-                
+
                 resolve(config);
             }
-            
+
             request.onerror = function(event) {
                 reject('Could not open the database (indexedDB) for ' + config.name);
             };
-            
+
             request.onupgradeneeded = function(event) {
                 let db = event.target.result;
                 let baseData = {};
-                
+
                 if (config.key) {
                     baseData.keyPath = config.key;
                 }
@@ -57,7 +75,7 @@ const indexedDBManager = {
                 }else{
                     baseData.version = 1;
                 }
-                
+
                 if (event.oldVersion && event.oldVersion < baseData.version) {
                     // in case there already is a store with that name
                     // with a previous version
@@ -82,17 +100,17 @@ const indexedDBManager = {
                                            config.key,
                                            { unique: true });
                 }
-                
+
                 dataBaseReady(db, config.name, resolve);
             };
-            
+
             request.onsuccess = function(event) {
                 var db = event.target.result;
                 dataBaseReady(db, config.name, resolve);
             };
         });
     },
-    
+
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
             // We will actuallly look for its IDs in cache, to use them to find
@@ -134,11 +152,11 @@ const indexedDBManager = {
                 });
         });
     },
-    
+
     find: (dbName, key, value)=>{
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            
+
             if (store) {
                 let index = store.index(key),
                     getter = index.get(value);
@@ -154,7 +172,7 @@ const indexedDBManager = {
             }
         });
     },
-    
+
     addOrUpdate (obj, dbName) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
@@ -171,15 +189,15 @@ const indexedDBManager = {
             }
         });
     },
-    
+
     save (dbName, data, request, rule) {
         return new Promise((resolve, reject)=>{
 
             data.json().then(obj=>{
-                
+
                 let store = getObjectStore(dbName),
                     req;
-                
+
                 if (store) {
                     req = store.add(obj);
 
@@ -212,7 +230,7 @@ const indexedDBManager = {
             });
         });
     }
-    
+
 };
 
 export default indexedDBManager;
