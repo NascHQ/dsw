@@ -81,18 +81,16 @@ const cacheManager = {
         }
     },
     // this method will delete all the caches
-    clear: areYouSure=>{
-        if (areYouSure) {
-            return caches.keys().then(keys=>{
-                return Promise.all(keys.map(function(key) {
-                    return caches.delete(key);
-                }));
+    clear: _=>{
+        // TODO: send message to SW scope to delete them all
+        // TODO: after deleting, SW scope should message all the clients about it
+        return caches.keys().then(keys=>{
+            let cleanItUp = keys.map(function(key) {
+                return caches.delete(key);
             });
-        } else {
-            return Promise.resolve().then(_=>{
-                logger.info('Will not clean up the caches because you are not sure you really want to do that.\nIf you really want to clean all the caches, pass the argument true to this call.');
-            });
-        }
+            cleanItUp.push(indexedDBManager.clear());
+            return Promise.all(cleanItUp);
+        });
     },
     // return a name for a default rule or the name for cache using the version
     // and a separator

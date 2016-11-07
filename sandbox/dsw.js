@@ -300,18 +300,14 @@ var cacheManager = {
         }
     },
     // this method will delete all the caches
-    clear: function clear(areYouSure) {
-        if (areYouSure) {
-            return caches.keys().then(function (keys) {
-                return Promise.all(keys.map(function (key) {
-                    return caches.delete(key);
-                }));
+    clear: function clear(_) {
+        return caches.keys().then(function (keys) {
+            var cleanItUp = keys.map(function (key) {
+                return caches.delete(key);
             });
-        } else {
-            return Promise.resolve().then(function (_) {
-                _logger2.default.info('Will not clean up the caches because you are not sure you really want to do that.\nIf you really want to clean all the caches, pass the argument true to this call.');
-            });
-        }
+            cleanItUp.push(_indexeddbManager2.default.clear());
+            return Promise.all(cleanItUp);
+        });
     },
     // return a name for a default rule or the name for cache using the version
     // and a separator
@@ -872,6 +868,31 @@ var indexedDBManager = {
     setup: function setup(cm) {
         cacheManager = cm;
     },
+    clear: function clear() {
+        var dbList = [];
+
+        var _loop = function _loop(db) {
+            dbList.push(new Promise(function (resolve, reject) {
+                var req = indexedDB.deleteDatabase(db);
+                req.onsuccess = function () {
+                    resolve();
+                };
+                req.onerror = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database\n', err || this.error);
+                };
+                req.onblocked = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database, it was locked\n', err || this.error);
+                };
+            }));
+        };
+
+        for (var db in dbs) {
+            _loop(db);
+        }
+        return Promise.all([].concat(dbList));
+    },
     create: function create(config) {
         return new Promise(function (resolve, reject) {
 
@@ -880,7 +901,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + config.name);
+                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
                 if (!dbs[dbName]) {
@@ -1019,6 +1040,8 @@ var indexedDBManager = {
         });
     },
     save: function save(dbName, data, request, rule) {
+        var _this = this;
+
         return new Promise(function (resolve, reject) {
 
             data.json().then(function (obj) {
@@ -1027,7 +1050,7 @@ var indexedDBManager = {
                     req = void 0;
 
                 if (store) {
-                    req = store.add(obj);
+                    req = store.put(obj);
 
                     // We will use the CacheAPI to store, in cache, only the IDs for
                     // the given object
@@ -1043,14 +1066,14 @@ var indexedDBManager = {
                         resolve();
                     };
                     req.onerror = function (event) {
-                        reject('Failed saving to the indexedDB!', this.error);
+                        reject('Failed saving to the indexedDB!\n' + this.error);
                     };
                 } else {
-                    reject('Failed saving into indexedDB!');
+                    reject('Failed saving into indexedDB...\n' + _this.error);
                 }
             }).catch(function (err) {
-                _logger2.default.error('Failed saving into indexedDB!\n', err.message, err);
-                reject('Failed saving into indexedDB!');
+                _logger2.default.error('Failed saving into indexedDB!\n', err.message || _this.error, err);
+                reject('Failed saving into indexedDB:\n' + _this.error);
             });
         });
     }
@@ -1147,7 +1170,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478354580404', ready: null };
+var DSW = { version: '1.10.6', build: '1478495839286', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1998,12 +2021,14 @@ if (isInSWScope) {
                     _cacheManager2.default.clear(true) // firstly, we clear the caches
                     .then(function (result) {
                         if (result) {
+                            DSW.status.appShell = false;
                             // now we try and unregister the ServiceWorker
                             registeredServiceWorker.unregister().then(function (success) {
                                 if (success) {
                                     DSW.status.registered = false;
                                     DSW.status.sync = false;
                                     DSW.status.notification = false;
+                                    DSW.status.ready = false;
                                     resolve(DSW.status);
                                     eventManager.trigger('unregistered', DSW.status);
                                 } else {

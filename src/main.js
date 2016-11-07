@@ -672,7 +672,6 @@ if (isInSWScope) {
         );
     });
 
-
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event as browsers evolve and support the feature
         //debugger;
@@ -891,7 +890,7 @@ if (isInSWScope) {
     DSW.unregister = _=>{
         return new Promise((resolve, reject)=>{
             DSW.ready.then(result=>{
-                cacheManager.clear(true) // firstly, we clear the caches
+                cacheManager.clear() // firstly, we clear the caches
                     .then(result=>{
                         if (result) {
                             DSW.status.appShell = false;

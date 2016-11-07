@@ -18,34 +18,54 @@ const indexedDBManager = {
     setup (cm) {
         cacheManager = cm;
     },
+    clear () {
+        let dbList = [];
+        for (let db in dbs) {
+            dbList.push(new Promise((resolve, reject)=>{
+                let req = indexedDB.deleteDatabase(db);
+                req.onsuccess = function () {
+                    resolve();
+                };
+                req.onerror = function (err) {
+                    reject();
+                    logger.error('Could not drop indexedDB database\n', err||this.error);
+                };
+                req.onblocked = function (err) {
+                    reject();
+                    logger.error('Could not drop indexedDB database, it was locked\n', err||this.error);
+                };
+            }));
+        }
+        return Promise.all([...dbList]);
+    },
     create (config) {
         return new Promise((resolve, reject)=>{
-            
+
             let request = indexedDB.open(config.name || DEFAULT_DB_NAME,
                         parseInt(config.version, 10) || undefined);
-    
+
             function dataBaseReady (db, dbName, resolve) {
                 db.onversionchange = function(event) {
                     db.close();
                     logger.log('There is a new version of the database(IndexedDB) for '+
-                                config.name);
+                                dbName);
                 };
-                
+
                 if (!dbs[dbName]) {
                     dbs[dbName] = db;
                 }
-                
+
                 resolve(config);
             }
-            
+
             request.onerror = function(event) {
                 reject('Could not open the database (indexedDB) for ' + config.name);
             };
-            
+
             request.onupgradeneeded = function(event) {
                 let db = event.target.result;
                 let baseData = {};
-                
+
                 if (config.key) {
                     baseData.keyPath = config.key;
                 }
@@ -57,7 +77,7 @@ const indexedDBManager = {
                 }else{
                     baseData.version = 1;
                 }
-                
+
                 if (event.oldVersion && event.oldVersion < baseData.version) {
                     // in case there already is a store with that name
                     // with a previous version
@@ -82,17 +102,17 @@ const indexedDBManager = {
                                            config.key,
                                            { unique: true });
                 }
-                
+
                 dataBaseReady(db, config.name, resolve);
             };
-            
+
             request.onsuccess = function(event) {
                 var db = event.target.result;
                 dataBaseReady(db, config.name, resolve);
             };
         });
     },
-    
+
     get (dbName, request) {
         return new Promise((resolve, reject)=>{
             // We will actuallly look for its IDs in cache, to use them to find
@@ -134,11 +154,11 @@ const indexedDBManager = {
                 });
         });
     },
-    
+
     find: (dbName, key, value)=>{
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
-            
+
             if (store) {
                 let index = store.index(key),
                     getter = index.get(value);
@@ -154,7 +174,7 @@ const indexedDBManager = {
             }
         });
     },
-    
+
     addOrUpdate (obj, dbName) {
         return new Promise((resolve, reject)=>{
             let store = getObjectStore(dbName);
@@ -171,17 +191,17 @@ const indexedDBManager = {
             }
         });
     },
-    
+
     save (dbName, data, request, rule) {
         return new Promise((resolve, reject)=>{
 
             data.json().then(obj=>{
-                
+
                 let store = getObjectStore(dbName),
                     req;
-                
+
                 if (store) {
-                    req = store.add(obj);
+                    req = store.put(obj);
 
                     // We will use the CacheAPI to store, in cache, only the IDs for
                     // the given object
@@ -201,18 +221,18 @@ const indexedDBManager = {
                         resolve();
                     };
                     req.onerror = function(event) {
-                        reject('Failed saving to the indexedDB!', this.error);
+                        reject('Failed saving to the indexedDB!\n' + this.error);
                     };
                 } else {
-                    reject('Failed saving into indexedDB!');
+                    reject('Failed saving into indexedDB...\n' + this.error);
                 }
             }).catch(err=>{
-                logger.error('Failed saving into indexedDB!\n', err.message, err);
-                reject('Failed saving into indexedDB!');
+                logger.error('Failed saving into indexedDB!\n', err.message || this.error, err);
+                reject('Failed saving into indexedDB:\n' + this.error);
             });
         });
     }
-    
+
 };
 
 export default indexedDBManager;
