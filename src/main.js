@@ -1,5 +1,3 @@
-// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
-
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
@@ -550,6 +548,17 @@ if (isInSWScope) {
             };
             return;
         }
+        if (event.data.clearEverythingUp) {
+            cacheManager.clear()
+                .then(result=>{
+                    ports.forEach(port=>{
+                        port.postMessage({
+                            cacheCleaned: true
+                        });
+                    });
+                });
+            return;
+        }
         if (event.data.enableMocking) {
             let mockId = event.data.enableMocking.mockId;
             let matching = event.data.enableMocking.match;
@@ -815,7 +824,7 @@ if (isInSWScope) {
             }
             navigator.serviceWorker
                 .controller
-                .postMessage(message, [messageChannel.channel.port2]);
+                .postMessage(message, [messageChannel.port2]);
         });
     };
 

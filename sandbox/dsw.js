@@ -301,13 +301,25 @@ var cacheManager = {
     },
     // this method will delete all the caches
     clear: function clear(_) {
-        return caches.keys().then(function (keys) {
-            var cleanItUp = keys.map(function (key) {
-                return caches.delete(key);
+        // TODO: send message to SW scope to delete them all
+        // TODO: after deleting, SW scope should message all the clients about it
+        if ('window' in self) {
+            // if we are not in the ServiceWorkerScope, we message it
+            // to clear all the cache
+            return window.DSW.sendMessage({
+                clearEverythingUp: true
+            }, true);
+        } else {
+            // we are in the ServiceWorkerScope, and should delete everything
+            return caches.keys().then(function (keys) {
+                var cleanItUp = keys.map(function (key) {
+                    return caches.delete(key);
+                });
+                // we will also drop the databases from IndexedDB
+                cleanItUp.push(_indexeddbManager2.default.clear());
+                return Promise.all(cleanItUp);
             });
-            cleanItUp.push(_indexeddbManager2.default.clear());
-            return Promise.all(cleanItUp);
-        });
+        }
     },
     // return a name for a default rule or the name for cache using the version
     // and a separator
@@ -901,6 +913,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
+                    debugger; // jshint ignore:line
                     _logger2.default.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
@@ -1165,12 +1178,10 @@ var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
-
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478495839286', ready: null };
+var DSW = { version: '1.10.6', build: '1478575538829', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1658,6 +1669,16 @@ if (isInSWScope) {
                 };
                 return;
             }
+            if (event.data.clearEverythingUp) {
+                _cacheManager2.default.clear().then(function (result) {
+                    ports.forEach(function (port) {
+                        port.postMessage({
+                            cacheCleaned: true
+                        });
+                    });
+                });
+                return;
+            }
             if (event.data.enableMocking) {
                 var mockId = event.data.enableMocking.mockId;
                 var matching = event.data.enableMocking.match;
@@ -1940,7 +1961,7 @@ if (isInSWScope) {
                     // otherwise, we simply resolve it, after 10ms (just to use another flow)
                     setTimeout(resolve, 10);
                 }
-                navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
+                navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]);
             });
         };
 
@@ -2018,7 +2039,7 @@ if (isInSWScope) {
         DSW.unregister = function (_) {
             return new Promise(function (resolve, reject) {
                 DSW.ready.then(function (result) {
-                    _cacheManager2.default.clear(true) // firstly, we clear the caches
+                    _cacheManager2.default.clear() // firstly, we clear the caches
                     .then(function (result) {
                         if (result) {
                             DSW.status.appShell = false;

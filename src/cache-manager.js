@@ -82,15 +82,23 @@ const cacheManager = {
     },
     // this method will delete all the caches
     clear: _=>{
-        // TODO: send message to SW scope to delete them all
-        // TODO: after deleting, SW scope should message all the clients about it
-        return caches.keys().then(keys=>{
-            let cleanItUp = keys.map(function(key) {
-                return caches.delete(key);
+        if ('window' in self) {
+            // if we are not in the ServiceWorkerScope, we message it
+            // to clear all the cache
+            return window.DSW.sendMessage({
+                clearEverythingUp: true
+            }, true);
+        } else {
+            // we are in the ServiceWorkerScope, and should delete everything
+            return caches.keys().then(keys=>{
+                let cleanItUp = keys.map(function(key) {
+                    return caches.delete(key);
+                });
+                // we will also drop the databases from IndexedDB
+                cleanItUp.push(indexedDBManager.clear());
+                return Promise.all(cleanItUp);
             });
-            cleanItUp.push(indexedDBManager.clear());
-            return Promise.all(cleanItUp);
-        });
+        }
     },
     // return a name for a default rule or the name for cache using the version
     // and a separator
