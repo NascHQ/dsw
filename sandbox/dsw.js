@@ -301,8 +301,6 @@ var cacheManager = {
     },
     // this method will delete all the caches
     clear: function clear(_) {
-        // TODO: send message to SW scope to delete them all
-        // TODO: after deleting, SW scope should message all the clients about it
         if ('window' in self) {
             // if we are not in the ServiceWorkerScope, we message it
             // to clear all the cache
@@ -913,8 +911,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    debugger; // jshint ignore:line
-                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + dbName);
+                    //logger.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
                 if (!dbs[dbName]) {
@@ -1181,7 +1178,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478575538829', ready: null };
+var DSW = { version: '1.10.6', build: '1478576722475', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;

@@ -47,7 +47,7 @@ const indexedDBManager = {
             function dataBaseReady (db, dbName, resolve) {
                 db.onversionchange = function(event) {
                     db.close();
-                    logger.log('There is a new version of the database(IndexedDB) for ' + dbName);
+                    //logger.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
                 if (!dbs[dbName]) {
