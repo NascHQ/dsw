@@ -30,6 +30,15 @@ window.addEventListener('DOMContentLoaded', function(){
         return document.getElementById(id);
     }
 
+    function showClickAt (el) {
+        const clickClass = 'just-clicked';
+        el.classList.add(clickClass);
+        el.focus();
+        setTimeout(_=>{
+            el.classList.remove(clickClass);
+        }, 1000);
+    }
+
     const tests = {
         "#btn-img-1": function(){
             return new Promise((resolve, reject)=>{
@@ -37,6 +46,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = 'images/public/gears.png';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
                 el.onerror = _=>{reject(_);};
+                showClickAt(geby('btn-img-1'));
                 set(el, 'src', url);
             });
         },
@@ -46,6 +56,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = 'images/public/something.png';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
                 el.onerror = _=>{reject(_);};
+                showClickAt(geby('btn-img-2'));
                 set(el, 'src', url);
             });
         },
@@ -55,6 +66,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = 'images/legacy-images/foo.png';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
                 el.onerror = _=>{reject(_);};
+                showClickAt(geby('btn-img-3'));
                 set(el, 'src', url);
             });
         },
@@ -64,6 +76,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = 'images/not-cached.jpg';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host+'/'+url);};
                 el.onerror = _=>{reject(_);};
+                showClickAt(geby('btn-img-4'));
                 set(el, 'src', url);
             });
         },
@@ -73,6 +86,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = '/foo.html';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = _=>{reject(_);};
+                showClickAt(geby('btn-5-page'));
                 set(el, 'src', url);
             });
         },
@@ -83,6 +97,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = '/api/user/'+i+'.json';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = reject;
+                showClickAt(geby('btn-6-data'));
                 set(el, 'src', url);
             });
         },
@@ -100,6 +115,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 let url = '/old-site/' + listOfOlderPages[idx];
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = reject;
+                showClickAt(geby('btn-7-page'));
                 set(el, 'src', url);
             });
         },
@@ -199,21 +215,21 @@ window.addEventListener('DOMContentLoaded', function(){
 		});
 	}
 
-    // some requests that should bypass...you will only see them on your console
-    setTimeout(_=>{
-        fetch('/api/bypass/log.js').then(response=>{
-            response.text().then(content=>{
-                console.log(content);
-            });
-        });
-        setTimeout(_=>{
-            fetch('/ignore/index.html').then(response=>{
-                response.text().then(content=>{
-                    console.log(content);
-                });
-            });
-        }, 1000);
-    }, 3000);
+//    // some requests that should bypass...you will only see them on your console
+//    setTimeout(_=>{
+//        fetch('/api/bypass/log.js').then(response=>{
+//            response.text().then(content=>{
+//                console.log(content);
+//            });
+//        });
+//        setTimeout(_=>{
+//            fetch('/ignore/index.html').then(response=>{
+//                response.text().then(content=>{
+//                    console.log(content);
+//                });
+//            });
+//        }, 1000);
+//    }, 3000);
 
 
     /*

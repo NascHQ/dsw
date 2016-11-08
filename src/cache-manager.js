@@ -81,16 +81,22 @@ const cacheManager = {
         }
     },
     // this method will delete all the caches
-    clear: areYouSure=>{
-        if (areYouSure) {
-            return caches.keys().then(keys=>{
-                return Promise.all(keys.map(function(key) {
-                    return caches.delete(key);
-                }));
-            });
+    clear: _=>{
+        if ('window' in self) {
+            // if we are not in the ServiceWorkerScope, we message it
+            // to clear all the cache
+            return window.DSW.sendMessage({
+                clearEverythingUp: true
+            }, true);
         } else {
-            return Promise.resolve().then(_=>{
-                logger.info('Will not clean up the caches because you are not sure you really want to do that.\nIf you really want to clean all the caches, pass the argument true to this call.');
+            // we are in the ServiceWorkerScope, and should delete everything
+            return caches.keys().then(keys=>{
+                let cleanItUp = keys.map(function(key) {
+                    return caches.delete(key);
+                });
+                // we will also drop the databases from IndexedDB
+                cleanItUp.push(indexedDBManager.clear());
+                return Promise.all(cleanItUp);
             });
         }
     },

@@ -127,16 +127,22 @@ var cacheManager = {
         }
     },
     // this method will delete all the caches
-    clear: function clear(areYouSure) {
-        if (areYouSure) {
-            return caches.keys().then(function (keys) {
-                return Promise.all(keys.map(function (key) {
-                    return caches.delete(key);
-                }));
-            });
+    clear: function clear(_) {
+        if ('window' in self) {
+            // if we are not in the ServiceWorkerScope, we message it
+            // to clear all the cache
+            return window.DSW.sendMessage({
+                clearEverythingUp: true
+            }, true);
         } else {
-            return Promise.resolve().then(function (_) {
-                _logger2.default.info('Will not clean up the caches because you are not sure you really want to do that.\nIf you really want to clean all the caches, pass the argument true to this call.');
+            // we are in the ServiceWorkerScope, and should delete everything
+            return caches.keys().then(function (keys) {
+                var cleanItUp = keys.map(function (key) {
+                    return caches.delete(key);
+                });
+                // we will also drop the databases from IndexedDB
+                cleanItUp.push(_indexeddbManager2.default.clear());
+                return Promise.all(cleanItUp);
             });
         }
     },
@@ -699,23 +705,30 @@ var indexedDBManager = {
     setup: function setup(cm) {
         cacheManager = cm;
     },
-    delete: function _delete(databaseName) {
-        if (databaseName === true) {
-            for (var db in dbs) {
-                indexedDBManager.delete(db);
-            }
-        } else {
-            var req = indexedDB.deleteDatabase(databaseName);
-            req.onsuccess = function () {
-                console.log('Deleted database successfully');
-            };
-            req.onerror = function () {
-                console.log('Couldn\'t delete database');
-            };
-            req.onblocked = function () {
-                console.log('Couldn\'t delete database due to the operation being blocked');
-            };
+    clear: function clear() {
+        var dbList = [];
+
+        var _loop = function _loop(db) {
+            dbList.push(new Promise(function (resolve, reject) {
+                var req = indexedDB.deleteDatabase(db);
+                req.onsuccess = function () {
+                    resolve();
+                };
+                req.onerror = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database\n', err || this.error);
+                };
+                req.onblocked = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database, it was locked\n', err || this.error);
+                };
+            }));
+        };
+
+        for (var db in dbs) {
+            _loop(db);
         }
+        return Promise.all([].concat(dbList));
     },
     create: function create(config) {
         return new Promise(function (resolve, reject) {
@@ -725,7 +738,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + config.name);
+                    //logger.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
                 if (!dbs[dbName]) {
@@ -864,6 +877,8 @@ var indexedDBManager = {
         });
     },
     save: function save(dbName, data, request, rule) {
+        var _this = this;
+
         return new Promise(function (resolve, reject) {
 
             data.json().then(function (obj) {
@@ -872,7 +887,7 @@ var indexedDBManager = {
                     req = void 0;
 
                 if (store) {
-                    req = store.add(obj);
+                    req = store.put(obj);
 
                     // We will use the CacheAPI to store, in cache, only the IDs for
                     // the given object
@@ -888,14 +903,14 @@ var indexedDBManager = {
                         resolve();
                     };
                     req.onerror = function (event) {
-                        reject('Failed saving to the indexedDB!', this.error);
+                        reject('Failed saving to the indexedDB!\n' + this.error);
                     };
                 } else {
-                    reject('Failed saving into indexedDB!');
+                    reject('Failed saving into indexedDB...\n' + _this.error);
                 }
             }).catch(function (err) {
-                _logger2.default.error('Failed saving into indexedDB!\n', err.message, err);
-                reject('Failed saving into indexedDB!');
+                _logger2.default.error('Failed saving into indexedDB!\n', err.message || _this.error, err);
+                reject('Failed saving into indexedDB:\n' + _this.error);
             });
         });
     }
@@ -986,8 +1001,6 @@ var _utils = require('./utils.js');
 var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
 
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
@@ -1480,6 +1493,16 @@ if (isInSWScope) {
                 };
                 return;
             }
+            if (event.data.clearEverythingUp) {
+                _cacheManager2.default.clear().then(function (result) {
+                    ports.forEach(function (port) {
+                        port.postMessage({
+                            cacheCleaned: true
+                        });
+                    });
+                });
+                return;
+            }
             if (event.data.enableMocking) {
                 var mockId = event.data.enableMocking.mockId;
                 var matching = event.data.enableMocking.match;
@@ -1762,7 +1785,7 @@ if (isInSWScope) {
                     // otherwise, we simply resolve it, after 10ms (just to use another flow)
                     setTimeout(resolve, 10);
                 }
-                navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
+                navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]);
             });
         };
 
@@ -1840,7 +1863,7 @@ if (isInSWScope) {
         DSW.unregister = function (_) {
             return new Promise(function (resolve, reject) {
                 DSW.ready.then(function (result) {
-                    _cacheManager2.default.clear(true) // firstly, we clear the caches
+                    _cacheManager2.default.clear() // firstly, we clear the caches
                     .then(function (result) {
                         if (result) {
                             DSW.status.appShell = false;

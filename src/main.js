@@ -1,5 +1,3 @@
-// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
-
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
@@ -550,6 +548,17 @@ if (isInSWScope) {
             };
             return;
         }
+        if (event.data.clearEverythingUp) {
+            cacheManager.clear()
+                .then(result=>{
+                    ports.forEach(port=>{
+                        port.postMessage({
+                            cacheCleaned: true
+                        });
+                    });
+                });
+            return;
+        }
         if (event.data.enableMocking) {
             let mockId = event.data.enableMocking.mockId;
             let matching = event.data.enableMocking.match;
@@ -671,7 +680,6 @@ if (isInSWScope) {
             })
         );
     });
-
 
     self.addEventListener('sync', function(event) {
         // TODO: add support to sync event as browsers evolve and support the feature
@@ -816,7 +824,7 @@ if (isInSWScope) {
             }
             navigator.serviceWorker
                 .controller
-                .postMessage(message, [messageChannel.channel.port2]);
+                .postMessage(message, [messageChannel.port2]);
         });
     };
 
@@ -891,7 +899,7 @@ if (isInSWScope) {
     DSW.unregister = _=>{
         return new Promise((resolve, reject)=>{
             DSW.ready.then(result=>{
-                cacheManager.clear(true) // firstly, we clear the caches
+                cacheManager.clear() // firstly, we clear the caches
                     .then(result=>{
                         if (result) {
                             DSW.status.appShell = false;

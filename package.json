@@ -10,7 +10,7 @@
   "main": "./lib/dsw.js",
   "scripts": {
     "DELETE-test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
-    "test": "browserify tests/src/index.js -o tests/dist/index.js -t [ babelify --presets [ es2015 ] ]",
+    "test": "node node_modules/testcafe/bin/testcafe.js chrome --hostname localhost tests",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js && gh-pages -d docs",
     "build": "npm run lint && browserify src/main.js -o dist/dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",
