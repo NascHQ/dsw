@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>DSW Tests</title>
+    <link rel="icon" type="image/png" href="http://localhost:8888/helmet.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
 
@@ -124,17 +126,8 @@
             return item;
         }
 
-        /*
-        - load test page
-        - wait for sandbox to load
-        - then wait for DSW register to finish
-        - then reload sandbox page
-        - then wait for sandbox page to load
-        - then get dsw status
-        */
-
         var traced = {};
-        var tracing = {}
+        var tracing = {};
         var iframe = document.getElementById('testPage');
         const SANDBOX_URL = 'http://localhost:8888/';
 
@@ -232,6 +225,7 @@
                     setTimeout(_=>{
                         if (!wasOk) {
                             step.fail();
+                            reject();
                         }
                     }, 5000);
                     var src = iframe.src;
@@ -243,7 +237,7 @@
         }
 
         function turnTestsOn () {
-            step = addStep ('Enable test mode');
+            let step = addStep ('Enable test mode');
             return sendMessage({
                 DSWCommand: {
                     dswUnderAutomatedTest: true
@@ -252,6 +246,7 @@
                 if (result === true) {
                     step.ok();
                 } else {
+                    debugger;
                     step.fail();
                 }
             });
@@ -271,11 +266,14 @@
             });
         }
 
-        var testsToRun = [];
-        function addTest (text, test) {
-            testsToRun.push(function (arguments) {
+        var testsToRun = {};
+        var currentTestGroup = 0;
+        function addTest (text, test, testGroup) {
+            testGroup = testGroup || 0;
+            testsToRun[testGroup] = testsToRun[testGroup] || [];
+            testsToRun[testGroup].push(function (arguments) {
                 return new Promise((resolve, reject)=>{
-                    var currentTest = addStep(text);
+                    var currentTest = addStep('&nbsp;-&nbsp;'+text);
                     test().then(result=>{
                         currentTest[result? 'ok': 'fail'](result);
                         resolve(result);
@@ -284,13 +282,29 @@
             });
         }
 
+        function nextTestGroup () {
+            return new Promise((resolve, reject)=>{
+                setTimeout(_=>{
+                    turnTestsOn()
+                        .then(_=>{
+                            traced = {};
+                            currentTestGroup++;
+                            resolve();
+                        })
+                        .catch(err=>{
+                            reject();
+                        });
+                }, 1000);
+            });
+        }
+
         function execTests () {
 
-            step = addStep('Testing requests');
+            step = addStep('Requests Group '+currentTestGroup);
 
             function* testGen () {
               while(true){
-                  var test = testsToRun.shift();
+                  var test = testsToRun[currentTestGroup].shift();
                   if (test) {
                     yield test();
                   } else {
@@ -341,7 +355,7 @@
                     debugger;
                 }
                 function fail (message) {
-                    console.error('[ TEST_FAIL ] :: ' + (message || ''), expected, result);
+                    console.error('[ TEST_FAIL ] :: ' + (message || ''), expected, '\n', result);
                     resolve(false);
                 }
 
@@ -536,6 +550,7 @@
                     }
                 }).then(result=>{
                     resolve(assert(result, {
+                        //debug: true,
                         redirectedTo: 'http://localhost:8888/not-found.html?from=/foo.html',
                         follows: [
                             'static-html',
@@ -563,40 +578,76 @@
                 }).then(result=>{
                     resolve(assert(result, {
                         follows: [
-                            'Best matching rule found: "userData"'
+                            'Best matching rule found: "userData"',
+                            'Info: Using offline first strategy',
+                            'Will fetch',
+                            'Response object saved into IndexedDB'
                         ]
                     }));
                 })
             });
         });
 
-        addTest('Redirect page', function () {
+        addTest('Load image again', function () {
             return new Promise((resolve, reject)=>{
                 sendMessage({
                     DSWCommand: {
                         exec: 'click',
-                        target: '#btn-7-page'
+                        target: '#btn-img-1'
                     }
                 }).then(result=>{
                     resolve(assert(result, {
-                        redirectedTo: 'http://localhost:8888/redirected.html?about.html',
+                        length: 5,
                         follows: [
-                            'Best matching rule found: "moved-pages"',
+                            'Best matching rule found: "images"',
                             'Info: Using offline first strategy',
-                            'Must redirect',
-                            'Best matching rule found: "static-html"'
+                            'Result found in cache'
                         ]
                     }));
                 })
             });
-        });
+        }, 1);
 
+        addTest('Uncacheable image again', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-4'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'imageNotCached',
+                            'online first strategy',
+                            'Responded'
+                        ]
+                    }));
+                })
+            });
+        }, 1);
+
+        addTest('Load JSON again', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-6-data'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'Best matching rule found: "userData"',
+                            'Info: Using offline first strategy',
+                            'Found stored in IndexedDB'
+                        ]
+                    }));
+                })
+            });
+        }, 1);
+
+        // TODO: clear all caches (done excluding caches, still has to remove the IndexedDBs) and unregister the Service Worker
         // TODO: get the currently used storage
-
-
-
-
-
 
         waitForSandboxToLoad()
             .then(waitForDSWRegistration)
@@ -604,15 +655,18 @@
             .then(turnTestsOn)
             .then(getDSWStatus)
             .then(execTests)
+            .then(waitForSandboxToReload)
+            .then(nextTestGroup)
+            .then(execTests)
             .then(unregisterAndCleanUp)
             .then(result=>{
-                closeTests()
+                closeTests();
             })
             .catch(error=>{
                 if (step) {
                     step.fail();
                 }
-                closeTests()
+                closeTests();
             });
     </script>
 </body>
