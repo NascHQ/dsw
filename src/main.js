@@ -301,10 +301,17 @@ if (isInSWScope) {
                     data.redirect = request.redirect;
                     data.referrer = request.referrer;
                 }
-                request.traceSteps.push({ step, data });
+
+                let reqTime = ((performance.now() - request.timeArriving) / 1000);
+
+                request.traceSteps.push({
+                    step,
+                    data,
+                    timing: reqTime.toFixed(4) + 's' // timing from the begining of the request
+                });
             }
             // but if it has moved, we then track it
-            if (moved) {
+            if (moved && DSWManager.trackMoved[moved.url]) {
                 DSWManager.trackMoved[moved.url] = moved;
             }
         },
@@ -413,7 +420,9 @@ if (isInSWScope) {
                     }
                     delete DSWManager.trackMoved[event.request.url];
                 } else {
+                    // it is a brand new request
                     event.request.requestId = DSWManager.requestId;
+                    event.request.timeArriving = performance.now();
                     DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                 }
 
