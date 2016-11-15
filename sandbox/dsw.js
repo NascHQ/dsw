@@ -1178,7 +1178,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.6', build: '1478577671879', ready: null };
+var DSW = { version: '1.10.6', build: '1479234681541', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1449,7 +1449,14 @@ if (isInSWScope) {
                         data.redirect = request.redirect;
                         data.referrer = request.referrer;
                     }
-                    request.traceSteps.push({ step: step, data: data });
+
+                    var reqTime = (performance.now() - request.timeArriving) / 1000;
+
+                    request.traceSteps.push({
+                        step: step,
+                        data: data,
+                        timing: reqTime.toFixed(4) + 's' // timing from the begining of the request
+                    });
                 }
                 // but if it has moved, we then track it
                 if (moved) {
@@ -1550,7 +1557,9 @@ if (isInSWScope) {
                         }
                         delete DSWManager.trackMoved[event.request.url];
                     } else {
+                        // it is a brand new request
                         event.request.requestId = DSWManager.requestId;
+                        event.request.timeArriving = performance.now();
                         DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                     }
 

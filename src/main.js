@@ -311,7 +311,7 @@ if (isInSWScope) {
                 });
             }
             // but if it has moved, we then track it
-            if (moved && DSWManager.trackMoved[moved.url]) {
+            if (moved) {
                 DSWManager.trackMoved[moved.url] = moved;
             }
         },

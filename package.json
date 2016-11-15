@@ -10,7 +10,9 @@
   "main": "./lib/dsw.js",
   "scripts": {
     "DELETE-test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
-    "test": "node node_modules/testcafe/bin/testcafe.js chrome --hostname localhost tests",
+    "try-test": "http-server ./sandbox -p 8888 & node node_modules/testcafe/bin/testcafe.js chrome --hostname localhost tests; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "test":  "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Windows 10' tests/index-test.js; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "tests-server": "http-server tests/ -p 8889",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js && gh-pages -d docs",
     "build": "npm run lint && browserify src/main.js -o dist/dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",

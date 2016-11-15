@@ -97,12 +97,17 @@
     <iframe src="" frameborder="0" id="testPage"></iframe>
 
     <script>
-
         var steps = {
             ok: 0,
             fail: 0
         };
         var step = null;
+        var fullTestsListResolver;
+        var unregistered = false;
+
+        const fullTestsList = new Promise(function(resolve, reject){
+            fullTestsListResolver = resolve;
+        });
 
         function addStep (step, status) {
             var item = document.createElement('li');
@@ -186,24 +191,29 @@
             step = addStep('Register SW');
             var wasOk = false;
 
-            setTimeout(_=>{
-                if (!wasOk) {
-                    step.fail();
-                }
-            }, 4000);
+            return new Promise((resolve, reject)=>{
+                setTimeout(_=>{
+                    if (!wasOk) {
+                        step.fail();
+                        reject();
+                    }
+                }, 4000);
 
-            return sendMessage({
-                DSWCommand: {
-                    get: 'readyEvent'
-                }
-            }).then(result=>{
-                if (result.status.registered) {
-                    wasOk = true;
-                    step.ok();
-                } else {
-                    step.fail();
-                }
-                addStep('Pre cache AppShell', result.status.appShell);
+                sendMessage({
+                    DSWCommand: {
+                        get: 'readyEvent'
+                    }
+                }).then(result=>{
+                    if (result.status.registered) {
+                        wasOk = true;
+                        step.ok();
+                        resolve(result);
+                    } else {
+                        step.fail();
+                        reject();
+                    }
+                    addStep('Pre cache AppShell', result.status.appShell);
+                });
             });
         }
 
@@ -271,12 +281,20 @@
         function addTest (text, test, testGroup) {
             testGroup = testGroup || 0;
             testsToRun[testGroup] = testsToRun[testGroup] || [];
-            testsToRun[testGroup].push(function (arguments) {
+            testsToRun[testGroup].push(function () {
                 return new Promise((resolve, reject)=>{
-                    var currentTest = addStep('&nbsp;-&nbsp;'+text);
+                    var currentTest = addStep('&nbsp;-&nbsp;' + text);
+                    var timeout = setTimeout(_=>{
+                        reject('"'+ text + '" timed out!');
+                    }, 5000);
+
                     test().then(result=>{
                         currentTest[result? 'ok': 'fail'](result);
+                        clearTimeout(timeout);
                         resolve(result);
+                    }).catch(err=>{
+                        reject('"'+ text + '" test failed executing');
+                        console.error(err);
                     });
                 })
             });
@@ -333,6 +351,7 @@
                 }
             }).then(output=>{
                 if (output.result.unregistered) {
+                    unregistered = true;
                     step.ok();
                 } else {
                     step.fail();
@@ -347,6 +366,7 @@
                 '<br/>Tests failed: ' + steps.fail +
                 '<br/>';
             addStep(text, steps.fail? false: true);
+            fullTestsListResolver(!steps.fail);
         }
 
         function validate (expected, result) {
@@ -646,7 +666,6 @@
             });
         }, 1);
 
-        // TODO: clear all caches (done excluding caches, still has to remove the IndexedDBs) and unregister the Service Worker
         // TODO: get the currently used storage
 
         waitForSandboxToLoad()
@@ -665,6 +684,9 @@
             .catch(error=>{
                 if (step) {
                     step.fail();
+                }
+                if (!unregistered) {
+                    unregisterAndCleanUp();
                 }
                 closeTests();
             });

@@ -3,26 +3,32 @@ import { ClientFunction } from 'testcafe';
 import helpers from './helpers.js';
 
 //const PAGE_ADDRESS = 'http://localhost:8888/';
-const PAGE_ADDRESS = 'http://localhost:1337/';
+const PORT = 8889;
+const PAGE_ADDRESS = 'http://localhost:' + PORT + '/';
 
-const trace = ClientFunction(() => {
-    return new Promise((resolve, reject)=>{
-        window.tracedRequests = [];
-        DSW.trace(/.*/, function (traceData) {
-            window.tracedRequests.push(traceData);
-        });
-        setTimeout(_=>{
-            resolve();
-        }, 300);
-    });
-});
+//const trace = ClientFunction(() => {
+//    return new Promise((resolve, reject)=>{
+//        window.tracedRequests = [];
+//        DSW.trace(/.*/, function (traceData) {
+//            window.tracedRequests.push(traceData);
+//        });
+//        setTimeout(_=>{
+//            resolve();
+//        }, 300);
+//    });
+//});
 
 fixture `DSW Setup`
     .page( PAGE_ADDRESS );
 
 test('Setting up DSW', async t => {
 
-    await helpers.startServer();
+    console.log('STARTING THE SERVER');
+    await helpers.startServer(PORT);
+    console.log('RUNNING THE TESTS');
+    const finalOutput = await helpers.waitTestsToFinish();
+    console.log('RESULT: ' + finalOutput? 'ok': 'fail');
+    expect(finalOutput).to.be.true;
 
 //    const status = await helpers.setupDSW();
 //console.log('11111');

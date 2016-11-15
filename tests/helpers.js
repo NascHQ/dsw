@@ -3,7 +3,7 @@ import { ClientFunction } from 'testcafe';
 const fs = require('fs');
 
 const helpers = {
-    startServer () {
+    startServer (port) {
         var http = require('http');
         return new Promise((resolve, reject)=>{
             http.createServer(function (request, response) {
@@ -14,7 +14,7 @@ const helpers = {
                 var readStream = fs.createReadStream('./tests/index.html');
                 // We replaced all the event handlers with a simple call to readStream.pipe()
                 readStream.pipe(response);
-            }).listen(1337);
+            }).listen(port);
             resolve();
         });
     },
@@ -23,40 +23,12 @@ const helpers = {
             setTimeout(_ => resolve(param), timing);
         });
     },
-    setupDSW: ClientFunction(() => {
-        return new Promise((resolve, reject)=>{
-            clientTester.getDSWStatus()
-                .then(function(result){
-                    resolve(result);
-                })
-                .catch(function(err){
-                    reject(JSON.stringify(err));
-                });
-//            DSW.setup()
-//                .then(function(result){
-//                    resolve(result);
-//                })
-//                .catch(function(err){
-//                    reject(JSON.stringify(err));
-//                });
-        });
-    }),
-    waitForLoading: ClientFunction(() => {
-        return new Promise((resolve, reject)=>{
-            window.onload = function pageLoadListener (event) {
-                resolve();
-            };
-        });
-    }),
-    reloadPage: ClientFunction(() => {
-        return location.href = location.href;
-        return new Promise((resolve, reject)=>{
 
-        });
-    }),
-    getDSWStatus: ClientFunction(() => {
+    waitTestsToFinish: ClientFunction(() => {
         return new Promise((resolve, reject)=>{
-            resolve(DSW.status);
+            fullTestsList.then(result=>{
+                resolve(result);
+            });
         });
     })
 };
