@@ -5,6 +5,10 @@
   "bin": {
     "dsw": "./bin/index.js"
   },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
   "environment": "node",
   "preferGlobal": true,
   "main": "./lib/dsw.js",

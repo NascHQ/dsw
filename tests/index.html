@@ -99,7 +99,8 @@
     <script>
         var steps = {
             ok: 0,
-            fail: 0
+            fail: 0,
+            list: []
         };
         var step = null;
         var fullTestsListResolver;
@@ -197,7 +198,7 @@
                         step.fail();
                         reject();
                     }
-                }, 4000);
+                }, 5000);
 
                 sendMessage({
                     DSWCommand: {
@@ -213,6 +214,8 @@
                         reject();
                     }
                     addStep('Pre cache AppShell', result.status.appShell);
+                }).catch(err=>{
+                    reject(err);
                 });
             });
         }
@@ -279,6 +282,7 @@
         var testsToRun = {};
         var currentTestGroup = 0;
         function addTest (text, test, testGroup) {
+            var testStart = performance.now();
             testGroup = testGroup || 0;
             testsToRun[testGroup] = testsToRun[testGroup] || [];
             testsToRun[testGroup].push(function () {
@@ -292,9 +296,21 @@
                         currentTest[result? 'ok': 'fail'](result);
                         clearTimeout(timeout);
                         resolve(result);
+                        steps.list.push({
+                            "name": text,
+                            "result": true,
+                            "message": "success",
+                            "duration": performance.now() - testStart
+                        });
                     }).catch(err=>{
                         reject('"'+ text + '" test failed executing');
                         console.error(err);
+                        steps.list.push({
+                            "name": text,
+                            "result": false,
+                            "message": err,
+                            "duration": performance.now() - testStart
+                        });
                     });
                 })
             });
@@ -360,13 +376,23 @@
         }
 
         function closeTests () {
+            var total = (steps.ok + steps.fail);
             var text = '<strong>Finished:</strong>' +
-                '<br/>' + (steps.ok + steps.fail) + ' tests'+
+                '<br/>' + total + ' tests'+
                 '<br/>Tests passed: ' + steps.ok +
                 '<br/>Tests failed: ' + steps.fail +
                 '<br/>';
             addStep(text, steps.fail? false: true);
             fullTestsListResolver(!steps.fail);
+
+            // exposing it to sauce_labs
+            window.global_test_results = {
+                "passed": steps.ok,
+                "failed": steps.fail,
+                "total": total,
+                "duration": (performance.now() - startingTime).toFixed(0),
+                "tests": steps.list
+            }
         }
 
         function validate (expected, result) {
@@ -667,8 +693,9 @@
         }, 1);
 
         // TODO: get the currently used storage
-
+        var startingTime = performance.now();
         waitForSandboxToLoad()
+            //.then(unregisterAndCleanUp)
             .then(waitForDSWRegistration)
             .then(waitForSandboxToReload)
             .then(turnTestsOn)

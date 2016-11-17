@@ -1871,6 +1871,14 @@ if (isInSWScope) {
 
         DSW.unregister = function (_) {
             return new Promise(function (resolve, reject) {
+                if (DSW.status) {
+                    // if it is not registered or has already been unregistered
+                    // we simply resolve the promise
+                    if (!DSW.status.registered) {
+                        resolve(DSW.status);
+                    }
+                }
+
                 DSW.ready.then(function (result) {
                     _cacheManager2.default.clear() // firstly, we clear the caches
                     .then(function (result) {
