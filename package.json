@@ -15,7 +15,7 @@
   "scripts": {
     "DELETE-test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
     "try-test": "http-server ./sandbox -p 8888 & node node_modules/testcafe/bin/testcafe.js chrome --hostname localhost tests; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
-    "test":  "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Windows 10' tests/index-test.js; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "DELETE-test2":  "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Windows 10' tests/index-test.js; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
     "tests-server": "http-server tests/ -p 8889",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js && gh-pages -d docs",
