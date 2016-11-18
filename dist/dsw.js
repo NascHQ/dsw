@@ -161,6 +161,38 @@ var cacheManager = {
     register: function register(rule) {
         cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
     },
+    addAll: function addAll(bundle) {
+        return new Promise(function (resolve, reject) {
+            // for adding a group of files or rules
+            // we use it as a list
+            if (Array.isArray(bundle)) {
+                bundle = {
+                    files: bundle
+                };
+            }
+
+            var promises = [];
+
+            // then, we use the cacheManager.add with a new rule
+            // this way it will be able to expire.
+            bundle.files.map(function (file) {
+                promises.push(cacheManager.add(file, null, null, {
+                    action: {
+                        fetch: file,
+                        cache: {
+                            name: bundle.name,
+                            version: bundle.version || 1,
+                            expires: bundle.expires || false
+                        }
+                    }
+                }));
+            });
+
+            // once all of them have been cached, we resolve it
+            // or in case one or more failed, we reject it
+            Promise.all(promises).then(resolve).catch(reject);
+        });
+    },
     // just a different method signature, for .add
     put: function put(rule, request, response) {
         return cacheManager.add(request, typeof rule == 'string' ? rule : cacheManager.mountCacheId(rule), response, rule);
@@ -583,6 +615,34 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var origin = location.origin;
 
+// this function basically creates a new Request instance
+// out of an existing one
+function createNewRequest(tmpUrl, request, event) {
+    var sameOrigin = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+
+    var mode = request.mode;
+    if (!mode || mode == 'navigate') {
+        mode = sameOrigin ? 'cors' : 'no-cors';
+    }
+
+    var req = new Request(tmpUrl, {
+        method: request.method || 'GET',
+        headers: request.headers || {},
+        mode: mode,
+        cache: 'default',
+        redirect: 'manual'
+    });
+
+    if (request.body) {
+        req.body = request.body;
+    }
+
+    req.requestId = (event ? event.request : request).requestId;
+    req.traceSteps = (event ? event.request : request).traceSteps;
+
+    return req;
+}
+
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
     if (typeof request == 'string') {
@@ -600,34 +660,14 @@ function goFetch(rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        var mode = request.mode;
-        if (!mode || mode == 'navigate') {
-            mode = sameOrigin ? 'cors' : 'no-cors';
-        }
-
-        var req = new Request(tmpUrl, {
-            method: request.method || 'GET',
-            headers: request.headers || {},
-            mode: mode,
-            cache: 'default',
-            redirect: 'manual'
-        });
-
-        if (request.body) {
-            req.body = request.body;
-        }
-
-        req.requestId = (event ? event.request : request).requestId;
-        req.traceSteps = (event ? event.request : request).traceSteps;
-
-        return req;
+        return createNewRequest(tmpUrl, request, event, sameOrigin);
     }
 
     var actionType = Object.keys(rule.action)[0];
     var opts = rule.options || {};
     opts.headers = opts.headers || new Headers();
 
-    // if the cache options is false, we force it not to be cached
+    // if the cache options is === false, we force it not to be cached
     if (rule.action.cache === false) {
         opts.headers.append('pragma', 'no-cache');
         opts.headers.append('cache-control', 'no-store,no-cache');
@@ -642,10 +682,6 @@ function goFetch(rule, request, event, matching) {
         mode: actionType == 'redirect' ? request.mode || 'same-origin' : 'cors',
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     };
-
-    //    if (request.credentials && request.credentials != 'omit') {
-    //        reqConfig.credentials = request.credentials;
-    //    }
 
     // if the host is not the same
     if (!sameOrigin) {
@@ -1372,6 +1408,7 @@ if (isInSWScope) {
 
                     DSWManager.requestId = 1 + (DSWManager.requestId || 0);
 
+                    // let's deal with tracking information for the current request
                     if (DSWManager.trackMoved[event.request.url]) {
                         var movedInfo = DSWManager.trackMoved[event.request.url];
                         event.request.requestId = movedInfo.id;
@@ -1390,10 +1427,12 @@ if (isInSWScope) {
                         DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                     }
 
+                    // these are the request's url structured data that we need
                     var url = new URL(event.request.url);
                     var sameOrigin = url.origin == location.origin;
                     var pathName = url.pathname;
 
+                    // Service Workers can only deal with GET requests
                     if (event.request.method != 'GET') {
                         DSWManager.traceStep(event.request, 'Ignoring ' + event.request.method + ' request', {});
                         DSWManager.sendTraceData(event);
@@ -1423,18 +1462,23 @@ if (isInSWScope) {
                     } else {
                         matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     }
+
                     if (matchingRule) {
                         // if there is a rule that matches the url
+                        // we add a trace step for it
                         DSWManager.traceStep(event.request, 'Best matching rule found: "' + matchingRule.rule.name + '"', {
                             rule: matchingRule.rule,
                             url: event.request.url
                         });
+
+                        // and then respond the request with the promise for the content
                         return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
                     } else {
-                        // if it is not sameOrigin and there is no rule for it
+                        // this means there were no rules to apply
                         if (!sameOrigin) {
+                            // if it is not sameOrigin and there is no rule for it
                             DSWManager.traceStep(event.request, 'Ignoring request because it is not from same origin and there are no rules for it', {});
                             DSWManager.sendTraceData(event);
                             return;
@@ -1442,7 +1486,7 @@ if (isInSWScope) {
                     }
 
                     // if no rule is applied, we will request it
-                    // this is the function to deal with the resolt of this request
+                    // this is the function to deal with the result of this request
                     var defaultTreatment = function defaultTreatment(response) {
                         if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                             return response;
@@ -2056,24 +2100,50 @@ var DSWManager = void 0;
 var cacheManager = void 0;
 var goFetch = void 0;
 
+// this function execute tasks that doesn take the
+// strategy in concideration
+function common(rule, request, event, matching) {
+    if (rule.action.bundle) {
+        DSWManager.traceStep(event.request, 'Will load and cache bundle in background', { bundle: rule.action.bundle });
+        cacheManager.addAll(rule.action.bundle).then(function (result) {
+            // the trace data here may not appear in the trace data once
+            // it is been loaded in background. The request is **NOT** waiting
+            // for the whole bundle to load.
+            DSWManager.traceStep(event.request, 'Bundle loaded and cached in background', { bundle: rule.action.bundle });
+        }).catch(function (err) {
+            // same situation as the previous comment, here
+            DSWManager.traceStep(event.request, 'Could not load and cache bundle', { bundle: rule.action.bundle });
+            console.warn('Could not load and cache all the bundle files', err.message || err);
+        });
+    }
+}
+
 var strategies = {
+    // stores the DSWManager and CacheManager instances, and goFetch utility
     setup: function setup(dswM, cacheM, gf) {
         DSWManager = dswM;
         cacheManager = cacheM;
         goFetch = gf;
     },
     'offline-first': function offlineFirstStrategy(rule, request, event, matching) {
-        // Will look for the content in cache
-        // if it is not there, will fetch it,
-        // store it in the cache
-        // and then return it to be used
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+        // add a trace step
         DSWManager.traceStep(event.request, 'Info: Using offline first strategy', { url: request.url });
+
+        // Look for the content in cache. If it is not there, will fetch it,
+        // then return it to be used and in the end, stores it in the cache
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
+        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url: request.url });
+
         // Will fetch it, and if there is a problem
         // will look for it in cache
-        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url: request.url });
         function treatIt(response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
@@ -2103,10 +2173,16 @@ var strategies = {
             }));
         }
 
+        // time to go...fetch
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
         DSWManager.traceStep(event.request, 'Info: Using fastest strategy', { url: request.url });
+
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates

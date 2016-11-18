@@ -5,18 +5,57 @@ let goFetch;
 
 import utils from './utils.js';
 
+// this function execute tasks that doesn take the
+// strategy in concideration
+function common (rule, request, event, matching) {
+    if (rule.action.bundle) {
+        DSWManager.traceStep(
+            event.request,
+            'Will load and cache bundle in background',
+            { bundle: rule.action.bundle }
+        );
+        cacheManager.addAll(rule.action.bundle)
+            .then(result=>{
+                // the trace data here may not appear in the trace data once
+                // it is been loaded in background. The request is **NOT** waiting
+                // for the whole bundle to load.
+                DSWManager.traceStep(
+                    event.request,
+                    'Bundle loaded and cached in background',
+                    { bundle: rule.action.bundle }
+                );
+            })
+            .catch(err=>{
+                // same situation as the previous comment, here
+                DSWManager.traceStep(
+                    event.request,
+                    'Could not load and cache bundle',
+                    { bundle: rule.action.bundle }
+                );
+                console.warn('Could not load and cache all the bundle files', err.message || err);
+            });
+    }
+}
+
 const strategies = {
+    // stores the DSWManager and CacheManager instances, and goFetch utility
     setup: function (dswM, cacheM, gf) {
         DSWManager = dswM;
         cacheManager = cacheM;
         goFetch = gf;
     },
     'offline-first': function offlineFirstStrategy (rule, request, event, matching) {
-        // Will look for the content in cache
-        // if it is not there, will fetch it,
-        // store it in the cache
-        // and then return it to be used
-        DSWManager.traceStep(event.request, 'Info: Using offline first strategy', { url:request.url });
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+        // add a trace step
+        DSWManager.traceStep(
+            event.request,
+            'Info: Using offline first strategy',
+            { url:request.url }
+        );
+
+        // Look for the content in cache. If it is not there, will fetch it,
+        // then return it to be used and in the end, stores it in the cache
         return cacheManager.get(
             rule,
             request,
@@ -25,9 +64,14 @@ const strategies = {
         );
     },
     'online-first': function onlineFirstStrategy (rule, request, event, matching) {
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
+        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url:request.url });
+
         // Will fetch it, and if there is a problem
         // will look for it in cache
-        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url:request.url });
         function treatIt (response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
@@ -58,12 +102,22 @@ const strategies = {
             }));
         }
 
+        // time to go...fetch
         return goFetch(rule, request, event, matching)
             .then(treatIt)
             .catch(treatIt);
     },
     'fastest': function fastestStrategy (rule, request, event, matching) {
-        DSWManager.traceStep(event.request, 'Info: Using fastest strategy', { url:request.url });
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
+        DSWManager.traceStep(
+            event.request,
+            'Info: Using fastest strategy',
+            { url:request.url }
+        );
+
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates

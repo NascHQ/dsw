@@ -247,6 +247,30 @@
                     "indexes": ["name"]
                 }
             }
+        },
+        // You can preload bundles of files on demand.
+        // This means that you can load and cache a group of files when your user loads another page.
+        // For example, when the user loads the _kart page_, you can load and store the _purchase_ scripts and styles, as they are probably going to need this later.
+        "kartPageBundle": {
+            "match": { "path": "/purchase-page/kart.html" },
+            "apply": {
+                "cache": { "name": "kart-page", "version": 1 },
+                "bundle": {
+                    // _name_ is optional and will be used in the cache name
+                    "name": "kart-bundle",
+                    // as well as the _version_.
+                    "version": 2,
+                    // _files_ is required, though, and contains the list of all
+                    // files to be stored in cache as soon as the matching request
+                    // starts.
+                    "files": [
+                        "/purchase-page/purchase.js",
+                        "/purchase-page/purchase.html"
+                    ],
+                    // you may also set some expiring time for the bundle.
+                    "expires": "1h"
+                }
+            }
         }
     }
 }

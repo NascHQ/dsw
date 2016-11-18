@@ -47,6 +47,7 @@ Read the commented json configuration file: https://naschq.github.io/dsw/config-
     - [Caching requests](https://github.com/NascHQ/dsw#cache)
     - [Storing in IndexedDB](https://github.com/NascHQ/dsw#indexeddb)
     - [Tracing and debugging requests](https://github.com/NascHQ/dsw#tracing-and-debugging)
+    - [Preloading bundles](https://github.com/NascHQ/dsw#bundle)
 - [Drops/examples](https://github.com/NascHQ/dsw#examples)
   - [Treating 404 pages](https://github.com/NascHQ/dsw#treating-not-found-pages-404)
   - [Treating 404 images](https://github.com/NascHQ/dsw#treating-not-found-images-404)
@@ -384,7 +385,36 @@ DSW.trace('/some/matching-pattern', function(data){
 ```
 
 This is it. Now, any request that matches `/some/matching-pattern` will be sent to your callback function with all the trace information.<br/>
-This data includes all the steps and different states your requests have been through. This way you validate and debug your rules.
+This data includes all the steps and different states your requests have been through. This way you validate and debug your rules.  
+You may use the trace data to see all the steps the request has passed by, and identify ways to increment your rules or even understand why some request is not returning what you expected.  
+This will also return some _perf_ information.
+
+### Bundles
+
+You can preload bundles of files on demand.  
+This means that you can load and cache a group of files when your user loads another page.  
+For example, when the user loads the <i>kart page</i>, you can load and store the <i>purchase</i> scripts and styles, as they are probably going to need this later.
+
+The _bundle_ action expects only a list of files to load and cache.  
+But you can optionally also send: _expires_ (with the same pattern as in [Caches section](https://github.com/NascHQ/dsw#cache)), _name_ and a _version_.
+
+```js
+"yourRule": {
+    "match": { "path": "/purchase-page/kart.html" },
+    "apply": {
+        "cache": { "name": "kart-page", "version": 1 },
+        "bundle": {
+            "name": "kart-bundle",
+            "version": 2,
+            "files": [
+                "/purchase-page/purchase.js",
+                "/purchase-page/purchase.html"
+            ],
+            "expires": "1h"
+        }
+    }
+}
+```
 
 # Examples
 

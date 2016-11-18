@@ -167,6 +167,21 @@
                     "indexes": ["id"]
                 }
             }
+        },
+        "kartPageBundle": {
+            "match": { "path": "/purchase-page/kart.html" },
+            "apply": {
+                "cache": { "name": "kart-page", "version": 1 },
+                "bundle": {
+                    "name": "kart-bundle",
+                    "version": 2,
+                    "files": [
+                        "/purchase-page/purchase.js",
+                        "/purchase-page/purchase.html"
+                    ],
+                    "expires": "1h"
+                }
+            }
         }
     }
 }

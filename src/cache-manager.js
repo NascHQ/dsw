@@ -117,6 +117,44 @@ const cacheManager = {
     register: rule=>{
         cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
     },
+    addAll: bundle=>{
+        return new Promise((resolve, reject)=>{
+            // for adding a group of files or rules
+            // we use it as a list
+            if (Array.isArray(bundle)) {
+                bundle = {
+                    files: bundle
+                };
+            }
+
+            let promises = [];
+
+            // then, we use the cacheManager.add with a new rule
+            // this way it will be able to expire.
+            bundle.files.map(file=>{
+                promises.push(cacheManager.add(
+                    file,
+                    null,
+                    null,
+                    {
+                        action: {
+                            fetch: file,
+                            cache: {
+                                name: bundle.name,
+                                version: bundle.version || 1,
+                                expires: bundle.expires || false
+                            }
+                        }
+                    }));
+            });
+
+            // once all of them have been cached, we resolve it
+            // or in case one or more failed, we reject it
+            Promise.all(promises)
+                .then(resolve)
+                .catch(reject);
+        });
+    },
     // just a different method signature, for .add
     put: (rule, request, response) => {
         return cacheManager.add(

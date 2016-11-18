@@ -405,6 +405,7 @@ if (isInSWScope) {
 
                 DSWManager.requestId = 1 + (DSWManager.requestId || 0);
 
+                // let's deal with tracking information for the current request
                 if (DSWManager.trackMoved[event.request.url]) {
                     let movedInfo = DSWManager.trackMoved[event.request.url];
                     event.request.requestId = movedInfo.id;
@@ -426,10 +427,12 @@ if (isInSWScope) {
                     DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                 }
 
+                // these are the request's url structured data that we need
                 const url = new URL(event.request.url);
                 const sameOrigin = url.origin == location.origin;
                 const pathName = url.pathname;
 
+                // Service Workers can only deal with GET requests
                 if (event.request.method != 'GET') {
                     DSWManager.traceStep(event.request, `Ignoring ${event.request.method} request` , {});
                     DSWManager.sendTraceData(event);
@@ -460,15 +463,19 @@ if (isInSWScope) {
                     matchingRule = getBestMatchingRX(pathName,
                                                  DSWManager.rules['*']);
                 }
+
                 if (matchingRule) {
                     // if there is a rule that matches the url
+                    // we add a trace step for it
                     DSWManager.traceStep(
                         event.request,
-                        'Best matching rule found: "' + matchingRule.rule.name + '"',
+                        `Best matching rule found: "${matchingRule.rule.name}"`,
                         {
                             rule: matchingRule.rule,
                             url: event.request.url
                         });
+
+                    // and then respond the request with the promise for the content
                     return DSWManager.respondItWith(
                         event,
                         // we apply the right strategy for the matching rule
@@ -480,16 +487,21 @@ if (isInSWScope) {
                         )
                     );
                 } else {
-                    // if it is not sameOrigin and there is no rule for it
+                    // this means there were no rules to apply
                     if (!sameOrigin) {
-                        DSWManager.traceStep(event.request, 'Ignoring request because it is not from same origin and there are no rules for it', {});
+                        // if it is not sameOrigin and there is no rule for it
+                        DSWManager.traceStep(
+                            event.request,
+                            'Ignoring request because it is not from same origin and there are no rules for it',
+                            {}
+                        );
                         DSWManager.sendTraceData(event);
                         return;
                     }
                 }
 
                 // if no rule is applied, we will request it
-                // this is the function to deal with the resolt of this request
+                // this is the function to deal with the result of this request
                 let defaultTreatment = function (response) {
                     if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                         return response;
