@@ -3,7 +3,7 @@
     // In case you want to reload it, some change must be done in this file, if
     // not in the content itself, at least, in the version number.
     // This number is also used to name your cached files.
-    "dswVersion": 2.2,
+    "version": 2.2,
     // Will force previous service workers to stop, and replace them for the newer one
     // otherwise, your new service worker configuration will only take place when
     // the current service worker experes (the next reload, or about a day)
@@ -34,7 +34,7 @@
     },
     // Here is where you will add all of your rules.
     // You can create as many as you want, and name them as you will.
-    "dswRules": {
+    "rules": {
         // You may name your rules here
         // this rule will redirect every not found image (or with error) to
         // a default image
@@ -50,6 +50,17 @@
             "apply": {
                 // will actually become a default 404 image
                 "fetch": "/images/public/404.jpg"
+            }
+        },
+        // In case a script is not found, it should not return the 404 html
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            // instead, we simply output nothing
+            "apply": {
+                "output": ""
             }
         },
         // You can also output a string right away
@@ -234,6 +245,30 @@
                     "version": "1",
                     // we can specify indexes using only strings
                     "indexes": ["name"]
+                }
+            }
+        },
+        // You can preload bundles of files on demand.
+        // This means that you can load and cache a group of files when your user loads another page.
+        // For example, when the user loads the _kart page_, you can load and store the _purchase_ scripts and styles, as they are probably going to need this later.
+        "kartPageBundle": {
+            "match": { "path": "/purchase-page/kart.html" },
+            "apply": {
+                "cache": { "name": "kart-page", "version": 1 },
+                "bundle": {
+                    // _name_ is optional and will be used in the cache name
+                    "name": "kart-bundle",
+                    // as well as the _version_.
+                    "version": 2,
+                    // _files_ is required, though, and contains the list of all
+                    // files to be stored in cache as soon as the matching request
+                    // starts.
+                    "files": [
+                        "/purchase-page/purchase.js",
+                        "/purchase-page/purchase.html"
+                    ],
+                    // you may also set some expiring time for the bundle.
+                    "expires": "1h"
                 }
             }
         }

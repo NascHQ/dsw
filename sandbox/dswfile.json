@@ -1,5 +1,5 @@
 {
-    "dswVersion": 2.3,
+    "version": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -17,7 +17,7 @@
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
-    "dswRules": {
+    "rules": {
         "byPassable": {
             "match": { "path": "/bypass/" },
             "apply": {
@@ -57,6 +57,15 @@
                 "fetch": "/images/public/404.jpg"
             }
         },
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            "apply": {
+                "output": ""
+            }
+        },
         "redirectOlderPage": {
             "match": {
                 "path": "/legacy-images/.*"
@@ -67,10 +76,14 @@
         },
         "pageNotFound": {
             "match": {
-                "status": [404]
+                "status": [404],
+                "path": "(.*)"
             },
             "apply": {
-                "fetch": "/not-found.html"
+                "redirect": "/not-found.html?from=$1",
+                "cache": {
+                    "from": "/not-found.html"
+                }
             }
         },
         "imageNotCached": {
@@ -152,6 +165,21 @@
                     "name": "serviceData",
                     "version": "1",
                     "indexes": ["id"]
+                }
+            }
+        },
+        "kartPageBundle": {
+            "match": { "path": "/purchase-page/kart.html" },
+            "apply": {
+                "cache": { "name": "kart-page", "version": 1 },
+                "bundle": {
+                    "name": "kart-bundle",
+                    "version": 2,
+                    "files": [
+                        "/purchase-page/purchase.js",
+                        "/purchase-page/purchase.html"
+                    ],
+                    "expires": "1h"
                 }
             }
         }

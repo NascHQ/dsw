@@ -6,3 +6,5 @@ npm-debug.log
 npm-debug.log.*
 sandbox/tmp/*
 !sandbox/tmp/.gitkeep
+.yarnclean
+yarn.lock

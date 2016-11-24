@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
 
-        <title>DSW Try-out page</title>
+        <title>DSW: Try-it-yourself page</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="icon" type="image/png" href="/helmet.png">
 
@@ -16,26 +16,28 @@
 
         <script src="dsw.js"></script>
         <script>
-            DSW.setup(/*{
-                trace: {
-                    "\/image\/": function (traceData) {
-                        console.log(traceData);
-                    }
-                }
-            }*/)
-            .then(function(result){
-                var el = document.getElementById('offline-support-message');
-                el.classList.add('offline-support');
-                el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
-            })
-            .catch(function(reason){
-                var el = document.getElementById('offline-support-message');
-                el.innerHTML = 'Offline support<br/>not installed';
-                el.classList.add('no-offline-support');
-                console.warn(reason);
-                setTimeout(function(){
-                    el.classList.remove('no-offline-support');
-                }, 6000);
+            DSW.setup()
+                .then(function(result){
+                    var el = document.getElementById('offline-support-message');
+                    el.classList.add('offline-support');
+                    el.innerHTML = 'Offline enabled<br/><sub onclick="history.go(0);">(Reload the page)</sub>';
+                    console.info('[ DSW ] :: Service Worker is activated and has all the appShell ready (happens only once)');
+                })
+                .catch(function(reason){
+                    var el = document.getElementById('offline-support-message');
+                    el.innerHTML = 'Offline support<br/>not installed';
+                    el.classList.add('no-offline-support');
+                    console.warn('[ DSW ] :: Service Worker could now be activated!\n', reason);
+                });
+
+            DSW.ready.then(function dswReady (status) {
+                console.info('[ DSW ] :: Service Worker is active and working');
+            }).catch(err=>{
+                console.warn('[ DSW ] :: Service Worker could not be fully registered', err);
+            });
+
+            DSW.addEventListener('activated', function(event){
+                console.log('[ DSW ] :: Service worker was activated (happens only once)');
             });
         </script>
 
@@ -74,7 +76,7 @@
                 </div>
                 <div class="fg">
                     <div class="test-description-container">
-                        You can use push notifications
+                        Use push notifications
                     </div>
                 </div>
             </div>
@@ -340,7 +342,7 @@
                 <div class="run-test-btn" id="btn-9-video">➤ Run test</div>
             </div>
 
-            <div class="card right blue">
+            <div class="card left blue">
 				<div class="test-container">
 					<div class="header">
 						<div class="counter">10</div>
@@ -364,6 +366,32 @@
 				</div>
 				<div class="run-test-btn" id="btn-10-message">➤ Run test</div>
 			</div>
+
+            <div class="card right orange">
+                <div class="test-container">
+                    <div class="header">
+                        <div class="counter">11</div>
+                        <div class="title"></div>
+                        <div class="test-content">
+                            <iframe id="iframe-preload-bundle" src=""></iframe>
+                        </div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <div class="corner"></div>
+                    <div class="test-description-container">
+                        <div class="test-description">
+                            <h3>Bundle</h3>
+                            <div class="test-long-description">
+                                You can preload bundles of files on demand.<br/>
+                                This means that you can load and cache a group of files when your user loads another page.<br/>
+                                For example, when the user loads the <i>kart page</i>, you can load and store the <i>purchase</i> scripts and styles, as they are probably going to need this later.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="run-test-btn" id="btn-11-iframe">➤ Run test</div>
+            </div>
 
         </div>
 

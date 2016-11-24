@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DSW Tests</title>
+    <link rel="icon" type="image/png" href="http://localhost:8888/helmet.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #ffd;
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+
+        #status {
+            float: left;
+            width: 25%;
+            border-left: solid 1px black;
+            margin: 0;
+            padding-left: 5px;
+        }
+
+        #status li.title {
+            font-size: 2em;
+            font-weight: bold;
+            padding-top: 22px;
+            padding-bottom: 22px;
+        }
+        #status li.title:before {
+            content: "";
+        }
+
+        #status li {
+            padding-left: 20px;
+        }
+
+        #status li:before {
+            content: "◷";
+            position: absolute;
+            left: 10px;
+        }
+        #status li:not(.passed):not(.failed):not(.title):before {
+            font-size: 1.3em;
+            margin-top: -5px;
+            animation-name: spin;
+            animation-duration: 1s;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+            transform-origin: 50% 50%;
+            width: 12px;
+            height: 27px;
+            display: inline-block;
+        }
+
+        #status li.passed:before {
+            content: "✔ ";
+            color: green;
+        }
+
+        #status li.failed:before {
+            content: "✖ ";
+            color: red;
+        }
+
+        #testPage {
+            float: right;
+            width: 75%;
+            height: 100%;
+            border: none;
+            border-left: solid 1px black;
+            background: -moz-linear-gradient(-45deg,  #f0f0f0 0%, #d2d3d5 40%, #eff0f2 100%);
+            background: -webkit-linear-gradient(-45deg,  #f0f0f0 0%,#d2d3d5 40%,#eff0f2 100%);
+            background: linear-gradient(135deg,  #f0f0f0 0%,#d2d3d5 40%,#eff0f2 100%);
+            filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f0f0f0', endColorstr='#eff0f2',GradientType=1 );
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0) }
+            to { transform: rotate(360deg) }
+        }
+
+
+    </style>
+
+    <ol id="status">
+        <li class="title">Tests</li>
+    </ol>
+    <iframe src="" frameborder="0" id="testPage"></iframe>
+
+    <script>
+        var steps = {
+            ok: 0,
+            fail: 0,
+            list: []
+        };
+        var step = null;
+        var fullTestsListResolver;
+        var unregistered = false;
+
+        const fullTestsList = new Promise(function(resolve, reject){
+            fullTestsListResolver = resolve;
+        });
+
+        function addStep (step, status) {
+            var item = document.createElement('li');
+            item.innerHTML = step;
+            //item.classList.add(!status || status == 'ok' || status === true? 'ok': 'fail');
+            document.getElementById('status').appendChild(item);
+            item.ok = function () {
+                this.classList.add('passed');
+                steps.ok++;
+            };
+            item.fail = function () {
+                this.classList.add('failed');
+                steps.fail++;
+            };
+            if (status === false) {
+                item.fail();
+            }
+            if (status === true) {
+                item.ok();
+            }
+            return item;
+        }
+
+        var traced = {};
+        var tracing = {};
+        var iframe = document.getElementById('testPage');
+        const SANDBOX_URL = 'http://localhost:8888/';
+
+        function traceReceived (event) {
+            traced[event.data.trace.src] = event.data.trace;
+            if (tracing[event.data.trace.src]) {
+                tracing[event.data.trace.src](event.data.trace);
+            }
+        }
+
+        function sendMessage (message) {
+            return new Promise((resolve, reject)=>{
+                var messageChannel = new MessageChannel();
+                messageChannel.port1.onmessage = function messageReceived (event) {
+                    if (!event.data) {
+                        reject('No data arrived');
+                        return;
+                    }
+                    if (event.data && event.data.acknowledged !== void(0)) {
+                        resolve(event.data.acknowledged || false);
+                        return;
+                    } else {
+                        if (event.data.trace) {
+                            traceReceived(event);
+                        }
+                    }
+                    resolve(event.data);
+                };
+
+                document.getElementById('testPage')
+                    .contentWindow
+                    .postMessage(message, '*', [messageChannel.port2]);
+            });
+
+        }
+
+        function waitForSandboxToLoad () {
+            return new Promise((resolve, reject)=>{
+                step = addStep('Load sandbox');
+                var wasOk = false;
+                iframe.onload = function () {
+                    resolve();
+                    step.ok();
+                    wasOk = true;
+                }
+                iframe.setAttribute('src', SANDBOX_URL);
+                setTimeout(_=>{
+                    if (!wasOk) {
+                        step.fail();
+                    }
+                }, 6000);
+            });
+        }
+
+        function waitForDSWRegistration () {
+            step = addStep('Register SW');
+            var wasOk = false;
+
+            return new Promise((resolve, reject)=>{
+                setTimeout(_=>{
+                    if (!wasOk) {
+                        step.fail();
+                        reject();
+                    }
+                }, 5000);
+
+                sendMessage({
+                    DSWCommand: {
+                        get: 'readyEvent'
+                    }
+                }).then(result=>{
+                    if (result.status.registered) {
+                        wasOk = true;
+                        step.ok();
+                        resolve(result);
+                    } else {
+                        step.fail();
+                        reject();
+                    }
+                    addStep('Pre cache AppShell', result.status.appShell);
+                }).catch(err=>{
+                    reject(err);
+                });
+            });
+        }
+
+        function waitForSandboxToReload () {
+            return new Promise((resolve, reject)=>{
+                // we have to do it this way due to an error freezing the devTools
+                // in chrome when we try to access the contentWindow in an iframe that
+                // we have changed the source.
+                step = addStep('Reload Sandbox');
+                setTimeout(_=>{
+                    var finalIframe = document.createElement('iframe');
+                    var wasOk = false;
+                    finalIframe.setAttribute('id', 'testPage');
+                    finalIframe.onload = function(){
+                        resolve();
+                        step.ok();
+                        wasOk = true;
+                    };
+                    setTimeout(_=>{
+                        if (!wasOk) {
+                            step.fail();
+                            reject();
+                        }
+                    }, 5000);
+                    var src = iframe.src;
+                    finalIframe.src = src;
+                    iframe.replaceWith(finalIframe);
+                    iframe = finalIframe;
+                }, 1000);
+            });
+        }
+
+        function turnTestsOn () {
+            let step = addStep ('Enable test mode');
+            return sendMessage({
+                DSWCommand: {
+                    dswUnderAutomatedTest: true
+                }
+            }).then(result=>{
+                if (result === true) {
+                    step.ok();
+                } else {
+                    debugger;
+                    step.fail();
+                }
+            });
+        }
+
+        function getDSWStatus () {
+            step = addStep('Get DSW Status');
+            return sendMessage({
+                DSWCommand: {
+                    get: 'dswStatus'
+                }
+            }).then(result=>{
+                if (result && result.registered) {
+                    return step.ok();
+                }
+                step.fail();
+            });
+        }
+
+        var testsToRun = {};
+        var currentTestGroup = 0;
+        function addTest (text, test, testGroup) {
+            var testStart = performance.now();
+            testGroup = testGroup || 0;
+            testsToRun[testGroup] = testsToRun[testGroup] || [];
+            testsToRun[testGroup].push(function () {
+                return new Promise((resolve, reject)=>{
+                    var currentTest = addStep('&nbsp;-&nbsp;' + text);
+                    var timeout = setTimeout(_=>{
+                        reject('"'+ text + '" timed out!');
+                    }, 5000);
+
+                    test().then(result=>{
+                        currentTest[result? 'ok': 'fail'](result);
+                        clearTimeout(timeout);
+                        resolve(result);
+                        steps.list.push({
+                            "name": text,
+                            "result": true,
+                            "message": "success",
+                            "duration": performance.now() - testStart
+                        });
+                    }).catch(err=>{
+                        reject('"'+ text + '" test failed executing');
+                        console.error(err);
+                        steps.list.push({
+                            "name": text,
+                            "result": false,
+                            "message": err,
+                            "duration": performance.now() - testStart
+                        });
+                    });
+                })
+            });
+        }
+
+        function nextTestGroup () {
+            return new Promise((resolve, reject)=>{
+                setTimeout(_=>{
+                    turnTestsOn()
+                        .then(_=>{
+                            traced = {};
+                            currentTestGroup++;
+                            resolve();
+                        })
+                        .catch(err=>{
+                            reject();
+                        });
+                }, 1000);
+            });
+        }
+
+        function execTests () {
+
+            step = addStep('Requests Group '+currentTestGroup);
+
+            function* testGen () {
+              while(true){
+                  var test = testsToRun[currentTestGroup].shift();
+                  if (test) {
+                    yield test();
+                  } else {
+                    return;
+                  }
+              }
+            }
+
+            var tests = testGen();
+
+            // let's run all the promises
+            return Promise.all([...tests])
+                .then(result=>{
+                    step.ok();
+                })
+                .catch(err=>{
+                    step.fail(err);
+                });
+        }
+
+        function unregisterAndCleanUp () {
+            step = addStep('Unregistering');
+            return sendMessage({
+                DSWCommand: {
+                    exec: 'unregister'
+                }
+            }).then(output=>{
+                if (output.result.unregistered) {
+                    unregistered = true;
+                    step.ok();
+                } else {
+                    step.fail();
+                }
+            });
+        }
+
+        function closeTests () {
+            var total = (steps.ok + steps.fail);
+            var text = '<strong>Finished:</strong>' +
+                '<br/>' + total + ' tests'+
+                '<br/>Tests passed: ' + steps.ok +
+                '<br/>Tests failed: ' + steps.fail +
+                '<br/>';
+            addStep(text, steps.fail? false: true);
+            fullTestsListResolver(!steps.fail);
+
+            // exposing it to sauce_labs
+            window.global_test_results = {
+                "passed": steps.ok,
+                "failed": steps.fail,
+                "total": total,
+                "duration": (performance.now() - startingTime).toFixed(0),
+                "tests": steps.list
+            }
+        }
+
+        function validate (expected, result) {
+            return new Promise((resolve, reject)=>{
+                if (expected.debug) {
+                    debugger;
+                }
+                function fail (message) {
+                    console.error('[ TEST_FAIL ] :: ' + (message || ''), expected, '\n', result);
+                    resolve(false);
+                }
+
+                if (expected.length && result.steps.length != expected.length) {
+                    return fail('Number of steps', expected, result);
+                }
+
+                if (expected.redirectedTo && result.redirectedTo != expected.redirectedTo) {
+                    return fail('Was supposed to redirect to ' + expected.redirectedTo);
+                }
+
+                if (expected.follows) {
+                    // it should follow the steps in order
+                    // (extra steps in between are allowed, though)
+                    let nextStep = new RegExp(expected.follows.shift(), 'i');
+                    result.steps.forEach(cur=>{
+                        if (cur.step.match(nextStep)) {
+                            nextStep = new RegExp(expected.follows.shift(), 'i');
+                        }
+                    });
+
+                    if (expected.follows.length) {
+                        return fail('Did not follow all the steps in order!\nMissed steps:\n - ' + expected.follows.join('\n - ') + '\n\n');
+                    }
+                }
+
+                if (expected.steps) {
+                    let i = 0,
+                        curStep = {};
+                    try {
+                        for(i in expected.steps) {
+
+                            curStep = expected.steps[i];
+
+                            if (i == 'last') {
+                                i = result.steps.length - 1;
+                            }
+
+                            // testing for the resulting url
+                            let stepData = result.steps[i].data;
+                            if (curStep.url) {
+                                // we check the url in the given step
+                                if (stepData.url != curStep.url) {
+                                    return fail('Url mismatch in step ' + i);
+                                }
+                            }
+                            if (curStep.rule) {
+                                // we check the rule name in the given step
+                                if ((stepData.name || stepData.rule.name) != curStep.rule) {
+                                    return fail('Rule name mismatch in step ' + i);
+                                }
+                            }
+                            if (curStep.strategy) {
+                                if (stepData.rule.strategy != curStep.strategy) {
+                                    return fail('Strategy mismatch for step ' + i);
+                                }
+                            }
+                            if (curStep.cache) {
+                                if (stepData.rule.action.cache) {
+                                    return fail('Step ' + i + ' should be caching');
+                                }
+                            }
+                            if (curStep.indexeddb) {
+                                if (stepData.rule.action.indexeddb) {
+                                    return fail('Step ' + i + ' should have indexedDB action    ');
+                                }
+                            }
+                        }
+                    }catch(e){
+                        return fail(e.message + '\nIn step ' + i);
+                    }
+                }
+                resolve({ status: true });
+            });
+        }
+
+        function assert (output, expected) {
+            return new Promise((resolve, reject)=>{
+                var data = traced[output.result.url];
+                if (data) {
+                    resolve(validate(expected, data));
+                } else {
+                    tracing[output.result.url] = traceData=>{
+                        resolve(validate(expected, traceData));
+                    };
+                }
+            });
+        }
+
+        addTest('Load image', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-1'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        length: 7,
+                        follows: [
+                            'Best matching rule found: "images"',
+                            /Received result OK \(200\)/,
+                            "Saving into cache",
+                            "Responded"
+                        ],
+                        steps: {
+                            0: { url: 'http://localhost:8888/images/public/gears.png' },
+                            1: { rule: 'images', strategy: 'offline-first' },
+                            6: { url: 'http://localhost:8888/images/public/gears.png' }
+                        }
+                    }));
+                })
+            });
+        });
+
+        addTest('Image not found', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-2'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'Will fetch',
+                            'Failed fetching',
+                            'fallback',
+                            'Redirecting',
+                            'Result found in cache'
+                        ],
+                        steps: {
+                            1: { rule: 'images'},
+                            6: { rule: 'imageNotFound' },
+                            8: { rule: 'images' },
+                            'last': { url: 'http://localhost:8888/images/public/404.jpg' }
+                        }
+                    }));
+                })
+            });
+        });
+
+        addTest('Redirect image', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-3'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        redirectedTo: 'http://localhost:8888/images/public/gizmo.jpg',
+                        follows: [
+                            'redirectOlderPage',
+                            'Redirecting',
+                            'Best matching rule found: "images"',
+                            'found in cache'
+                        ],
+                        steps: {
+                            'last': { url: 'http://localhost:8888/images/public/gizmo.jpg' }
+                        }
+                    }));
+                })
+            });
+        });
+
+        addTest('Uncacheable image', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-4'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'imageNotCached',
+                            'online first strategy',
+                            'Responded'
+                        ]
+                    }));
+                })
+            });
+        });
+
+        addTest('Page not found', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-5-page'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        //debug: true,
+                        redirectedTo: 'http://localhost:8888/not-found.html?from=/foo.html',
+                        follows: [
+                            'static-html',
+                            'using fastest strategy',
+                            'Fastest strategy failed fetching',
+                            'Fastest strategy could not fetch nor find in cache',
+                            'Found fallback rule',
+                            'Must redirect',
+                            'static-html',
+                            'using fastest strategy',
+                            'Result found in cache'
+                        ]
+                    }));
+                })
+            });
+        });
+
+        addTest('Load JSON', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-6-data'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'Best matching rule found: "userData"',
+                            'Info: Using offline first strategy',
+                            'Will fetch',
+                            'Response object saved into IndexedDB'
+                        ]
+                    }));
+                })
+            });
+        });
+
+        addTest('Load image again', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-1'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        length: 5,
+                        follows: [
+                            'Best matching rule found: "images"',
+                            'Info: Using offline first strategy',
+                            'Result found in cache'
+                        ]
+                    }));
+                })
+            });
+        }, 1);
+
+        addTest('Uncacheable image again', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-img-4'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'imageNotCached',
+                            'online first strategy',
+                            'Responded'
+                        ]
+                    }));
+                })
+            });
+        }, 1);
+
+        addTest('Load JSON again', function () {
+            return new Promise((resolve, reject)=>{
+                sendMessage({
+                    DSWCommand: {
+                        exec: 'click',
+                        target: '#btn-6-data'
+                    }
+                }).then(result=>{
+                    resolve(assert(result, {
+                        follows: [
+                            'Best matching rule found: "userData"',
+                            'Info: Using offline first strategy',
+                            'Found stored in IndexedDB'
+                        ]
+                    }));
+                })
+            });
+        }, 1);
+
+        // TODO: get the currently used storage
+        var startingTime = performance.now();
+        waitForSandboxToLoad()
+            //.then(unregisterAndCleanUp)
+            .then(waitForDSWRegistration)
+            .then(waitForSandboxToReload)
+            .then(turnTestsOn)
+            .then(getDSWStatus)
+            .then(execTests)
+            .then(waitForSandboxToReload)
+            .then(nextTestGroup)
+            .then(execTests)
+            .then(unregisterAndCleanUp)
+            .then(result=>{
+                closeTests();
+            })
+            .catch(error=>{
+                if (step) {
+                    step.fail();
+                }
+                if (!unregistered) {
+                    unregisterAndCleanUp();
+                }
+                closeTests();
+            });
+    </script>
+</body>
+</html>

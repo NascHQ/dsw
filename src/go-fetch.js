@@ -2,6 +2,32 @@ import utils from './utils.js';
 
 let origin = location.origin;
 
+// this function basically creates a new Request instance
+// out of an existing one
+function createNewRequest (tmpUrl, request, event, sameOrigin=true) {
+    let mode = request.mode;
+    if (!mode || mode == 'navigate') {
+        mode = (sameOrigin? 'cors': 'no-cors');
+    }
+
+    let req = new Request(tmpUrl, {
+        method: request.method || 'GET',
+        headers: request.headers || {},
+        mode: mode,
+        cache: 'default',
+        redirect: 'manual'
+    });
+
+    if (request.body) {
+        req.body = request.body;
+    }
+
+    req.requestId = (event? event.request: request).requestId;
+    req.traceSteps = (event? event.request: request).traceSteps;
+
+    return req;
+}
+
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
     if (typeof request == 'string') {
@@ -12,36 +38,21 @@ function goFetch (rule, request, event, matching) {
     }
     let originalUrl = tmpUrl;
     let sameOrigin = (new URL(tmpUrl)).origin == origin;
-    
+
     // if there are group variables in the matching expression
     tmpUrl = utils.applyMatch(matching, tmpUrl);
-    
+
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        let req = new Request(tmpUrl, {
-            method: request.method || 'GET',
-            headers: request.headers || {},
-            mode: request.mode || (sameOrigin? 'cors': 'no-cors'),
-            cache: 'default',
-            redirect: 'manual'
-        });
-        
-        if (request.body) {
-            req.body = request.body;
-        }
-        
-        req.requestId = (event? event.request: request).requestId;
-        req.traceSteps = (event? event.request: request).traceSteps;
-        
-        return req;
+        return createNewRequest(tmpUrl, request, event, sameOrigin);
     }
-    
+
     let actionType = Object.keys(rule.action)[0];
     let opts = rule.options || {};
     opts.headers = opts.headers || new Headers();
-    
-    // if the cache options is false, we force it not to be cached
+
+    // if the cache options is === false, we force it not to be cached
     if(rule.action.cache === false){
         opts.headers.append('pragma', 'no-cache');
         opts.headers.append('cache-control', 'no-store,no-cache');
@@ -56,21 +67,17 @@ function goFetch (rule, request, event, matching) {
         mode: actionType == 'redirect'? (request.mode || 'same-origin') : 'cors',
         redirect: actionType == 'redirect'? 'manual' : request.redirect
     };
-    
-//    if (request.credentials && request.credentials != 'omit') {
-//        reqConfig.credentials = request.credentials;
-//    }
-    
+
     // if the host is not the same
     if (!sameOrigin) {
         // we set it to an opaque request
         reqConfig.mode = request.mode || 'no-cors';
     }
     request = new Request(tmpUrl || request.url, reqConfig);
-    
+
     request.requestId = (event? event.request: request).requestId;
     request.traceSteps = (event? event.request: request).traceSteps;
-    
+
     if (actionType == 'redirect') {
         // if this is supposed to redirect
         return Response.redirect(request.url, 302);
@@ -81,7 +88,7 @@ function goFetch (rule, request, event, matching) {
         // it must be redirected later on
         return fetch(request, opts);
     }
-    
+
 }
 
 export default goFetch;

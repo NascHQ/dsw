@@ -12,7 +12,7 @@ const utils = {
         }
         return text;
     },
-    
+
     createRequest(request, reqData){
         let reqConfig = {
             method: reqData.method || request.method || 'GET',
@@ -21,15 +21,16 @@ const utils = {
             redirect: reqData.redirect || 'manual',
             cache: 'default'
         };
-        
+
         let req = new Request(request.url || request, reqConfig);
         req.requestId = request.requestId;
         return req;
     },
-    
-    setup (DSWManager) {
+
+    setup (DSWManager, PWASettings, DSW) {
         utils.DSWManager = DSWManager;
         utils.PWASettings = PWASettings;
+        utils.DSW = DSW;
     }
 };
 

@@ -17,6 +17,23 @@ body {
     font-family: Helvetica, Arial, sans-serif;
     background-size: cover;
     background-attachment: fixed;
+    transition: background .5s ease-in-out 1.5s;
+}
+
+.test-mode {
+    background: #a5bfa5;
+    color: #fff;
+}
+
+.test-mode .card {
+    box-shadow: -6px -8px 30px #777;
+    height: 50px;
+}
+
+.test-mode .test-description h3,
+.test-mode .test-description .test-long-description,
+.test-mode .card .see-rule-btn {
+    display: none;
 }
 
 .project-status {
@@ -154,6 +171,7 @@ a {
     position: relative;
     display: flex;
     overflow: hidden;
+    transition: box-shadow .5s ease-in-out, height .3s ease-out .8s;
 }
 
 .card.small {
@@ -367,3 +385,47 @@ a {
     background: linear-gradient(135deg,  #728631 0%,#bdbe32 40%,#b7b031 100%);
     filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#728631', endColorstr='#b7b031',GradientType=1 );
 }
+
+
+.run-test-btn::after,
+.run-test-btn::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: -35px 0 0 -35px;
+	width: 70px;
+	height: 70px;
+	border-radius: 50%;
+	opacity: 0;
+    background: rgba(183, 45, 45, 0.1); /* rgba(111,148,182,0.3); */
+}
+.run-test-btn::before {
+    border: solid 1px rgba(183, 45, 45, 0.3); /* rgba(111,148,182, 3); */
+}
+
+.run-test-btn.just-clicked::after {
+	animation: anim-effect-boris .5s forwards .25s;
+}
+.run-test-btn.just-clicked::before {
+	animation: anim-effect-boris .5s forwards;
+}
+
+.just-clicked {
+
+}
+
+@keyframes anim-effect-boris {
+	0% {
+		transform: scale3d(0.3, 0.3, 1);
+	}
+	25%, 50% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: scale3d(1.2, 1.2, 1);
+	}
+}
+
+

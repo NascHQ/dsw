@@ -1,22 +1,29 @@
 {
   "name": "dsw",
-  "version": "1.10.2",
+  "version": "1.11.0",
   "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
     "dsw": "./bin/index.js"
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
   },
   "environment": "node",
   "preferGlobal": true,
   "main": "./lib/dsw.js",
   "scripts": {
-    "test": "echo ':: Running tests:' && mocha tests/ --compilers js:babel-core/register",
+    "test": "exit 0",
+    "test-sauce-labs": "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Linux' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "test-local": "npm run start-test-server & testcafe 'chrome' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "start-test-server": "http-server tests/ -p 8889",
+    "start": "npm run try",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
     "docs": "echo ':: Generating documentation:' && docco -m -o docs/ docs/config-example.js && gh-pages -d docs",
     "build": "npm run lint && browserify src/main.js -o dist/dsw.js -t [ babelify --presets [ es2015 ] ] && echo 'Done building'",
     "prepublish": "",
     "watch": "watch 'npm run build' src",
-    "try": "echo ':: Trying the sandbox sample ::' && node ./bin/index.js sandbox --verbose && http-server ./sandbox -p 8888",
-    "start": "npm run try"
+    "try": "echo ':: Trying the sandbox sample ::' && node ./bin/index.js sandbox --verbose && http-server ./sandbox -p 8888"
   },
   "repository": {
     "type": "git",
@@ -47,15 +54,15 @@
     "browserify": "latest",
     "chai": "^3.5.0",
     "docco": "^0.7.0",
+    "eslint": "^3.0.1",
     "gh-pages": "^0.11.0",
+    "http-server": "latest",
     "minifier": "^0.7.1",
-    "mocha": "latest",
+    "testcafe": "^0.9.0",
     "watch": "latest"
   },
   "dependencies": {
     "commander": "^2.9.0",
-    "eslint": "^3.0.1",
-    "http-server": "latest",
     "node-fetch": "^1.6.1"
   }
 }

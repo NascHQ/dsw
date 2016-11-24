@@ -1,5 +1,5 @@
 const PWASettings = {
-    "dswVersion": 2.3,
+    "version": 2.3,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -17,7 +17,7 @@ const PWASettings = {
     "enforceSSL": false,
     "requestTimeLimit": 6000,
     "keepUnusedCaches": false,
-    "dswRules": {
+    "rules": {
         "byPassable": {
             "match": { "path": "/bypass/" },
             "apply": {
@@ -57,6 +57,15 @@ const PWASettings = {
                 "fetch": "/images/public/404.jpg"
             }
         },
+        "scriptsNotFound": {
+            "match": {
+                "status": [404],
+                "extension": ["js"]
+            },
+            "apply": {
+                "output": ""
+            }
+        },
         "redirectOlderPage": {
             "match": {
                 "path": "/legacy-images/.*"
@@ -67,10 +76,14 @@ const PWASettings = {
         },
         "pageNotFound": {
             "match": {
-                "status": [404]
+                "status": [404],
+                "path": "(.*)"
             },
             "apply": {
-                "fetch": "/not-found.html"
+                "redirect": "/not-found.html?from=$1",
+                "cache": {
+                    "from": "/not-found.html"
+                }
             }
         },
         "imageNotCached": {
@@ -152,6 +165,21 @@ const PWASettings = {
                     "name": "serviceData",
                     "version": "1",
                     "indexes": ["id"]
+                }
+            }
+        },
+        "kartPageBundle": {
+            "match": { "path": "/purchase-page/kart.html" },
+            "apply": {
+                "cache": { "name": "kart-page", "version": 1 },
+                "bundle": {
+                    "name": "kart-bundle",
+                    "version": 2,
+                    "files": [
+                        "/purchase-page/purchase.js",
+                        "/purchase-page/purchase.html"
+                    ],
+                    "expires": "1h"
                 }
             }
         }
@@ -286,6 +314,26 @@ var cacheManager = {
             });
         }
     },
+    // this method will delete all the caches
+    clear: function clear(_) {
+        if ('window' in self) {
+            // if we are not in the ServiceWorkerScope, we message it
+            // to clear all the cache
+            return window.DSW.sendMessage({
+                clearEverythingUp: true
+            }, true);
+        } else {
+            // we are in the ServiceWorkerScope, and should delete everything
+            return caches.keys().then(function (keys) {
+                var cleanItUp = keys.map(function (key) {
+                    return caches.delete(key);
+                });
+                // we will also drop the databases from IndexedDB
+                cleanItUp.push(_indexeddbManager2.default.clear());
+                return Promise.all(cleanItUp);
+            });
+        }
+    },
     // return a name for a default rule or the name for cache using the version
     // and a separator
     mountCacheId: function mountCacheId(rule) {
@@ -300,6 +348,38 @@ var cacheManager = {
     },
     register: function register(rule) {
         cacheManager.registeredCaches.push(cacheManager.mountCacheId(rule));
+    },
+    addAll: function addAll(bundle) {
+        return new Promise(function (resolve, reject) {
+            // for adding a group of files or rules
+            // we use it as a list
+            if (Array.isArray(bundle)) {
+                bundle = {
+                    files: bundle
+                };
+            }
+
+            var promises = [];
+
+            // then, we use the cacheManager.add with a new rule
+            // this way it will be able to expire.
+            bundle.files.map(function (file) {
+                promises.push(cacheManager.add(file, null, null, {
+                    action: {
+                        fetch: file,
+                        cache: {
+                            name: bundle.name,
+                            version: bundle.version || 1,
+                            expires: bundle.expires || false
+                        }
+                    }
+                }));
+            });
+
+            // once all of them have been cached, we resolve it
+            // or in case one or more failed, we reject it
+            Promise.all(promises).then(resolve).catch(reject);
+        });
     },
     // just a different method signature, for .add
     put: function put(rule, request, response) {
@@ -341,7 +421,7 @@ var cacheManager = {
                                 } else {
                                     clonedResponse = response.clone();
                                     DSWManager.traceStep(request, 'Added to cache', { cacheData: cacheData });
-                                    cache.put(request, clonedResponse);
+                                    clonedResponse & request & cache.put(request, clonedResponse);
                                 }
                             })();
                         }
@@ -372,7 +452,7 @@ var cacheManager = {
         });
     },
     setExpiringTime: function setExpiringTime(request, rule) {
-        var expiresAt = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
+        var expiresAt = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
 
         if (typeof expiresAt == 'string') {
             expiresAt = parseExpiration(rule, expiresAt);
@@ -397,6 +477,8 @@ var cacheManager = {
         });
     },
     get: function get(rule, request, event, matching, forceFromCache) {
+        var treatFailure = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : true;
+
         var actionType = Object.keys(rule.action)[0],
             url = request.url || request,
             pathName = new URL(url).pathname;
@@ -415,7 +497,8 @@ var cacheManager = {
         actionType = actionType == 'idb' ? 'indexeddb' : actionType;
 
         // cache may expire...if so, we will use this verification afterwards
-        var verifyCache = void 0;
+        var verifyCache = void 0,
+            urlToMatch = null;
         if (rule.action.cache && rule.action.cache.expires) {
             verifyCache = cacheManager.hasExpired(request);
         } else {
@@ -435,10 +518,10 @@ var cacheManager = {
 
                         var treatResponse = function treatResponse(response) {
                             if (response.status >= 200 && response.status < 300) {
-                                DSWManager.traceStep(request, 'Request bypassed');
+                                DSWManager.traceStep(event.request, 'Request bypassed');
                                 return response;
                             } else {
-                                DSWManager.traceStep(request, 'Bypassed request failed and was ignored');
+                                DSWManager.traceStep(event.request, 'Bypassed request failed and was ignored');
                                 var resp = new Response(''); // ignored
                                 return resp;
                             }
@@ -450,14 +533,14 @@ var cacheManager = {
                         // or of type 'ignore' (or anything else, actually)
                         // and we will simply output nothing, as if ignoring both the
                         // request and response
-                        DSWManager.traceStep(request, 'Bypassed request');
+                        DSWManager.traceStep(event.request, 'Bypassed request');
                         actionType = 'output';
                         rule.action[actionType] = '';
                     }
                 }
             case 'output':
                 {
-                    DSWManager.traceStep(request, 'Responding with string output', { output: (rule.action[actionType] + '').substring(0, 180) });
+                    DSWManager.traceStep(event.request, 'Responding with string output', { output: (rule.action[actionType] + '').substring(0, 180) });
                     return new Response(_utils2.default.applyMatch(matching, rule.action[actionType]));
                 }
             case 'indexeddb':
@@ -469,9 +552,9 @@ var cacheManager = {
                                 // with success or not(saving it), we resolve it
                                 var done = function done(err) {
                                     if (err) {
-                                        DSWManager.traceStep(request, 'Could not save response into IndexedDB', { err: err });
+                                        DSWManager.traceStep(event.request, 'Could not save response into IndexedDB', { err: err });
                                     } else {
-                                        DSWManager.traceStep(request, 'Response object saved into IndexedDB');
+                                        DSWManager.traceStep(event.request, 'Response object saved into IndexedDB');
                                     }
                                     resolve(response);
                                 };
@@ -481,7 +564,7 @@ var cacheManager = {
                                 // if it failed, we can look for a fallback
                                 url = request.url;
                                 pathName = new URL(url).pathname;
-                                DSWManager.traceStep(request, 'Fetch failed', {
+                                DSWManager.traceStep(event.request, 'Fetch failed', {
                                     url: request.url,
                                     status: response.status,
                                     statusText: response.statusText
@@ -496,10 +579,14 @@ var cacheManager = {
                             // if we did have it in the indexedDB
                             if (result) {
                                 // we use it
+                                DSWManager.traceStep(event.request, 'Found stored in IndexedDB');
                                 return treatFetch(result);
                             } else {
                                 // if it was not stored, let's fetch it
-                                //request = DSWManager.createRequest(request, event, matching);
+                                DSWManager.traceStep(event.request, 'Will fetch', {
+                                    url: request.url,
+                                    method: request.method
+                                });
                                 return goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch);
                             }
                         });
@@ -515,8 +602,14 @@ var cacheManager = {
                 }
             case 'cache':
                 {
-
                     var cacheId = void 0;
+
+                    if (event.request.cachedFrom) {
+                        // rule.action.cache  && rule.action.cache.from) {
+                        urlToMatch = event.request.cachedFrom;
+                    } else {
+                        urlToMatch = null;
+                    }
 
                     if (rule.action.cache) {
                         cacheId = cacheManager.mountCacheId(rule);
@@ -530,17 +623,16 @@ var cacheManager = {
                             // with no results from cache
                             DSWManager.traceStep(event.request, 'Cache was expired');
                             lookForCache = Promise.resolve();
-                            //logger.info('Cache expired for ', request.url);
                         } else {
                             // if not expired, let's look for it!
-                            lookForCache = caches.match(request);
+                            lookForCache = caches.match(urlToMatch || request);
                         }
 
                         // look for the request in the cache
                         return lookForCache.then(function (result) {
                             // if it does not exist (cache could not be verified)
                             if (result && result.status != 200) {
-                                DSWManager.traceStep(event.request, 'Fetch failed', {
+                                DSWManager.traceStep(event.request, 'Not found in cache', {
                                     url: request.url,
                                     status: result.status,
                                     statusText: result.statusText
@@ -549,26 +641,28 @@ var cacheManager = {
                                 // updates should return the previously cached data
                                 // even if it has expired
                                 if (expired) {
-                                    DSWManager.traceStep(request, 'Forcing ' + (expired ? 'expired ' : '') + 'result from cache');
+                                    DSWManager.traceStep(event.request, 'Forcing ' + (expired ? 'expired ' : '') + 'from cache');
                                     // the true argument flag means it should come from cache, anyways
                                     return cacheManager.get(rule, request, event, matching, true);
                                 }
-                                // look for rules that match for the request and its status
-                                (DSWManager.rules[result.status] || []).some(function (cur, idx) {
-                                    if (pathName.match(cur.rx)) {
-                                        // if a rule matched for the status and request
-                                        // and it tries to fetch a different source
-                                        if (cur.action.fetch || cur.action.redirect) {
-                                            DSWManager.traceStep(event.request, 'Found fallback for failure', {
-                                                rule: cur,
-                                                url: request.url
-                                            });
-                                            // problematic requests should
-                                            result = goFetch(rule, request, event, matching);
-                                            return true; // stopping the loop
+                                if (treatFailure) {
+                                    // look for rules that match for the request and its status
+                                    (DSWManager.rules[result.status] || []).some(function (cur, idx) {
+                                        if (pathName.match(cur.rx)) {
+                                            // if a rule matched for the status and request
+                                            // and it tries to fetch a different source
+                                            if (cur.action.fetch || cur.action.redirect) {
+                                                DSWManager.traceStep(event.request, 'Found fallback for failure', {
+                                                    rule: cur,
+                                                    url: request.url
+                                                });
+                                                // problematic requests should
+                                                result = goFetch(rule, request, event, matching);
+                                                return true; // stopping the loop
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                                 // we, then, return the promise of the failed result(for it
                                 // could not be loaded and was not in cache)
                                 return result;
@@ -583,20 +677,25 @@ var cacheManager = {
                                     // when it comes from a redirect, we let the browser know about it
                                     // or else...we simply return the result itself
                                     if (request.url == event.request.url) {
-                                        DSWManager.traceStep(event.request, 'Result from cache', {
-                                            url: event.request.url
+                                        DSWManager.traceStep(event.request, 'Result found in cache', {
+                                            url: event.request.url,
+                                            cacheSource: event.request.cachedFrom || event.request.url
                                         });
+                                        // it was successful
                                         return result;
                                     } else {
-                                        // coming from a redirect
-                                        DSWManager.traceStep(event.request, 'Must redirect', {
+                                        // it is a redirect (different urls)
+                                        DSWManager.traceStep(event.request, 'Redirecting', {
                                             from: event.request.url,
                                             to: request.url
-                                        }, false, {
+                                        }, false, { // telling the tracker that it has moved
                                             url: request.url,
                                             id: request.requestId,
-                                            steps: request.traceSteps
+                                            steps: request.traceSteps,
+                                            rule: rule
                                         });
+                                        // let's move the browser's url and return
+                                        // the appropriate header
                                         return Response.redirect(request.url, 302);
                                     }
                                 } else if (actionType == 'redirect') {
@@ -604,6 +703,11 @@ var cacheManager = {
                                     DSWManager.traceStep(event.request, 'Must redirect', {
                                         from: event.request.url,
                                         to: request.url
+                                    }, false, { // telling the tracker that it has moved
+                                        url: request.url,
+                                        id: request.requestId,
+                                        steps: request.traceSteps,
+                                        rule: rule
                                     });
                                     return Response.redirect(request.url, 302);
                                 } else {
@@ -615,7 +719,9 @@ var cacheManager = {
                                         if (response.type == 'opaque') {
                                             // if it is a opaque response, let it go!
                                             if (rule.action.cache !== false) {
-                                                DSWManager.traceStep(event.request, 'Added to cache (opaque)');
+                                                DSWManager.traceStep(event.request, 'Added to cache (opaque)', {
+                                                    url: request.url
+                                                });
                                                 return cacheManager.add(_utils2.default.createRequest(request, { mode: request.mode || 'no-cors' }), cacheManager.mountCacheId(rule), response, rule);
                                             }
                                             return response;
@@ -627,11 +733,15 @@ var cacheManager = {
                                         // after retrieving it, we cache it
                                         // if it was ok
                                         if (response.status == 200) {
-                                            DSWManager.traceStep(event.request, 'Received result OK (200)');
+                                            DSWManager.traceStep(event.request, 'Received result OK (200)', {
+                                                url: request.url
+                                            });
                                             // if cache is not false, it will be added to cache
                                             if (rule.action.cache !== false) {
                                                 // let's save it into cache
-                                                DSWManager.traceStep(event.request, 'Saving into cache');
+                                                DSWManager.traceStep(event.request, 'Saving into cache', {
+                                                    url: request.url
+                                                });
                                                 return cacheManager.add(request, cacheManager.mountCacheId(rule), response, rule);
                                             } else {
                                                 return response;
@@ -639,10 +749,12 @@ var cacheManager = {
                                         } else {
                                             // if it had expired, but could not be retrieved
                                             // from network, let's give its cache a chance!
-                                            DSWManager.traceStep(event.request, 'Failed fetching');
+                                            DSWManager.traceStep(request, 'Failed fetching', {
+                                                url: request.url
+                                            });
                                             if (expired) {
                                                 _logger2.default.warn('Cache for ', request.url || request, 'had expired, but the updated version could not be retrieved from the network!\n', 'Delivering the outdated cached data');
-                                                DSWManager.traceStep(event.request, 'Used expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
+                                                DSWManager.traceStep(event.request, 'Using expired cache', { note: 'Failed fetching, loading from cache even though it was expired' });
                                                 return cacheManager.get(rule, request, event, matching, true);
                                             }
                                             // otherwise...let's see if there is a fallback
@@ -650,11 +762,16 @@ var cacheManager = {
                                             return DSWManager.treatBadPage(response, pathName, event);
                                         }
                                     };
-                                    DSWManager.traceStep(event.request, 'Must fetch', {
-                                        url: request.url,
-                                        method: request.method
-                                    });
-                                    return goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch);
+
+                                    // if not in cache, let's see if we should look
+                                    // for it in the network
+                                    if (treatFailure) {
+                                        DSWManager.traceStep(event.request, 'Will fetch', {
+                                            url: request.url,
+                                            method: request.method
+                                        });
+                                        return goFetch(rule, request, event, matching).then(treatFetch).catch(treatFetch);
+                                    }
                                 }
                             }
                         }); // end lookForCache
@@ -686,6 +803,34 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var origin = location.origin;
 
+// this function basically creates a new Request instance
+// out of an existing one
+function createNewRequest(tmpUrl, request, event) {
+    var sameOrigin = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+
+    var mode = request.mode;
+    if (!mode || mode == 'navigate') {
+        mode = sameOrigin ? 'cors' : 'no-cors';
+    }
+
+    var req = new Request(tmpUrl, {
+        method: request.method || 'GET',
+        headers: request.headers || {},
+        mode: mode,
+        cache: 'default',
+        redirect: 'manual'
+    });
+
+    if (request.body) {
+        req.body = request.body;
+    }
+
+    req.requestId = (event ? event.request : request).requestId;
+    req.traceSteps = (event ? event.request : request).traceSteps;
+
+    return req;
+}
+
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
     if (typeof request == 'string') {
@@ -703,29 +848,14 @@ function goFetch(rule, request, event, matching) {
     // if no rule is passed
     if (request && !rule) {
         // we will just create a simple request to be used "anywhere"
-        var req = new Request(tmpUrl, {
-            method: request.method || 'GET',
-            headers: request.headers || {},
-            mode: request.mode || (sameOrigin ? 'cors' : 'no-cors'),
-            cache: 'default',
-            redirect: 'manual'
-        });
-
-        if (request.body) {
-            req.body = request.body;
-        }
-
-        req.requestId = (event ? event.request : request).requestId;
-        req.traceSteps = (event ? event.request : request).traceSteps;
-
-        return req;
+        return createNewRequest(tmpUrl, request, event, sameOrigin);
     }
 
     var actionType = Object.keys(rule.action)[0];
     var opts = rule.options || {};
     opts.headers = opts.headers || new Headers();
 
-    // if the cache options is false, we force it not to be cached
+    // if the cache options is === false, we force it not to be cached
     if (rule.action.cache === false) {
         opts.headers.append('pragma', 'no-cache');
         opts.headers.append('cache-control', 'no-store,no-cache');
@@ -740,10 +870,6 @@ function goFetch(rule, request, event, matching) {
         mode: actionType == 'redirect' ? request.mode || 'same-origin' : 'cors',
         redirect: actionType == 'redirect' ? 'manual' : request.redirect
     };
-
-    //    if (request.credentials && request.credentials != 'omit') {
-    //        reqConfig.credentials = request.credentials;
-    //    }
 
     // if the host is not the same
     if (!sameOrigin) {
@@ -788,7 +914,7 @@ var dbs = {};
 var cacheManager;
 
 function getObjectStore(dbName) {
-    var mode = arguments.length <= 1 || arguments[1] === undefined ? 'readwrite' : arguments[1];
+    var mode = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'readwrite';
 
     var db = dbs[dbName],
         tx = void 0;
@@ -803,6 +929,31 @@ var indexedDBManager = {
     setup: function setup(cm) {
         cacheManager = cm;
     },
+    clear: function clear() {
+        var dbList = [];
+
+        var _loop = function _loop(db) {
+            dbList.push(new Promise(function (resolve, reject) {
+                var req = indexedDB.deleteDatabase(db);
+                req.onsuccess = function () {
+                    resolve();
+                };
+                req.onerror = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database\n', err || this.error);
+                };
+                req.onblocked = function (err) {
+                    reject();
+                    _logger2.default.error('Could not drop indexedDB database, it was locked\n', err || this.error);
+                };
+            }));
+        };
+
+        for (var db in dbs) {
+            _loop(db);
+        }
+        return Promise.all([].concat(dbList));
+    },
     create: function create(config) {
         return new Promise(function (resolve, reject) {
 
@@ -811,7 +962,7 @@ var indexedDBManager = {
             function dataBaseReady(db, dbName, resolve) {
                 db.onversionchange = function (event) {
                     db.close();
-                    _logger2.default.log('There is a new version of the database(IndexedDB) for ' + config.name);
+                    //logger.log('There is a new version of the database(IndexedDB) for ' + dbName);
                 };
 
                 if (!dbs[dbName]) {
@@ -950,6 +1101,8 @@ var indexedDBManager = {
         });
     },
     save: function save(dbName, data, request, rule) {
+        var _this = this;
+
         return new Promise(function (resolve, reject) {
 
             data.json().then(function (obj) {
@@ -958,7 +1111,7 @@ var indexedDBManager = {
                     req = void 0;
 
                 if (store) {
-                    req = store.add(obj);
+                    req = store.put(obj);
 
                     // We will use the CacheAPI to store, in cache, only the IDs for
                     // the given object
@@ -974,14 +1127,14 @@ var indexedDBManager = {
                         resolve();
                     };
                     req.onerror = function (event) {
-                        reject('Failed saving to the indexedDB!', this.error);
+                        reject('Failed saving to the indexedDB!\n' + this.error);
                     };
                 } else {
-                    reject('Failed saving into indexedDB!');
+                    reject('Failed saving into indexedDB...\n' + _this.error);
                 }
             }).catch(function (err) {
-                _logger2.default.error('Failed saving into indexedDB!\n', err.message, err);
-                reject('Failed saving into indexedDB!');
+                _logger2.default.error('Failed saving into indexedDB!\n', err.message || _this.error, err);
+                reject('Failed saving into indexedDB:\n' + _this.error);
             });
         });
     }
@@ -1073,15 +1226,22 @@ var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// TODO: should pre-cache or cache in the first load, some of the page's already sources (like css, js or images), or tell the user it supports offline usage, only in the next reload
-
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 
-var DSW = { version: '1.10.2' };
+var DSW = { version: '1.10.6', build: '1479871295843', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
+var currentlyMocking = {};
+
+// These will be used in both ServiceWorker and Client scopes
+DSW.isOffline = DSW.offline = function (_) {
+    return !navigator.onLine;
+};
+DSW.isOnline = DSW.online = function (_) {
+    return navigator.onLine;
+};
 
 // this try/catch is used simply to figure out the current scope
 try {
@@ -1123,21 +1283,30 @@ if (isInSWScope) {
             },
             treatBadPage: function treatBadPage(response, pathName, event) {
                 var result = void 0;
+                DSWManager.traceStep(event.request, 'Request failed', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url,
+                    type: response.type
+                });
                 (DSWManager.rules[response && response.status ? response.status : 404] || []).some(function (cur, idx) {
                     var matching = pathName.match(cur.rx);
                     if (matching) {
                         if (cur.action.redirect && !cur.action.fetch) {
-                            cur.action.fetch = cur.action.fetch;
+                            cur.action.fetch = cur.action.redirect;
                         }
                         if (cur.action.fetch) {
-                            DSWManager.traceStep(event.request, 'Found fallback rule', {
-                                rule: cur
+                            DSWManager.traceStep(event.request, 'Found fallback rule', cur, false, {
+                                url: event.request.url,
+                                id: event.request.requestId,
+                                steps: event.request.traceSteps
                             });
-                            // not found requisitions should
+                            // not found requests should
                             // fetch a different resource
                             var req = new Request(cur.action.fetch);
                             req.requestId = event.request.requestId;
                             req.traceSteps = event.request.traceSteps;
+                            // applyMatch
                             result = _cacheManager2.default.get(cur, req, event, matching);
                             return true; // stopping the loop
                         }
@@ -1145,7 +1314,6 @@ if (isInSWScope) {
                 });
                 if (!result) {
                     DSWManager.traceStep(event.request, 'No fallback found. Request failed');
-                    //logger.info('No rules for failed request: ', pathName, '\nWill output the failure itself');
                 }
                 return result || response;
             },
@@ -1155,23 +1323,25 @@ if (isInSWScope) {
             setup: function setup() {
                 var _this = this;
 
-                var dswConfig = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+                var dswConfig = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
-                _utils2.default.setup(DSWManager, PWASettings);
+                _utils2.default.setup(DSWManager, PWASettings, DSW);
                 _cacheManager2.default.setup(DSWManager, PWASettings, _goFetch2.default);
                 _strategies2.default.setup(DSWManager, _cacheManager2.default, _goFetch2.default);
 
-                return new Promise(function (resolve, reject) {
+                var ROOT_SW_SCOPE = new URL(location.href).pathname.replace(/\/[^\/]+$/, '/');
+
+                return DSW.ready = new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
                     var preCache = PWASettings.appShell || [],
                         dbs = [];
 
-                    Object.keys(dswConfig.dswRules).forEach(function (heuristic) {
+                    Object.keys(dswConfig.rules || dswConfig.dswRules).forEach(function (heuristic) {
                         var ruleName = heuristic;
-                        heuristic = dswConfig.dswRules[heuristic];
+                        heuristic = (dswConfig.rules || dswConfig.dswRules)[heuristic];
                         heuristic.name = ruleName;
 
                         heuristic.action = heuristic.action || heuristic['apply'];
@@ -1210,7 +1380,7 @@ if (isInSWScope) {
                             path = (path.join('|') || '') + '|';
                         } else {
                             // "match" may be an object, then we simply use it
-                            path = heuristic.match.path || ''; // aqui + '([.+]?)';
+                            path = heuristic.match.path || '';
                             extensions = heuristic.match.extension, status = heuristic.match.status;
                         }
 
@@ -1230,9 +1400,9 @@ if (isInSWScope) {
                         // if it fetches something, and this something is not dynamic
                         // also, if it will redirect to some static url
                         var noVars = /\$[0-9]+/;
-                        if (appl.fetch && !appl.fetch.match(noVars) || appl.redirect && !appl.redirect.match(noVars)) {
+                        if (appl.fetch && !appl.fetch.match(noVars) || appl.redirect && !appl.redirect.match(noVars) || appl.cache && appl.cache.from) {
                             preCache.push({
-                                url: appl.fetch || appl.redirect,
+                                url: appl.cache && appl.cache.from ? appl.cache.from : appl.fetch || appl.redirect,
                                 rule: heuristic
                             });
                         }
@@ -1273,7 +1443,7 @@ if (isInSWScope) {
                         'apply': { cache: {} }
                     }, rootMatchingRX);
 
-                    preCache.unshift('/');
+                    preCache.unshift(ROOT_SW_SCOPE);
 
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
@@ -1286,9 +1456,9 @@ if (isInSWScope) {
                         }))).then(function (_) {
                             resolve();
                         }).catch(function (err) {
-                            _logger2.default.error('Failed storing the appShell! Could not register the service worker.', err.url || err.message, err);
-                            //throw new Error('Aborting service worker installation');
-                            reject();
+                            var errMessage = 'Failed storing the appShell! Could not register the service worker.' + '\nCould not find ' + (err.url || err.message) + '\n';
+                            _logger2.default.error(errMessage, err);
+                            reject(errMessage);
                         });
                     } else {
                         resolve();
@@ -1306,8 +1476,17 @@ if (isInSWScope) {
                 return (0, _goFetch2.default)(null, request, event, matching);
             },
             traceStep: function traceStep(request, step, data) {
-                var fill = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
-                var moved = arguments.length <= 4 || arguments[4] === undefined ? false : arguments[4];
+                var fill = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+                var moved = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
+
+
+                // we may also receive a list of requests
+                if (Array.isArray(request)) {
+                    request.forEach(function (req) {
+                        DSWManager.traceStep(req, step, data, fill, moved);
+                    });
+                    return;
+                }
 
                 // if there are no tracking listeners, this request will not be tracked
                 if (DSWManager.tracking) {
@@ -1321,10 +1500,18 @@ if (isInSWScope) {
                         data.redirect = request.redirect;
                         data.referrer = request.referrer;
                     }
-                    request.traceSteps.push({ step: step, data: data });
-                    if (moved) {
-                        DSWManager.trackMoved[moved.url] = moved;
-                    }
+
+                    var reqTime = (performance.now() - request.timeArriving) / 1000;
+
+                    request.traceSteps.push({
+                        step: step,
+                        data: data,
+                        timing: reqTime.toFixed(4) + 's' // timing from the begining of the request
+                    });
+                }
+                // but if it has moved, we then track it
+                if (moved) {
+                    DSWManager.trackMoved[moved.url] = moved;
                 }
             },
             respondItWith: function respondItWith(event, response) {
@@ -1370,18 +1557,30 @@ if (isInSWScope) {
                 var tracker = void 0;
                 var traceBack = function traceBack(port, key) {
                     // sending the trace information back to client
-                    port.postMessage({
+                    var traceData = {
                         id: event.request.requestId,
                         src: event.request.traceSteps[0].data.url,
                         method: event.request.traceSteps[0].data.method,
                         steps: event.request.traceSteps
-                    });
+                    };
+                    // if it has been redirected
+                    if (traceData.src != event.request.url) {
+                        traceData.redirectedTo = event.request.url;
+                    }
+                    port.postMessage(traceData);
                 };
+                // here we will send a message to each listener in the client(s)
+                // with the trace information
                 for (tracker in DSWManager.tracking) {
                     if (event.request.url.match(tracker)) {
                         DSWManager.tracking[tracker].ports.forEach(traceBack);
                         break;
                     }
+                }
+
+                // let's clear the garbage left from the request
+                if (event.request.traceSteps && event.request.traceSteps.length) {
+                    delete DSWManager.trackMoved[event.request.traceSteps[0].data.url];
                 }
             },
             broadcast: function broadcast(message) {
@@ -1397,20 +1596,31 @@ if (isInSWScope) {
 
                     DSWManager.requestId = 1 + (DSWManager.requestId || 0);
 
+                    // let's deal with tracking information for the current request
                     if (DSWManager.trackMoved[event.request.url]) {
                         var movedInfo = DSWManager.trackMoved[event.request.url];
                         event.request.requestId = movedInfo.id;
                         event.request.traceSteps = movedInfo.steps;
+                        event.request.originalSrc = movedInfo.url;
+                        if (movedInfo.rule && movedInfo.rule.action && movedInfo.rule.action.cache && movedInfo.rule.action.cache.from) {
+                            // it has moved, but is supposed to be cached from somewhere else
+                            // because it uses variables that are not supposed to be cached
+                            event.request.cachedFrom = movedInfo.rule.action.cache.from;
+                        }
                         delete DSWManager.trackMoved[event.request.url];
                     } else {
+                        // it is a brand new request
                         event.request.requestId = DSWManager.requestId;
-                        DSWManager.traceStep(event.request, 'Arived in Service Worker', {}, true);
+                        event.request.timeArriving = performance.now();
+                        DSWManager.traceStep(event.request, 'Arrived in Service Worker', {}, true);
                     }
 
+                    // these are the request's url structured data that we need
                     var url = new URL(event.request.url);
                     var sameOrigin = url.origin == location.origin;
                     var pathName = url.pathname;
 
+                    // Service Workers can only deal with GET requests
                     if (event.request.method != 'GET') {
                         DSWManager.traceStep(event.request, 'Ignoring ' + event.request.method + ' request', {});
                         DSWManager.sendTraceData(event);
@@ -1440,18 +1650,23 @@ if (isInSWScope) {
                     } else {
                         matchingRule = (0, _bestMatchingRx2.default)(pathName, DSWManager.rules['*']);
                     }
+
                     if (matchingRule) {
                         // if there is a rule that matches the url
+                        // we add a trace step for it
                         DSWManager.traceStep(event.request, 'Best matching rule found: "' + matchingRule.rule.name + '"', {
                             rule: matchingRule.rule,
                             url: event.request.url
                         });
+
+                        // and then respond the request with the promise for the content
                         return DSWManager.respondItWith(event,
                         // we apply the right strategy for the matching rule
                         _strategies2.default[matchingRule.rule.strategy](matchingRule.rule, event.request, event, matchingRule.matching));
                     } else {
-                        // if it is not sameOrigin and there is no rule for it
+                        // this means there were no rules to apply
                         if (!sameOrigin) {
+                            // if it is not sameOrigin and there is no rule for it
                             DSWManager.traceStep(event.request, 'Ignoring request because it is not from same origin and there are no rules for it', {});
                             DSWManager.sendTraceData(event);
                             return;
@@ -1459,7 +1674,7 @@ if (isInSWScope) {
                     }
 
                     // if no rule is applied, we will request it
-                    // this is the function to deal with the resolt of this request
+                    // this is the function to deal with the result of this request
                     var defaultTreatment = function defaultTreatment(response) {
                         if (response && (response.status == 200 || response.type == 'opaque' || response.type == 'opaqueredirect')) {
                             return response;
@@ -1517,6 +1732,29 @@ if (isInSWScope) {
                     rx: new RegExp(tp, 'i'),
                     ports: ports
                 };
+                return;
+            }
+            if (event.data.clearEverythingUp) {
+                _cacheManager2.default.clear().then(function (result) {
+                    ports.forEach(function (port) {
+                        port.postMessage({
+                            cacheCleaned: true
+                        });
+                    });
+                });
+                return;
+            }
+            if (event.data.enableMocking) {
+                var mockId = event.data.enableMocking.mockId;
+                var matching = event.data.enableMocking.match;
+                var finalMockId = mockId + matching;
+                // we will mock only for some clients (this way you can have two tabs with different approaches)
+                currentlyMocking[event.source.id] = currentlyMocking[event.source.id] || {};
+                var client = currentlyMocking[event.source.id];
+                // this client will mock the rules in mockId
+                client[finalMockId] = client[finalMockId] || [];
+                currentlyMocking[finalMockId].push();
+                // TODO: add mock support
                 return;
             }
         });
@@ -1634,6 +1872,7 @@ if (isInSWScope) {
     (function () {
 
         DSW.status = {
+            version: PWASettings.version || PWASettings.dswVersion,
             registered: false,
             sync: false,
             appShell: false,
@@ -1653,7 +1892,7 @@ if (isInSWScope) {
                     events[eventName].push(listener);
                 },
                 trigger: function trigger(eventName) {
-                    var data = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+                    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
                     var listener = void 0;
                     try {
@@ -1706,8 +1945,9 @@ if (isInSWScope) {
         DSW.addEventListener = eventManager.addEventListener;
         DSW.onpushnotification = function () {/* use this to know when a notification arrived */};
         DSW.onnotificationclicked = function () {/* use this to know when the user has clicked in a notification */};
-        DSW.enabled = function () {/* use this to know when DSW is enabled and running */};
+        DSW.onenabled = function () {/* use this to know when DSW is enabled and running */};
         DSW.onregistered = function () {/* use this to know when DSW has been registered */};
+        DSW.onunregistered = function () {/* use this to know when DSW has been unregistered */};
         DSW.onnotificationsenabled = function () {/* use this to know when user has enabled notifications */};
 
         navigator.serviceWorker.addEventListener('message', function (event) {
@@ -1718,6 +1958,7 @@ if (isInSWScope) {
                     // this means all the appShell have been downloaded
                     if (event.data.DSWStatus) {
                         DSW.status.appShell = true;
+                        eventManager.trigger('activated', DSW.status);
                         pendingResolve(DSW.status);
                     } else {
                         // if it failed, let's unregister it, to avoid false positives
@@ -1744,11 +1985,25 @@ if (isInSWScope) {
             messageChannel.port1.onmessage = function (event) {
                 callback(event.data);
             };
+
             navigator.serviceWorker.controller.postMessage({ trackPath: match }, [messageChannel.port2]);
         };
 
+        DSW.enableMocking = function (mockId) {
+            var match = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '.*';
+
+            var messageChannel = new MessageChannel();
+            navigator.serviceWorker.controller.postMessage({ enableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
+        };
+        DSW.disableMocking = function (mockId) {
+            var match = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '.*';
+
+            var messageChannel = new MessageChannel();
+            navigator.serviceWorker.controller.postMessage({ disableMocking: { mockId: mockId, match: match } }, [messageChannel.port2]);
+        };
+
         DSW.sendMessage = function (message) {
-            var waitForAnswer = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+            var waitForAnswer = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
             // This method sends a message to the service worker.
             // Useful for specific tokens and internal use and trace
@@ -1771,7 +2026,7 @@ if (isInSWScope) {
                     // otherwise, we simply resolve it, after 10ms (just to use another flow)
                     setTimeout(resolve, 10);
                 }
-                navigator.serviceWorker.controller.postMessage(message, [messageChannel.channel.port2]);
+                navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]);
             });
         };
 
@@ -1788,11 +2043,14 @@ if (isInSWScope) {
                 cb();
             }
         };
-        DSW.offline = function (_) {
-            return !navigator.onLine;
+
+        // this means all the appShell dependencies have been downloaded and
+        // the sw has been successfuly installed and registered
+        DSW.isAppShellDone = DSW.isActivated = function (_) {
+            return DSW.status.registered && DSW.status.appShell;
         };
-        DSW.online = function (_) {
-            return navigator.onLine;
+        DSW.isRegistered = function (_) {
+            return DSW.status.registered;
         };
 
         // this method will register the SW for push notifications
@@ -1820,8 +2078,8 @@ if (isInSWScope) {
         };
 
         DSW.notify = function () {
-            var title = arguments.length <= 0 || arguments[0] === undefined ? 'Untitled' : arguments[0];
-            var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+            var title = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'Untitled';
+            var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
             return new Promise(function (resolve, reject) {
                 DSW.enableNotifications().then(function (_) {
@@ -1843,93 +2101,163 @@ if (isInSWScope) {
             });
         };
 
-        // client's setup
-        DSW.setup = function () {
-            var config = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
-
+        DSW.unregister = function (_) {
             return new Promise(function (resolve, reject) {
-                var appShellPromise = new Promise(function (resolve, reject) {
-                    pendingResolve = function pendingResolve() {
-                        clearTimeout(installationTimeOut);
+                if (DSW.status) {
+                    // if it is not registered or has already been unregistered
+                    // we simply resolve the promise
+                    if (!DSW.status.registered) {
                         resolve(DSW.status);
-                    };
-                });
-                pendingReject = function pendingReject(reason) {
-                    clearTimeout(installationTimeOut);
-                    reject(reason || 'Installation timeout');
-                };
+                    }
+                }
 
-                // opening on a page scope...let's install the worker
-                if (navigator.serviceWorker) {
-                    if (!navigator.serviceWorker.controller) {
-                        // rejects the registration after some time, if not resolved by then
-                        installationTimeOut = setTimeout(reject, config.timeout || REGISTRATION_TIMEOUT);
-
-                        // we will use the same script, already loaded, for our service worker
-                        var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                        navigator.serviceWorker.register(src).then(function (SW) {
-                            registeredServiceWorker = SW;
-                            DSW.status.registered = true;
-
-                            navigator.serviceWorker.ready.then(function (reg) {
-                                _logger2.default.info('Registered service worker');
-                                eventManager.trigger('registered', DSW.status);
-
-                                Promise.all([appShellPromise, new Promise(function (resolve, reject) {
-                                    if (PWASettings.notification && PWASettings.notification.auto) {
-                                        return DSW.enableNotifications();
-                                    } else {
-                                        resolve();
-                                    }
-                                }), new Promise(function (resolve, reject) {
-                                    // setting up sync
-                                    if (config && config.sync) {
-                                        if ('SyncManager' in window) {
-                                            navigator.serviceWorker.ready.then(function (reg) {
-                                                return reg.sync.register('syncr');
-                                            }).then(function (_) {
-                                                DSW.status.sync = true;
-                                                resolve();
-                                            });
-                                        } else {
-                                            DSW.status.sync = 'Failed enabling sync';
-                                            resolve();
-                                        }
-                                    } else {
-                                        resolve();
-                                    }
-                                })]).then(function (_) {
+                DSW.ready.then(function (result) {
+                    _cacheManager2.default.clear() // firstly, we clear the caches
+                    .then(function (result) {
+                        if (result) {
+                            DSW.status.appShell = false;
+                            localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                            // now we try and unregister the ServiceWorker
+                            registeredServiceWorker.unregister().then(function (success) {
+                                if (success) {
+                                    DSW.status.registered = false;
+                                    DSW.status.sync = false;
+                                    DSW.status.notification = false;
+                                    DSW.status.ready = false;
                                     localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
-                                    eventManager.trigger('enabled', DSW.status);
                                     resolve(DSW.status);
-                                });
-                            });
-                        }).catch(function (err) {
-                            reject({
-                                status: false,
-                                sync: false,
-                                sw: false,
-                                message: 'Failed registering service worker',
-                                error: err
-                            });
-                        });
-                    } else {
-                        // TODO: remove it from the else statement and see if it works even for the first load
-                        // service worker was already registered and is active
-                        // setting up traceable requests
-                        if (config && config.trace) {
-                            navigator.serviceWorker.ready.then(function (reg) {
-                                var match = void 0;
-                                for (match in config.trace) {
-                                    DSW.trace(match, config.trace[match]);
+                                    eventManager.trigger('unregistered', DSW.status);
+                                } else {
+                                    reject('Could not unregister service worker');
                                 }
                             });
+                            // TODO: clear indexedDB too
+                            // indexedDBManager.delete();
+                        } else {
+                            reject('Could not clean up the caches');
                         }
-                        // on refreshes, we update the variable to be used in the API
-                        DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
+                    });
+                });
+            });
+        };
+
+        // client's setup
+        DSW.setup = function () {
+            var config = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+
+            // in case DSW.setup has already been called
+            if (DSW.ready) {
+                return DSW.ready;
+            }
+
+            return new Promise(function (resolve, reject) {
+                // this promise rejects in case of errors, and only resolved in case
+                // the service worker has just been registered.
+
+                DSW.ready = new Promise(function (resolve, reject) {
+
+                    var appShellPromise = new Promise(function (resolve, reject) {
+                        pendingResolve = function pendingResolve() {
+                            clearTimeout(installationTimeOut);
+                            resolve(DSW.status);
+                        };
+                    });
+                    pendingReject = function pendingReject(reason) {
+                        clearTimeout(installationTimeOut);
+                        reject(reason || 'Installation timeout');
+                    };
+
+                    // opening on a page scope...let's install the worker
+                    if (navigator.serviceWorker) {
+                        if (!navigator.serviceWorker.controller) {
+                            // rejects the registration after some time, if not resolved by then
+                            installationTimeOut = setTimeout(function (_) {
+                                reject('Registration timed out');
+                            }, config.timeout || REGISTRATION_TIMEOUT);
+
+                            // we will use the same script, already loaded, for our service worker
+                            var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
+                            navigator.serviceWorker.register(src).then(function (SW) {
+                                registeredServiceWorker = SW;
+                                DSW.status.registered = true;
+
+                                navigator.serviceWorker.ready.then(function (reg) {
+
+                                    DSW.status.ready = true;
+                                    eventManager.trigger('registered', DSW.status);
+
+                                    Promise.all([appShellPromise, new Promise(function (resolve, reject) {
+                                        if (PWASettings.notification && PWASettings.notification.auto) {
+                                            return DSW.enableNotifications();
+                                        } else {
+                                            resolve();
+                                        }
+                                    }), new Promise(function (resolve, reject) {
+                                        // setting up sync
+                                        if (config && config.sync) {
+                                            if ('SyncManager' in window) {
+                                                navigator.serviceWorker.ready.then(function (reg) {
+                                                    return reg.sync.register('syncr');
+                                                }).then(function (_) {
+                                                    DSW.status.sync = true;
+                                                    resolve();
+                                                });
+                                            } else {
+                                                DSW.status.sync = 'Failed enabling sync';
+                                                resolve();
+                                            }
+                                        } else {
+                                            resolve();
+                                        }
+                                    })]).then(function (_) {
+                                        localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                        eventManager.trigger('enabled', DSW.status);
+                                        _logger2.default.info('Service Worker was registered', DSW.status);
+                                        resolve(DSW.status);
+                                    });
+                                });
+                            }).catch(function (err) {
+                                reject({
+                                    status: false,
+                                    sync: false,
+                                    sw: false,
+                                    message: 'Failed registering service worker with the message:\n ' + err.message,
+                                    error: err
+                                });
+                            });
+                        } else {
+                            // service worker was already registered and is active
+                            // setting up traceable requests
+                            if (config && config.trace) {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    registeredServiceWorker = reg;
+                                    var match = void 0;
+                                    for (match in config.trace) {
+                                        DSW.trace(match, config.trace[match]);
+                                    }
+                                });
+                            } else {
+                                navigator.serviceWorker.ready.then(function (reg) {
+                                    registeredServiceWorker = reg;
+                                });
+                            }
+                            // on refreshes, we update the variable to be used in the API
+                            DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
+                            resolve(DSW.status);
+                        }
+                    } else {
+                        DSW.status.fail = 'Service worker not supported';
                     }
-                } else {
-                    DSW.status.appShell = 'Service worker not supported';
+                });
+
+                // if it is not activated, we return the "ready" promise
+                if (!DSW.isActivated()) {
+                    return DSW.ready.then(function (result) {
+                        resolve(result);
+                    }).catch(function (reason) {
+                        reject(reason);
+                    });
                 }
             });
         };
@@ -1950,9 +2278,9 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _logger = require('./logger.js');
+var _utils = require('./utils.js');
 
-var _logger2 = _interopRequireDefault(_logger);
+var _utils2 = _interopRequireDefault(_utils);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1960,51 +2288,89 @@ var DSWManager = void 0;
 var cacheManager = void 0;
 var goFetch = void 0;
 
+// this function execute tasks that doesn take the
+// strategy in concideration
+function common(rule, request, event, matching) {
+    if (rule.action.bundle) {
+        DSWManager.traceStep(event.request, 'Will load and cache bundle in background', { bundle: rule.action.bundle });
+        cacheManager.addAll(rule.action.bundle).then(function (result) {
+            // the trace data here may not appear in the trace data once
+            // it is been loaded in background. The request is **NOT** waiting
+            // for the whole bundle to load.
+            DSWManager.traceStep(event.request, 'Bundle loaded and cached in background', { bundle: rule.action.bundle });
+        }).catch(function (err) {
+            // same situation as the previous comment, here
+            DSWManager.traceStep(event.request, 'Could not load and cache bundle', { bundle: rule.action.bundle });
+            console.warn('Could not load and cache all the bundle files', err.message || err);
+        });
+    }
+}
+
 var strategies = {
+    // stores the DSWManager and CacheManager instances, and goFetch utility
     setup: function setup(dswM, cacheM, gf) {
         DSWManager = dswM;
         cacheManager = cacheM;
         goFetch = gf;
     },
     'offline-first': function offlineFirstStrategy(rule, request, event, matching) {
-        // Will look for the content in cache
-        // if it is not there, will fetch it,
-        // store it in the cache
-        // and then return it to be used
-        DSWManager.traceStep(request, 'Info: Using offline first strategy');
-        //logger.info('offline first: Looking into cache for\n', request.url);
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+        // add a trace step
+        DSWManager.traceStep(event.request, 'Info: Using offline first strategy', { url: request.url });
+
+        // Look for the content in cache. If it is not there, will fetch it,
+        // then return it to be used and in the end, stores it in the cache
         return cacheManager.get(rule, request, event, matching);
     },
     'online-first': function onlineFirstStrategy(rule, request, event, matching) {
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
+        DSWManager.traceStep(event.request, 'Info: Using online first strategy', { url: request.url });
+
         // Will fetch it, and if there is a problem
         // will look for it in cache
-        DSWManager.traceStep(request, 'Info: Using online first strategy');
         function treatIt(response) {
             if (response.status == 200) {
                 if (rule.action.cache) {
                     // we will update the cache, in background
                     cacheManager.put(rule, request, response).then(function (_) {
-                        //logger.info('Updated in cache: ', request.url);
-                        DSWManager.traceStep(request, 'Updated cache');
+                        DSWManager.traceStep(event.request, 'Updated cache');
                     });
                 }
-                //logger.info('From network: ', request.url);
                 return response;
             }
             return cacheManager.get(rule, request, event, matching).then(function (result) {
                 // if failed to fetch and was not in cache, we look
                 // for a fallback response
                 var pathName = new URL(event.request.url).pathname;
-                //                    if(result){
-                //                        logger.info('From cache(after network failure): ', request.url);
-                //                    }
                 return result || DSWManager.treatBadPage(response, pathName, event);
             });
         }
+
+        // if browser is offline, there is no need to try the request
+        if (_utils2.default.DSW.isOffline()) {
+            return treatIt(new Response('', {
+                status: 404,
+                statusText: 'Browser is offline',
+                headers: {
+                    'Content-Type': 'text/plain'
+                }
+            }));
+        }
+
+        // time to go...fetch
         return goFetch(rule, request, event, matching).then(treatIt).catch(treatIt);
     },
     'fastest': function fastestStrategy(rule, request, event, matching) {
-        DSWManager.traceStep(request, 'Info: Using fastest strategy');
+        // let's see if there is some action needed to run, no matter the strategy
+        common(rule, request, event, matching);
+
+        // stores the trace data
+        DSWManager.traceStep(event.request, 'Info: Using fastest strategy', { url: request.url });
+
         // Will fetch AND look in the cache.
         // The cached data will be returned faster
         // but once the fetch request returns, it updates
@@ -2023,13 +2389,13 @@ var strategies = {
                 var result = void 0;
 
                 // firstly, let's asure we update the cache, if needed
-                if (response.status == 200) {
+                if (response && response.status == 200) {
                     // if we managed to load it from network and it has
                     // cache in its actions, we cache it
                     if (rule.action.cache) {
                         // we will update the cache, in background
                         cacheManager.put(rule, request, response).then(function (_) {
-                            //logger.info('Updated in cache (from fastest): ', request.url);
+                            DSWManager.traceStep(event.request, 'Updated cache');
                         });
                     }
                 }
@@ -2040,10 +2406,17 @@ var strategies = {
                     if (response.status == 200) {
                         networkTreated = true;
                         // if cache could not resolve it, the network resolves
+                        DSWManager.traceStep(event.request, 'Fastest strategy resolved from network', {
+                            url: response.url || request.url
+                        });
                         resolve(response);
                     } else {
                         // if it failed, we will try and respond with
                         // something else
+                        DSWManager.traceStep(event.request, 'Fastest strategy failed fetching', {
+                            status: response.status,
+                            statusText: response.statusText
+                        });
                         networkFailed = true;
                         treatCatch(response);
                     }
@@ -2054,6 +2427,7 @@ var strategies = {
                 // if it was in cache, and network hasn't resolved previously
                 if (result && !networkTreated) {
                     cacheTreated = true; // this will prevent network from resolving too
+                    DSWManager.traceStep(event.request, 'Fastest strategy resolved from cached');
                     resolve(result);
                     return result;
                 } else {
@@ -2067,6 +2441,7 @@ var strategies = {
                 // if both network and cache failed,
                 // we have a problem with the request, let's treat it
                 if (networkFailed && cacheFailed) {
+                    DSWManager.traceStep(event.request, 'Fastest strategy could not fetch nor find in cache');
                     resolve(DSWManager.treatBadPage(response, pathName, event));
                 }
                 // otherwise, we still got a chance on having a result from
@@ -2074,16 +2449,19 @@ var strategies = {
             }
 
             // one promise go for the network
-            goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatCatch);
+            // if browser is offline, there is no need to try the request
+            goFetch(rule, request.clone(), event, matching).then(treatFetch).catch(treatFetch);
+
             // the other, for the cache
-            cacheManager.get(rule, request.clone(), event, matching).then(treatCache).catch(treatCatch);
+            cacheManager.get(rule, request, event, matching, false, false) // will get, but not treat any failure
+            .then(treatCache).catch(treatCatch);
         });
     }
 };
 
 exports.default = strategies;
 
-},{"./logger.js":5}],8:[function(require,module,exports){
+},{"./utils.js":8}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2116,9 +2494,10 @@ var utils = {
         req.requestId = request.requestId;
         return req;
     },
-    setup: function setup(DSWManager) {
+    setup: function setup(DSWManager, PWASettings, DSW) {
         utils.DSWManager = DSWManager;
         utils.PWASettings = PWASettings;
+        utils.DSW = DSW;
     }
 };
 
