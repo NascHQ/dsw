@@ -1,6 +1,6 @@
 {
   "name": "dsw",
-  "version": "1.10.6",
+  "version": "1.11.0",
   "description": "Dynamic Service Worker, offline Progressive Web Apps much easier",
   "bin": {
     "dsw": "./bin/index.js"
@@ -14,8 +14,8 @@
   "main": "./lib/dsw.js",
   "scripts": {
     "test": "exit 0",
-    "test-sauce-labs":  "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Linux' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
-    "test-local":  "npm run start-test-server & testcafe 'chrome' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "test-sauce-labs": "node tests/index.js & testcafe 'saucelabs:Chrome@beta:Linux' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
+    "test-local": "npm run start-test-server & testcafe 'chrome' tests/index.js --hostname localhost; EXIT_CODE=$?; kill $!; exit $EXIT_CODE",
     "start-test-server": "http-server tests/ -p 8889",
     "start": "npm run try",
     "lint": "echo ':: Linting the source files:' && eslint --ignore-pattern manifest-model.json --quiet src/** && echo 'Done linting'",
