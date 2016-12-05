@@ -62,6 +62,7 @@
     "watch": "latest"
   },
   "dependencies": {
+    "colors": "^1.1.2",
     "commander": "^2.9.0",
     "node-fetch": "^1.6.1"
   }
