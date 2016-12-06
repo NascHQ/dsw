@@ -41,7 +41,6 @@ module.exports = (()=>{
                 if (!indexContent.replace(/[\n\r \t]/g, '').length) {
                     indexContent = FULL_INDEX;
                 } else {
-                    debugger;
                     var indent = indexContent.match(/[\n|\r]([ \t]){2,}/g);
                     if (indent) {
                         indent = indent[0].replace(/[\n\r]/g, '');
