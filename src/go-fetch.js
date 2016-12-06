@@ -28,16 +28,34 @@ function createNewRequest (tmpUrl, request, event, sameOrigin=true) {
     return req;
 }
 
+function fixURL (url) {
+    return url.replace(/^([^http]|[^\/]|[^\.])/, '/$1');
+}
+
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
+
     if (typeof request == 'string') {
+        // lets fix the url in case it is not valid (not startingh with ./ or /, or a protocol)
+        request = fixURL(request);
         request = location.origin + request;
     }
+
     if (!tmpUrl) {
         tmpUrl = request.url || request;
+    } else {
+        // we also fix the tmpUrl in case it was sent
+        tmpUrl = fixURL(tmpUrl);
     }
+
     let originalUrl = tmpUrl;
-    let sameOrigin = (new URL(tmpUrl)).origin == origin;
+    let sameOrigin;
+
+    try {
+        sameOrigin = (new URL(tmpUrl)).origin == origin;
+    } catch (err) {
+        throw new Error(`The URL "${tmpUrl}" is not valid and could not be parsed.`);
+    }
 
     // if there are group variables in the matching expression
     tmpUrl = utils.applyMatch(matching, tmpUrl);

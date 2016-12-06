@@ -33,7 +33,7 @@
             DSW.ready.then(function dswReady (status) {
                 console.info('[ DSW ] :: Service Worker is active and working');
             }).catch(err=>{
-                console.warn('[ DSW ] :: Service Worker could not be fully registered', err);
+                console.warn('[ DSW ] :: Service Worker could not be fully registered\n', err);
             });
 
             DSW.addEventListener('activated', function(event){

@@ -1,5 +1,5 @@
 const PWASettings = {
-    "version": 2.3,
+    "version": 2.5,
     "applyImmediately": true,
     "appShell": [
         "/dsw.js",
@@ -831,16 +831,34 @@ function createNewRequest(tmpUrl, request, event) {
     return req;
 }
 
+function fixURL(url) {
+    return url.replace(/^([^http]|[^\/]|[^\.])/, '/$1');
+}
+
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
+
     if (typeof request == 'string') {
+        // lets fix the url in case it is not valid (not startingh with ./ or /, or a protocol)
+        request = fixURL(request);
         request = location.origin + request;
     }
+
     if (!tmpUrl) {
         tmpUrl = request.url || request;
+    } else {
+        // we also fix the tmpUrl in case it was sent
+        tmpUrl = fixURL(tmpUrl);
     }
+
     var originalUrl = tmpUrl;
-    var sameOrigin = new URL(tmpUrl).origin == origin;
+    var sameOrigin = void 0;
+
+    try {
+        sameOrigin = new URL(tmpUrl).origin == origin;
+    } catch (err) {
+        throw new Error('The URL "' + tmpUrl + '" is not valid and could not be parsed.');
+    }
 
     // if there are group variables in the matching expression
     tmpUrl = _utils2.default.applyMatch(matching, tmpUrl);
@@ -1228,12 +1246,19 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
+var preCache;
+var failedAppShellFiles = [];
 
-var DSW = { version: '1.10.6', build: '1479871295843', ready: null };
+var DSW = { version: '1.11.0', build: '1480981816702', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
 var currentlyMocking = {};
+
+var installationFailure = function installationFailure(err) {
+    var errMessage = 'Failed storing appshell.\n ' + failedAppShellFiles.join(',') + ' failed loading.\n';
+    return errMessage;
+};
 
 // These will be used in both ServiceWorker and Client scopes
 DSW.isOffline = DSW.offline = function (_) {
@@ -1336,8 +1361,8 @@ if (isInSWScope) {
                 return DSW.ready = new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
                     // easier to deal with, latelly on each requisition
-                    var preCache = PWASettings.appShell || [],
-                        dbs = [];
+                    preCache = PWASettings.appShell || [];
+                    var dbs = [];
 
                     Object.keys(dswConfig.rules || dswConfig.dswRules).forEach(function (heuristic) {
                         var ruleName = heuristic;
@@ -1450,13 +1475,22 @@ if (isInSWScope) {
                     if (preCache.length || dbs.length) {
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
-                            return _cacheManager2.default.add(cur.url || cur, null, null, cur.rule);
+                            return _cacheManager2.default.add(cur.url || cur, null, null, cur.rule).catch(function (err) {
+                                // in case it is a Response
+                                if (err && err.status == 404) {
+                                    failedAppShellFiles.push(err.url);
+                                    throw new Error(installationFailure());
+                                }
+                            });
                         }).concat(dbs.map(function (cur) {
-                            return _cacheManager2.default.createDB(cur);
+                            return _cacheManager2.default.createDB(cur).catch(function (err) {
+                                //                                logger.error('Failed to create DB\n', err);
+                                throw new Error('Failed preparing IndexedDB\n', err.message || err);
+                            });
                         }))).then(function (_) {
                             resolve();
                         }).catch(function (err) {
-                            var errMessage = 'Failed storing the appShell! Could not register the service worker.' + '\nCould not find ' + (err.url || err.message) + '\n';
+                            var errMessage = 'Could not register the service worker.' + '\n' + (err.url || err.message) + '\n';
                             _logger2.default.error(errMessage, err);
                             reject(errMessage);
                         });
@@ -1692,6 +1726,7 @@ if (isInSWScope) {
         };
 
         var DSWStatus = false;
+        var DSWStatusError = null;
         self.addEventListener('activate', function (event) {
             event.waitUntil(function (_) {
                 var promises = [];
@@ -1700,9 +1735,9 @@ if (isInSWScope) {
                 }
                 promises.push(_cacheManager2.default.deleteUnusedCaches(PWASettings.keepUnusedCaches));
                 return Promise.all(promises).then(function (_) {
-                    DSWManager.broadcast({ DSWStatus: DSWStatus });
+                    DSWManager.broadcast({ DSWStatus: DSWStatus, error: DSWStatusError || null });
                 }).catch(function (err) {
-                    DSWManager.broadcast({ DSWStatus: DSWStatus });
+                    DSWManager.broadcast({ DSWStatus: DSWStatus, error: err || DSWStatusError });
                 });
             }());
         });
@@ -1716,7 +1751,9 @@ if (isInSWScope) {
                 return event.waitUntil(DSWManager.setup(PWASettings).then(function (_) {
                     DSWStatus = true;
                     self.skipWaiting();
-                }).catch(function (_) {
+                }).catch(function (err) {
+                    DSWStatus = false;
+                    DSWStatusError = err;
                     self.skipWaiting();
                 }));
             } else {
@@ -1963,6 +2000,7 @@ if (isInSWScope) {
                     } else {
                         // if it failed, let's unregister it, to avoid false positives
                         DSW.status.appShell = false;
+                        DSW.status.error = event.data.error;
                         pendingReject(DSW.status);
                         registeredServiceWorker.unregister();
                     }
@@ -2173,7 +2211,7 @@ if (isInSWScope) {
                         if (!navigator.serviceWorker.controller) {
                             // rejects the registration after some time, if not resolved by then
                             installationTimeOut = setTimeout(function (_) {
-                                reject('Registration timed out');
+                                //reject('Registration timed out'); // AQUI
                             }, config.timeout || REGISTRATION_TIMEOUT);
 
                             // we will use the same script, already loaded, for our service worker
@@ -2187,7 +2225,9 @@ if (isInSWScope) {
                                     DSW.status.ready = true;
                                     eventManager.trigger('registered', DSW.status);
 
-                                    Promise.all([appShellPromise, new Promise(function (resolve, reject) {
+                                    Promise.all([appShellPromise,
+                                    // enabling notification if they were set to "auto"
+                                    new Promise(function (resolve, reject) {
                                         if (PWASettings.notification && PWASettings.notification.auto) {
                                             return DSW.enableNotifications();
                                         } else {

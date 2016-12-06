@@ -1,5 +1,7 @@
 var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
+var preCache;
+var failedAppShellFiles = [];
 
 import logger from './logger.js';
 import getBestMatchingRX from './best-matching-rx.js';
@@ -13,6 +15,11 @@ const REQUEST_TIME_LIMIT = 5000;
 const REGISTRATION_TIMEOUT = 12000;
 const DEFAULT_NOTIF_DURATION = 6000;
 const currentlyMocking = {};
+
+var installationFailure = err=>{
+    let errMessage = `Failed storing appshell.\n ${failedAppShellFiles.join(',')} failed loading.\n`;
+    return errMessage;
+};
 
 // These will be used in both ServiceWorker and Client scopes
 DSW.isOffline = DSW.offline = _=>{
@@ -105,7 +112,8 @@ if (isInSWScope) {
                     }
                 });
             if (!result) {
-                DSWManager.traceStep(event.request, 'No fallback found. Request failed');
+                DSWManager.traceStep(event.request,
+                                     'No fallback found. Request failed');
             }
             return result || response;
         },
@@ -118,13 +126,15 @@ if (isInSWScope) {
             cacheManager.setup(DSWManager, PWASettings, goFetch);
             strategies.setup(DSWManager, cacheManager, goFetch);
 
-            const ROOT_SW_SCOPE = (new URL(location.href)).pathname.replace(/\/[^\/]+$/, '/');
+            const ROOT_SW_SCOPE = (new URL(location.href))
+                .pathname
+                .replace(/\/[^\/]+$/, '/');
 
             return DSW.ready = new Promise((resolve, reject)=>{
                 // we will prepare and store the rules here, so it becomes
                 // easier to deal with, latelly on each requisition
-                let preCache = PWASettings.appShell || [],
-                    dbs = [];
+                preCache = PWASettings.appShell || [];
+                let dbs = [];
 
                 Object.keys(dswConfig.rules || dswConfig.dswRules).forEach(heuristic=>{
                     let ruleName = heuristic;
@@ -246,17 +256,27 @@ if (isInSWScope) {
                     return Promise.all(
                         preCache.map(function(cur) {
                             return cacheManager
-                                    .add(cur.url||cur, null, null, cur.rule);
+                                    .add(cur.url||cur, null, null, cur.rule)
+                                    .catch(err=>{
+                                        // in case it is a Response
+                                        if (err && err.status == 404) {
+                                            failedAppShellFiles.push(err.url);
+                                            throw new Error(installationFailure());
+                                        }
+                                    });
                         }).concat(dbs.map(function(cur) {
-                            return cacheManager.createDB(cur);
+                            return cacheManager.createDB(cur).catch(err=>{
+//                                logger.error('Failed to create DB\n', err);
+                                throw new Error('Failed preparing IndexedDB\n', err.message || err);
+                            });
                         })
                     ))
                     .then(_=>{
                         resolve();
                     })
                     .catch(err=>{
-                        let errMessage = 'Failed storing the appShell! Could not register the service worker.' +
-                                         '\nCould not find ' + (err.url || err.message) + '\n';
+                        let errMessage = 'Could not register the service worker.' +
+                                         '\n' + (err.url || err.message) + '\n';
                         logger.error(errMessage,
                                      err);
                         reject(errMessage);
@@ -523,6 +543,7 @@ if (isInSWScope) {
     };
 
     let DSWStatus = false;
+    let DSWStatusError = null;
     self.addEventListener('activate', function(event) {
         event.waitUntil((_=>{
             let promises = [];
@@ -531,9 +552,9 @@ if (isInSWScope) {
             }
             promises.push(cacheManager.deleteUnusedCaches(PWASettings.keepUnusedCaches));
             return Promise.all(promises).then(_=>{
-                DSWManager.broadcast({ DSWStatus });
+                DSWManager.broadcast({ DSWStatus, error: DSWStatusError || null });
             }).catch(err=>{
-                DSWManager.broadcast({ DSWStatus });
+                DSWManager.broadcast({ DSWStatus, error: err || DSWStatusError });
             });
         })());
     });
@@ -550,7 +571,9 @@ if (isInSWScope) {
                     DSWStatus = true;
                     self.skipWaiting();
                 })
-                .catch(_=>{
+                .catch(err=>{
+                    DSWStatus = false;
+                    DSWStatusError = err;
                     self.skipWaiting();
                 })
             );
@@ -780,6 +803,7 @@ if (isInSWScope) {
                 } else {
                     // if it failed, let's unregister it, to avoid false positives
                     DSW.status.appShell = false;
+                    DSW.status.error = event.data.error;
                     pendingReject(DSW.status);
                     registeredServiceWorker.unregister();
                 }
@@ -988,7 +1012,7 @@ if (isInSWScope) {
                     if (!navigator.serviceWorker.controller) {
                         // rejects the registration after some time, if not resolved by then
                         installationTimeOut = setTimeout(_=>{
-                            reject('Registration timed out');
+                            //reject('Registration timed out'); // AQUI
                         }, config.timeout || REGISTRATION_TIMEOUT);
 
                         // we will use the same script, already loaded, for our service worker
@@ -1006,6 +1030,7 @@ if (isInSWScope) {
 
                                     Promise.all([
                                         appShellPromise,
+                                        // enabling notification if they were set to "auto"
                                         new Promise((resolve, reject)=>{
                                             if (PWASettings.notification && PWASettings.notification.auto) {
                                                 return DSW.enableNotifications();
