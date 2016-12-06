@@ -5,17 +5,17 @@ module.exports = (()=>{
         run: function (directory, options) {
 
             function treatIndex () {
-                const fd = fs.openSync(directory + '/index.html', 'w');
+                const fd = fs.openSync(directory + '/index.html', 'a+');
                 const SW_CALL = `
         <script src="dsw.js"></script>
         <script>
             DSW.setup()
-            .then(function(result){
-                // tell your users about the good news
-            })
-            .catch(function(reason){
-                // ops!
-            });
+                .then(function(result){
+                    // tell your users about the good news
+                })
+                .catch(function(reason){
+                    // ops!
+                });
         </script>`;
                 const VIEWPORT = `
         <meta name="viewport" content="width=device-width, initial-scale=1">`;
@@ -41,27 +41,27 @@ module.exports = (()=>{
                 if (!indexContent.replace(/[\n\r \t]/g, '').length) {
                     indexContent = FULL_INDEX;
                 } else {
+                    // if the index file doesn't have the viewport, we add it
+                    if (!indexContent.match('\<meta(^\>)+name=[\'\"]viewport[\'\"]')) {
+                        indexContent = indexContent.replace(/([ \t]+)?\<\/(head|body|html)\>/, `${VIEWPORT}
+$1</$2>`);
+                    }
                     // if the index file doesn't have a DSW.setup call, we add it
                     if (!indexContent.match(/DSW([ \t\n\r]?).([ \t\n\r]?)setup([ \t\n\r]?)\(/)) {
-                        indexContent.replace(/\<\/(head|body|html)\>/, `${SW_CALL}
-        </$1>`);
+                        indexContent = indexContent.replace(/([ \t]+)?\<\/(head|body|html)\>/, `${SW_CALL}
+$1</$2>`);
                     }
                     // if the index file has no web app metadata, we add it
                     if (!indexContent.match('\<link(^\>)+rel=[\'\"]manifest[\'\"]')) {
-                        indexContent.replace(/\<(head|body|html)/, `<$1${WP_META}
-    `);
-                    }
-                    // if the index file doesn't have the viewport, we add it
-                    if (!indexContent.match('\<meta(^\>)+name=[\'\"]viewport[\'\"]')) {
-                        indexContent.replace(/\<(head|body|html)/, `<$1${VIEWPORT}
-    `);
+                        indexContent = indexContent.replace(/([ \t]+)?\<\/(head|body|html)\>/, `${WP_META}
+$1</$2>`);
                     }
                 }
                 fs.writeFileSync(directory + '/index.html', indexContent, 'utf-8');
             }
 
             function createDSWFile () {
-                const fd = fs.openSync(directory + '/dswfile.json', 'w+');
+                const fd = fs.openSync(directory + '/dswfile.json', 'a+');
                 const FULL_DSW_CONTENT = `{
     "dswVersion": 1.0,
     "applyImmediately": true,
@@ -132,14 +132,14 @@ module.exports = (()=>{
             }
 
             function createDefaultFiles () {
-                var fd = fs.openSync(directory + '/not-found.html', 'w+');
+                var fd = fs.openSync(directory + '/not-found.html', 'a+');
                 var content = fs.readFileSync(directory + '/not-found.html', 'utf-8');
                 if (!content.replace(/[\n\r \t]/g, '').length) {
                     fs.writeFileSync(directory + '/not-found.html', "404, page not found!", 'utf-8');
                 }
 
                 try {
-                    fd = fs.openSync(directory + '/404.jpg', 'r');
+                    fd = fs.openSync(directory + '/404.jpg', 'a+');
                 }catch(e){
                     fd = false;
                     // :/

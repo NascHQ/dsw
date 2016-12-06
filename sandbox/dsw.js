@@ -4,7 +4,6 @@ const PWASettings = {
     "appShell": [
         "/dsw.js",
         "/helmet.png",
-        "blah.html",
         "/index.html?homescreen=1"
     ],
     "notification": {
@@ -1250,7 +1249,7 @@ var isInTest = typeof global.it === 'function';
 var preCache;
 var failedAppShellFiles = [];
 
-var DSW = { version: '1.11.0', build: '1480980707638', ready: null };
+var DSW = { version: '1.11.0', build: '1480981816702', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
 var REGISTRATION_TIMEOUT = 12000;
 var DEFAULT_NOTIF_DURATION = 6000;
@@ -1991,7 +1990,6 @@ if (isInSWScope) {
         navigator.serviceWorker.addEventListener('message', function (event) {
             // if it is waiting for the installation confirmation
             if (pendingResolve && event.data.DSWStatus !== void 0) {
-                debugger;
                 // and if the message is about a successful installation
                 if (registeredServiceWorker) {
                     // this means all the appShell have been downloaded
