@@ -2,6 +2,7 @@ var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 var preCache;
 var failedAppShellFiles = [];
+var ROOT_SW_SCOPE = null;
 
 import logger from './logger.js';
 import getBestMatchingRX from './best-matching-rx.js';
@@ -20,6 +21,16 @@ var installationFailure = err=>{
     let errMessage = `Failed storing appshell.\n ${failedAppShellFiles.join(',')} failed loading.\n`;
     return errMessage;
 };
+
+function getSWRoot () {
+    if (ROOT_SW_SCOPE) {
+        return ROOT_SW_SCOPE;
+    }
+    ROOT_SW_SCOPE = (new URL(location.href))
+        .pathname
+        .replace(/\/[^\/]+$/, '/');
+    return ROOT_SW_SCOPE;
+}
 
 // These will be used in both ServiceWorker and Client scopes
 DSW.isOffline = DSW.offline = _=>{
@@ -120,15 +131,14 @@ if (isInSWScope) {
 
         // SW Scope's setup
         setup (dswConfig={}) {
+
+            DSWManager.rootSWScope = getSWRoot();
+
             // let's prepare both cacheManager and strategies with the
             // current referencies
             utils.setup(DSWManager, PWASettings, DSW);
             cacheManager.setup(DSWManager, PWASettings, goFetch);
             strategies.setup(DSWManager, cacheManager, goFetch);
-
-            const ROOT_SW_SCOPE = (new URL(location.href))
-                .pathname
-                .replace(/\/[^\/]+$/, '/');
 
             return DSW.ready = new Promise((resolve, reject)=>{
                 // we will prepare and store the rules here, so it becomes
@@ -238,16 +248,16 @@ if (isInSWScope) {
                     'apply': { cache: { } }
                 }, location.href);
 
-                // addinf the root path to be also cached by default
+                // adding the root path to be also cached by default
                 let rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                 this.addRule('*', {
                     name: 'rootDir',
                     strategy: 'fastest',
-                    match: { path: rootMatchingRX },
+                    match: { path: getSWRoot() },
                     'apply': { cache: { } }
                 }, rootMatchingRX);
 
-                preCache.unshift(ROOT_SW_SCOPE);
+                preCache.unshift(getSWRoot());
 
                 // if we've got urls to pre-store, let's cache them!
                 // also, if there is any database to be created, this is the time
@@ -255,8 +265,9 @@ if (isInSWScope) {
                     // we fetch them now, and store it in cache
                     return Promise.all(
                         preCache.map(function(cur) {
+                            let url = cur.url||cur;
                             return cacheManager
-                                    .add(cur.url||cur, null, null, cur.rule)
+                                    .add(url, null, null, cur.rule)
                                     .catch(err=>{
                                         // in case it is a Response
                                         if (err && err.status == 404) {
@@ -266,7 +277,6 @@ if (isInSWScope) {
                                     });
                         }).concat(dbs.map(function(cur) {
                             return cacheManager.createDB(cur).catch(err=>{
-//                                logger.error('Failed to create DB\n', err);
                                 throw new Error('Failed preparing IndexedDB\n', err.message || err);
                             });
                         })
@@ -1002,6 +1012,7 @@ if (isInSWScope) {
                         resolve(DSW.status);
                     };
                 });
+
                 pendingReject = function(reason){
                     clearTimeout(installationTimeOut);
                     reject(reason || 'Installation timeout');
@@ -1012,68 +1023,79 @@ if (isInSWScope) {
                     if (!navigator.serviceWorker.controller) {
                         // rejects the registration after some time, if not resolved by then
                         installationTimeOut = setTimeout(_=>{
-                            //reject('Registration timed out'); // AQUI
+                            reject('Registration timed out');
                         }, config.timeout || REGISTRATION_TIMEOUT);
+
+                        let documentBodyPromise = new Promise(resolve=>{
+                            if (document.readyState === 'complete') {
+                                resolve(document);
+                            } else {
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    resolve(document);
+                                });
+                            }
+                        });
 
                         // we will use the same script, already loaded, for our service worker
                         var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                        navigator.serviceWorker
-                            .register(src)
-                            .then(SW=>{
-                                registeredServiceWorker = SW;
-                                DSW.status.registered = true;
+                        Promise.all([
+                            documentBodyPromise,
+                            navigator.serviceWorker.register(src)
+                        ]).then(SW=>{
+                            registeredServiceWorker = SW;
+                            DSW.status.registered = true;
 
-                                navigator.serviceWorker.ready.then(function(reg) {
+                            navigator.serviceWorker.ready.then(function(reg) {
 
-                                    DSW.status.ready = true;
-                                    eventManager.trigger('registered', DSW.status);
+                                DSW.status.ready = true;
+                                eventManager.trigger('registered', DSW.status);
 
-                                    Promise.all([
-                                        appShellPromise,
-                                        // enabling notification if they were set to "auto"
-                                        new Promise((resolve, reject)=>{
-                                            if (PWASettings.notification && PWASettings.notification.auto) {
-                                                return DSW.enableNotifications();
-                                            } else {
-                                                resolve();
-                                            }
-                                        }),
-                                        new Promise((resolve, reject)=>{
-                                            // setting up sync
-                                            if (config && config.sync) {
-                                                if ('SyncManager' in window) {
-                                                    navigator.serviceWorker.ready.then(function(reg) {
-                                                        return reg.sync.register('syncr');
-                                                    })
-                                                    .then(_=>{
-                                                        DSW.status.sync = true;
-                                                        resolve();
-                                                    });
-                                                } else {
-                                                    DSW.status.sync= 'Failed enabling sync';
+                                Promise.all([
+                                    appShellPromise,
+                                    // enabling notification if they were set to "auto"
+                                    new Promise((resolve, reject)=>{
+                                        if (PWASettings.notification && PWASettings.notification.auto) {
+                                            return DSW.enableNotifications();
+                                        } else {
+                                            resolve();
+                                        }
+                                    }),
+                                    new Promise((resolve, reject)=>{
+                                        // setting up sync
+                                        if (config && config.sync) {
+                                            if ('SyncManager' in window) {
+                                                navigator.serviceWorker.ready.then(function(reg) {
+                                                    return reg.sync.register('syncr');
+                                                })
+                                                .then(_=>{
+                                                    DSW.status.sync = true;
                                                     resolve();
-                                                }
+                                                });
                                             } else {
+                                                DSW.status.sync= 'Failed enabling sync';
                                                 resolve();
                                             }
-                                        })
-                                    ]).then(_=>{
-                                        localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
-                                        eventManager.trigger('enabled', DSW.status);
-                                        logger.info('Service Worker was registered', DSW.status);
-                                        resolve(DSW.status);
-                                    });
-                                });
-                            })
-                            .catch(err=>{
-                                reject({
-                                    status: false,
-                                    sync: false,
-                                    sw: false,
-                                    message: 'Failed registering service worker with the message:\n ' + (err.message),
-                                    error: err
+                                        } else {
+                                            resolve();
+                                        }
+                                    })
+                                ]).then(_=>{
+                                    localStorage.setItem('DSW-STATUS', JSON.stringify(DSW.status));
+                                    eventManager.trigger('enabled', DSW.status);
+                                    logger.info('Service Worker was registered', DSW.status);
+                                    resolve(DSW.status);
                                 });
                             });
+                        })
+                        .catch(err=>{
+                            reject({
+                                status: false,
+                                sync: false,
+                                sw: false,
+                                message: 'Failed registering service worker with the message:\n ' + (err.message),
+                                error: err
+                            });
+                        });
                     } else {
                         // service worker was already registered and is active
                         // setting up traceable requests
@@ -1091,7 +1113,7 @@ if (isInSWScope) {
                             });
                         }
                         // on refreshes, we update the variable to be used in the API
-                        DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
+                        DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS')) || DSW.status;
                         resolve(DSW.status);
                     }
                 } else {

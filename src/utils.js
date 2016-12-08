@@ -13,7 +13,7 @@ const utils = {
         return text;
     },
 
-    createRequest(request, reqData){
+    createRequest (request, reqData) {
         let reqConfig = {
             method: reqData.method || request.method || 'GET',
             headers: reqData.headers || request.headers || new Headers(),
@@ -25,6 +25,15 @@ const utils = {
         let req = new Request(request.url || request, reqConfig);
         req.requestId = request.requestId;
         return req;
+    },
+
+    fixURL (url) {
+        if (utils.DSWManager.rootSWScope != url) {
+            return url.replace(/^([^http]|[^\/]|[^\.])/, utils.DSWManager.rootSWScope + '/$1')
+                      .replace(/([^\:])\/\//g, '$1');
+        } else {
+            return url;
+        }
     },
 
     setup (DSWManager, PWASettings, DSW) {

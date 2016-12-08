@@ -28,16 +28,12 @@ function createNewRequest (tmpUrl, request, event, sameOrigin=true) {
     return req;
 }
 
-function fixURL (url) {
-    return url.replace(/^([^http]|[^\/]|[^\.])/, '/$1');
-}
-
 function goFetch (rule, request, event, matching) {
     let tmpUrl = rule? (rule.action.fetch || rule.action.redirect) : '';
 
     if (typeof request == 'string') {
         // lets fix the url in case it is not valid (not startingh with ./ or /, or a protocol)
-        request = fixURL(request);
+        request = utils.fixURL(request);
         request = location.origin + request;
     }
 
@@ -45,7 +41,8 @@ function goFetch (rule, request, event, matching) {
         tmpUrl = request.url || request;
     } else {
         // we also fix the tmpUrl in case it was sent
-        tmpUrl = fixURL(tmpUrl);
+        tmpUrl = utils.fixURL(tmpUrl);
+        tmpUrl = location.origin + tmpUrl;
     }
 
     let originalUrl = tmpUrl;

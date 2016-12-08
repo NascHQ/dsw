@@ -199,12 +199,16 @@ var cacheManager = {
     },
     add: function add(request, cacheId, response, rule) {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
+
         return new Promise(function (resolve, reject) {
             function addIt(response) {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(function (cache) {
                         // adding to cache
                         var opts = response.type == 'opaque' ? { mode: 'no-cors' } : {};
+                        if ((request.url || request).indexOf('http') !== 0) {
+                            request = _utils2.default.fixURL(request.url || request);
+                        }
                         request = _utils2.default.createRequest(request, opts);
 
                         if (request.method != 'POST') {
@@ -643,16 +647,12 @@ function createNewRequest(tmpUrl, request, event) {
     return req;
 }
 
-function fixURL(url) {
-    return url.replace(/^([^http]|[^\/]|[^\.])/, '/$1');
-}
-
 function goFetch(rule, request, event, matching) {
     var tmpUrl = rule ? rule.action.fetch || rule.action.redirect : '';
 
     if (typeof request == 'string') {
         // lets fix the url in case it is not valid (not startingh with ./ or /, or a protocol)
-        request = fixURL(request);
+        request = _utils2.default.fixURL(request);
         request = location.origin + request;
     }
 
@@ -660,7 +660,8 @@ function goFetch(rule, request, event, matching) {
         tmpUrl = request.url || request;
     } else {
         // we also fix the tmpUrl in case it was sent
-        tmpUrl = fixURL(tmpUrl);
+        tmpUrl = _utils2.default.fixURL(tmpUrl);
+        tmpUrl = location.origin + tmpUrl;
     }
 
     var originalUrl = tmpUrl;
@@ -1060,6 +1061,7 @@ var isInSWScope = false;
 var isInTest = typeof global.it === 'function';
 var preCache;
 var failedAppShellFiles = [];
+var ROOT_SW_SCOPE = null;
 
 var DSW = { version: '#@!THE_DSW_VERSION_INFO!@#', build: '#@!THE_DSW_BUILD_TIMESTAMP!@#', ready: null };
 var REQUEST_TIME_LIMIT = 5000;
@@ -1071,6 +1073,14 @@ var installationFailure = function installationFailure(err) {
     var errMessage = 'Failed storing appshell.\n ' + failedAppShellFiles.join(',') + ' failed loading.\n';
     return errMessage;
 };
+
+function getSWRoot() {
+    if (ROOT_SW_SCOPE) {
+        return ROOT_SW_SCOPE;
+    }
+    ROOT_SW_SCOPE = new URL(location.href).pathname.replace(/\/[^\/]+$/, '/');
+    return ROOT_SW_SCOPE;
+}
 
 // These will be used in both ServiceWorker and Client scopes
 DSW.isOffline = DSW.offline = function (_) {
@@ -1162,13 +1172,14 @@ if (isInSWScope) {
 
                 var dswConfig = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
+
+                DSWManager.rootSWScope = getSWRoot();
+
                 // let's prepare both cacheManager and strategies with the
                 // current referencies
                 _utils2.default.setup(DSWManager, PWASettings, DSW);
                 _cacheManager2.default.setup(DSWManager, PWASettings, _goFetch2.default);
                 _strategies2.default.setup(DSWManager, _cacheManager2.default, _goFetch2.default);
-
-                var ROOT_SW_SCOPE = new URL(location.href).pathname.replace(/\/[^\/]+$/, '/');
 
                 return DSW.ready = new Promise(function (resolve, reject) {
                     // we will prepare and store the rules here, so it becomes
@@ -1271,23 +1282,24 @@ if (isInSWScope) {
                         'apply': { cache: {} }
                     }, location.href);
 
-                    // addinf the root path to be also cached by default
+                    // adding the root path to be also cached by default
                     var rootMatchingRX = /^(\/|\/index(\.[0-1a-z]+)?)$/;
                     _this.addRule('*', {
                         name: 'rootDir',
                         strategy: 'fastest',
-                        match: { path: rootMatchingRX },
+                        match: { path: getSWRoot() },
                         'apply': { cache: {} }
                     }, rootMatchingRX);
 
-                    preCache.unshift(ROOT_SW_SCOPE);
+                    preCache.unshift(getSWRoot());
 
                     // if we've got urls to pre-store, let's cache them!
                     // also, if there is any database to be created, this is the time
                     if (preCache.length || dbs.length) {
                         // we fetch them now, and store it in cache
                         return Promise.all(preCache.map(function (cur) {
-                            return _cacheManager2.default.add(cur.url || cur, null, null, cur.rule).catch(function (err) {
+                            var url = cur.url || cur;
+                            return _cacheManager2.default.add(url, null, null, cur.rule).catch(function (err) {
                                 // in case it is a Response
                                 if (err && err.status == 404) {
                                     failedAppShellFiles.push(err.url);
@@ -1296,7 +1308,6 @@ if (isInSWScope) {
                             });
                         }).concat(dbs.map(function (cur) {
                             return _cacheManager2.default.createDB(cur).catch(function (err) {
-                                //                                logger.error('Failed to create DB\n', err);
                                 throw new Error('Failed preparing IndexedDB\n', err.message || err);
                             });
                         }))).then(function (_) {
@@ -2013,6 +2024,7 @@ if (isInSWScope) {
                             resolve(DSW.status);
                         };
                     });
+
                     pendingReject = function pendingReject(reason) {
                         clearTimeout(installationTimeOut);
                         reject(reason || 'Installation timeout');
@@ -2023,12 +2035,22 @@ if (isInSWScope) {
                         if (!navigator.serviceWorker.controller) {
                             // rejects the registration after some time, if not resolved by then
                             installationTimeOut = setTimeout(function (_) {
-                                //reject('Registration timed out'); // AQUI
+                                reject('Registration timed out');
                             }, config.timeout || REGISTRATION_TIMEOUT);
+
+                            var documentBodyPromise = new Promise(function (resolve) {
+                                if (document.readyState === 'complete') {
+                                    resolve(document);
+                                } else {
+                                    document.addEventListener('DOMContentLoaded', function () {
+                                        resolve(document);
+                                    });
+                                }
+                            });
 
                             // we will use the same script, already loaded, for our service worker
                             var src = document.querySelector('script[src$="dsw.js"]').getAttribute('src');
-                            navigator.serviceWorker.register(src).then(function (SW) {
+                            Promise.all([documentBodyPromise, navigator.serviceWorker.register(src)]).then(function (SW) {
                                 registeredServiceWorker = SW;
                                 DSW.status.registered = true;
 
@@ -2095,7 +2117,7 @@ if (isInSWScope) {
                                 });
                             }
                             // on refreshes, we update the variable to be used in the API
-                            DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS'));
+                            DSW.status = JSON.parse(localStorage.getItem('DSW-STATUS')) || DSW.status;
                             resolve(DSW.status);
                         }
                     } else {
@@ -2285,7 +2307,9 @@ var strategies = {
                 } else {
                     // lets flag cache as failed, once it's not there
                     cacheFailed = true;
-                    treatCatch();
+                    if (!networkTreated) {
+                        treatCatch();
+                    }
                 }
             }
 
@@ -2345,6 +2369,13 @@ var utils = {
         var req = new Request(request.url || request, reqConfig);
         req.requestId = request.requestId;
         return req;
+    },
+    fixURL: function fixURL(url) {
+        if (utils.DSWManager.rootSWScope != url) {
+            return url.replace(/^([^http]|[^\/]|[^\.])/, utils.DSWManager.rootSWScope + '/$1').replace(/([^\:])\/\//g, '$1');
+        } else {
+            return url;
+        }
     },
     setup: function setup(DSWManager, PWASettings, DSW) {
         utils.DSWManager = DSWManager;

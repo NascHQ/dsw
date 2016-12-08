@@ -180,7 +180,9 @@ const strategies = {
                 } else {
                     // lets flag cache as failed, once it's not there
                     cacheFailed = true;
-                    treatCatch();
+                    if (!networkTreated) {
+                        treatCatch();
+                    }
                 }
             }
 

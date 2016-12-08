@@ -166,12 +166,16 @@ const cacheManager = {
     },
     add: (request, cacheId, response, rule) => {
         cacheId = cacheId || cacheManager.mountCacheId(rule);
+
         return new Promise((resolve, reject)=>{
             function addIt (response) {
                 if (response.status == 200 || response.type == 'opaque') {
                     caches.open(cacheId).then(cache => {
                         // adding to cache
                         let opts = response.type == 'opaque'? { mode: 'no-cors' } : {};
+                        if ((request.url || request).indexOf('http') !== 0) {
+                            request = utils.fixURL((request.url || request));
+                        }
                         request = utils.createRequest(request, opts);
 
                         if (request.method != 'POST') {

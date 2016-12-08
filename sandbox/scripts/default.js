@@ -83,7 +83,7 @@ window.addEventListener('DOMContentLoaded', function(){
         "#btn-5-page": function(){
             return new Promise((resolve, reject)=>{
                 let el = geby('test-5-iframe');
-                let url = '/foo.html';
+                let url = 'foo.html';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = _=>{reject(_);};
                 showClickAt(geby('btn-5-page'));
@@ -94,7 +94,7 @@ window.addEventListener('DOMContentLoaded', function(){
             let i = testMode? 1: Math.ceil(Math.random()*3);
             return new Promise((resolve, reject)=>{
                 let el = geby('test-6-iframe');
-                let url = '/api/user/'+i+'.json';
+                let url = 'api/user/'+i+'.json';
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = reject;
                 showClickAt(geby('btn-6-data'));
@@ -112,7 +112,7 @@ window.addEventListener('DOMContentLoaded', function(){
                 ];
                 let el = geby('test-7-iframe');
                 let idx = testMode? 2: Math.ceil(Math.random() * 5) -1;
-                let url = '/old-site/' + listOfOlderPages[idx];
+                let url = 'old-site/' + listOfOlderPages[idx];
                 el.onload = _=>{resolve(location.protocol+'//'+location.host + url);};
                 el.onerror = reject;
                 showClickAt(geby('btn-7-page'));
@@ -127,6 +127,10 @@ window.addEventListener('DOMContentLoaded', function(){
             var videoEl = geby('video-test');
             videoEl.setAttribute('src', 'videos/dsw-video-sandbox.mp4');
             videoEl.play();
+        },
+        "#btn-11-iframe": function(){
+            var videoEl = geby('iframe-preload-bundle');
+            videoEl.setAttribute('src', 'purchase-page/kart.html');
         }
     };
 
@@ -183,6 +187,8 @@ window.addEventListener('DOMContentLoaded', function(){
         	el.parentNode.querySelector('.test-content').innerHTML = 'Message Failed';
         });
     });
+
+    geby('btn-11-iframe').addEventListener('click', tests['#btn-11-iframe']);
 
 	function sendMessage () {
 		return new Promise((resolve, reject)=>{
