@@ -41,6 +41,10 @@ program
         stoped = require('./init.js').run(directory, options);
         dsw.generate(directory, program).then(_=>{
             console.log('\n', (new Array(68)).join('-'), '\n');
+        }).catch(err=>{
+            if (verbose) {
+                console.warn('[ERROR] :: Failed generating you dsw.js file.\n', err.message || err);
+            }
         });
     })
     .on('--help', function() {
@@ -62,5 +66,9 @@ program.parse(process.argv);
 if (!stoped && program.args && (program.args[0] || process.argv.length == 2 )) {
     dsw.generate(program.args[0], program).then(_=>{
         console.log('\n', (new Array(68)).join('-'), '\n');
+    }).catch(err=>{
+        if (verbose) {
+            console.warn('[ERROR] :: Failed generating you dsw.js file.\n', err.message || err);
+        }
     });
 }
