@@ -167,6 +167,28 @@ Open the `dswfile.json` in the root of your project and let's add some content l
 That's it! You may have many rules.
 Reminding that `applyImmediately` is optional. It will replace the previously registered service worker as soon as the new one loads.
 
+## AppShell
+
+The AppShell is the basics your WebApp will require to work, even if offline.  
+Add to your AppShell things like your main _.js, .css, .html_ and _images_. This way, the user will be able to see the core of your webapp, with its complete structure. And you can then work on loading the content (if user is online) or showing a message (in case the user is not online).
+
+```js
+{
+    "version": 1.0,
+    "applyImmediately": true,
+    "appShell": [
+        "/statics/some.js",
+        "/statics/some.css",
+        "/statics/some-images",
+        ...
+    ],
+    "rules": {
+        ...
+    }
+}
+
+```
+
 ### Push notifications
 
 If you want to enable and use push notifications, you can set:
